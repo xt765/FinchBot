@@ -5,7 +5,7 @@ description = "FinchBot (雀翎) - 轻量级 AI Agent 框架 | Built with LangCh
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-authors = [{ name = "FinchBot contributors" }]
+authors = [{ name = "xt765" }]
 keywords = ["ai", "agent", "langchain", "langgraph", "chatbot"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -19,6 +19,7 @@ dependencies = [
     "langchain-community>=0.4.1",
     "langchain-openai>=0.3.0",
     "langchain-anthropic>=0.3.0",
+    "langchain-google-genai>=2.0.0",
     "langgraph>=1.0.8",
     "langgraph-checkpoint-sqlite>=2.0.0",
     "langgraph-cli[inmem]>=0.1.0",
@@ -47,10 +48,9 @@ dev = [
     "ruff>=0.15.0",
     "basedpyright>=1.38.0",
 ]
-google = ["langchain-google-genai>=2.0.0"]
 
 [project.scripts]
-finchbot = "finchbot.cli:app"
+finchbot = "finchbot.cli_main:app"
 
 [build-system]
 requires = ["hatchling"]
@@ -80,7 +80,7 @@ indent-style = "space"
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
 reportMissingImports = true
-reportMissingTypeStubs = true
+reportMissingTypeStubs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

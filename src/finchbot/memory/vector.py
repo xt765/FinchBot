@@ -15,11 +15,15 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from langchain_chroma import Chroma
+    from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 
 # 项目根目录
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 # 模型缓存目录（项目内）
 MODEL_CACHE_DIR = PROJECT_ROOT / ".models" / "fastembed"
+
+# 模块级缓存：避免重复初始化嵌入模型
+_embeddings_cache: FastEmbedEmbeddings | None = None
 
 
 def _check_internet_connection(
@@ -158,6 +162,12 @@ def get_embeddings(cache_dir: Path | None = None, verbose: bool = True):
     Returns:
         FastEmbedEmbeddings 实例或 None。
     """
+    global _embeddings_cache
+
+    # 返回缓存的实例（如果已初始化）
+    if _embeddings_cache is not None:
+        return _embeddings_cache
+
     # 确定缓存目录
     model_cache = cache_dir or MODEL_CACHE_DIR
     model_cache.mkdir(parents=True, exist_ok=True)
@@ -186,6 +196,9 @@ def get_embeddings(cache_dir: Path | None = None, verbose: bool = True):
             max_length=512,
             cache_dir=str(model_cache),
         )
+
+        # 缓存实例
+        _embeddings_cache = embeddings
 
         # 如果模型之前不存在，说明是刚下载的，显示成功信息
         if verbose and not model_exists:

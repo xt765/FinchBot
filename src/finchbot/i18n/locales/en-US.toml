@@ -7,6 +7,7 @@ processing = "🐦 FinchBot: Processing..."
 response_title = "🐦 FinchBot Response"
 error_no_api_key = "Error: LLM API key not configured"
 error_config_hint = "Please set environment variables or configure in ~/.finchbot/config.json."
+version = "version"
 
 [cli.config]
 init_title = "🐦 FinchBot Configuration"
@@ -96,6 +97,49 @@ remove_provider_help = "Remove an LLM provider"
 enabled = "Enabled"
 disabled = "Disabled"
 not_configured = "Not configured"
+
+[cli.models]
+download_title = "📥 Download FinchBot Embedding Model"
+model_name = "Model: BAAI/bge-small-zh-v1.5"
+source = "Source: {} ({})"
+download_success = "✓ Model download completed"
+download_failed = "✗ Model download failed"
+check_network_proxy = "Hint: Check network connection or try setting a proxy"
+check_network_retry = "Hint: Check network connection or try again later"
+
+[cli.chat]
+title = "🐦 FinchBot Chat"
+session = "Session: {}"
+model = "Model: {}"
+workspace = "Workspace: {}"
+web_search_enabled = "Web Search: Enabled"
+web_search_disabled = "Web Search: Disabled"
+type_to_quit = "Type 'exit' or press Ctrl+C to quit"
+auto_detected_model = "Auto-detected model: {}"
+session_title = "Session Title: {}"
+finchbot_response = "🐦 FinchBot:"
+check_logs = "Check logs for more details."
+
+[cli.history]
+title = "Conversation History:"
+role_you = "You"
+role_bot = "FinchBot"
+total_messages = "Total: {} messages"
+rollback_hint = "Use '/rollback <index> [new_session]' to rollback"
+
+[cli.rollback]
+invalid_index = "Invalid index. Range: 0-{}"
+removed_messages = "Removed {} messages"
+rollback_success = "✓ Rolled back to {} messages"
+create_success = "✓ Created '{}' with {} messages"
+invalid_number = "Invalid number. Range: 1-{}"
+remove_success = "✓ Removed last {} messages"
+current_messages = "Current: {} messages"
+message_index_number = "Message index must be a number"
+number_integer = "Number must be an integer"
+usage_rollback = "Usage: /rollback <message_index> [new_session_name]"
+usage_back = "Usage: /back <number_of_messages>"
+error_showing = "Error showing history: {}"
 
 [agent]
 title = "FinchBot"

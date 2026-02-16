@@ -7,8 +7,8 @@ processing = "🐦 FinchBot: 正在处理..."
 response_title = "🐦 FinchBot 回复"
 error_no_api_key = "错误: 未配置 LLM API 密钥"
 error_config_hint = "请设置环境变量或在 ~/.finchbot/config.json 中配置。"
+version = "version"
 
-[cli.config]
 init_title = "🐦 FinchBot 配置向导"
 updating_title = "🐦 FinchBot 配置向导 (更新配置)"
 choose_language = "请选择语言："
@@ -96,6 +96,49 @@ remove_provider_help = "删除 LLM 提供商"
 enabled = "已启用"
 disabled = "已禁用"
 not_configured = "未配置"
+
+[cli.models]
+download_title = "📥 下载 FinchBot 嵌入模型"
+model_name = "模型: BAAI/bge-small-zh-v1.5"
+source = "源: {} ({})"
+download_success = "✓ 模型下载完成"
+download_failed = "✗ 模型下载失败"
+check_network_proxy = "提示: 检查网络连接或尝试设置代理"
+check_network_retry = "提示: 检查网络连接或稍后重试"
+
+[cli.chat]
+title = "🐦 FinchBot 聊天"
+session = "会话: {}"
+model = "模型: {}"
+workspace = "工作目录: {}"
+web_search_enabled = "网页搜索: 已启用"
+web_search_disabled = "网页搜索: 已禁用"
+type_to_quit = "输入 'exit' 或按 Ctrl+C 退出"
+auto_detected_model = "自动检测模型: {}"
+session_title = "会话标题: {}"
+finchbot_response = "🐦 FinchBot:"
+check_logs = "查看日志获取详细信息。"
+
+[cli.history]
+title = "对话历史:"
+role_you = "你"
+role_bot = "FinchBot"
+total_messages = "共 {} 条消息"
+rollback_hint = "使用 '/rollback <索引> [新会话名]' 回退"
+
+[cli.rollback]
+invalid_index = "无效索引。范围: 0-{}"
+removed_messages = "已删除 {} 条消息"
+rollback_success = "✓ 已回退到 {} 条消息"
+create_success = "✓ 已创建 '{}'，包含 {} 条消息"
+invalid_number = "无效数字。范围: 1-{}"
+remove_success = "✓ 已删除最近 {} 条消息"
+current_messages = "当前: {} 条消息"
+message_index_number = "消息索引必须是数字"
+number_integer = "数字必须是整数"
+usage_rollback = "用法: /rollback <消息索引> [新会话名]"
+usage_back = "用法: /back <消息数量>"
+error_showing = "显示历史出错: {}"
 
 [agent]
 title = "FinchBot (雀翎)"

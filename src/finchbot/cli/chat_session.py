@@ -1,0 +1,548 @@
+"""聊天会话模块.
+
+提供 REPL 模式下的聊天功能，包括会话管理、历史记录、消息回退等。
+"""
+
+from __future__ import annotations
+
+import os
+import re
+from pathlib import Path
+from typing import Any
+
+import typer
+from langchain_core.runnables import RunnableConfig
+from loguru import logger
+from rich.console import Console
+from rich.panel import Panel
+
+from finchbot.config import load_config
+from finchbot.i18n import t
+from finchbot.sessions import SessionMetadataStore
+
+console = Console()
+
+EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q", "q"}
+GOODBYE_MESSAGE = "\n[dim]Goodbye! 👋[/dim]"
+
+
+def _get_llm_config(
+    model: str, config_obj: Any
+) -> tuple[str | None, str | None, str | None]:
+    """获取 LLM 配置.
+
+    优先级：显式传入 > 环境变量 > 配置文件 > 自动检测。
+
+    Args:
+        model: 模型名称
+        config_obj: 配置对象
+
+    Returns:
+        (api_key, api_base, detected_model) 元组
+    """
+
+    model_lower = model.lower()
+
+    provider_keywords = {
+        "openai": ["gpt", "openai"],
+        "anthropic": ["claude", "anthropic"],
+        "google": ["gemini", "google"],
+        "azure": ["azure"],
+        "ollama": ["ollama", "localhost"],
+        "deepseek": ["deepseek"],
+    }
+
+    provider = "openai"
+    for name, keywords in provider_keywords.items():
+        if any(kw in model_lower for kw in keywords):
+            provider = name
+            break
+
+    api_key, api_base = _get_provider_config(provider, config_obj)
+
+    detected_model = None
+    if not api_key:
+        api_key, api_base, detected_provider, detected_model = _auto_detect_provider()
+
+    return api_key, api_base, detected_model
+
+
+def _get_provider_config(
+    provider: str, config_obj: Any
+) -> tuple[str | None, str | None]:
+    """获取指定 provider 的 API key 和 base.
+
+    Args:
+        provider: provider 名称
+        config_obj: 配置对象
+
+    Returns:
+        (api_key, api_base) 元组
+    """
+    env_prefix = provider.upper()
+    api_key = os.environ.get(f"{env_prefix}_API_KEY")
+    if api_key:
+        api_base = os.environ.get(f"{env_prefix}_API_BASE")
+        return api_key, api_base
+
+    api_key = None
+    api_base = None
+    if hasattr(config_obj, "providers") and config_obj.providers:
+        provider_config = config_obj.providers.get(provider)
+        if provider_config:
+            api_key = provider_config.api_key
+            api_base = provider_config.api_base
+
+    return api_key, api_base
+
+
+def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | None]:
+    """自动检测可用的 provider.
+
+    Returns:
+        (api_key, api_base, provider, model) 元组
+    """
+    providers = ["OPENAI", "ANTHROPIC", "GOOGLE", "DEEPSEEK", "AZURE_OPENAI"]
+
+    for provider in providers:
+        api_key = os.environ.get(f"{provider}_API_KEY")
+        if api_key:
+            api_base = os.environ.get(f"{provider}_API_BASE")
+            model_map = {
+                "OPENAI": "gpt-4o",
+                "ANTHROPIC": "claude-sonnet-4-20250514",
+                "GOOGLE": "gemini-2.0-flash",
+                "DEEPSEEK": "deepseek-chat",
+                "AZURE_OPENAI": "gpt-4o",
+            }
+            return api_key, api_base, provider.lower(), model_map.get(provider)
+
+    return None, None, None, None
+
+
+def _get_tavily_key(config_obj: Any) -> str | None:
+    """获取 Tavily API key.
+
+    优先级：环境变量 > 配置文件
+
+    Args:
+        config_obj: 配置对象
+
+    Returns:
+        API key 或 None
+    """
+    env_key = os.environ.get("TAVILY_API_KEY")
+    if env_key:
+        return env_key
+
+    if hasattr(config_obj, "tools") and hasattr(config_obj.tools, "web"):
+        return config_obj.tools.web.search.tavily_api_key
+    return None
+
+
+def _generate_session_title_simple(first_message: str) -> str:
+    """使用简单规则生成会话标题.
+
+    Args:
+        first_message: 第一条消息
+
+    Returns:
+        生成的标题
+    """
+    content = first_message.strip()
+    if len(content) <= 30:
+        return content
+
+    words = content.split()
+    if len(words) <= 4:
+        return content
+
+    title = " ".join(words[:4])
+    if len(title) > 30:
+        title = content[:27] + "..."
+
+    return title
+
+
+def _generate_session_title_with_ai(chat_model, messages: list) -> str | None:
+    """使用 AI 分析对话内容生成会话标题.
+
+    Args:
+        chat_model: 聊天模型实例
+        messages: 消息列表
+
+    Returns:
+        生成的标题，失败返回 None
+    """
+    if not messages or len(messages) < 2:
+        return None
+
+    try:
+        human_msgs = [m for m in messages if hasattr(m, "type") and m.type == "human"]
+        if not human_msgs:
+            return None
+
+        last_human_msg = human_msgs[-1].content
+        prompt = f"""根据以下用户请求生成一个简短（不超过30字符）的会话标题。
+
+用户请求: {last_human_msg[:100]}
+
+只返回标题，不要其他内容。"""
+
+        from langchain_core.messages import HumanMessage
+
+        response = chat_model.invoke([HumanMessage(content=prompt)])
+        title = response.content.strip()
+
+        title = re.sub(r"^[\"'【\[『]", "", title)
+        title = re.sub(r"[\"'】\]』]$", "", title)
+        title = title.strip()
+
+        if len(title) > 30:
+            title = title[:27] + "..."
+
+        return title if title else None
+
+    except Exception:
+        logger.debug("Failed to generate session title with AI")
+        return None
+
+
+def _setup_chat_tools(
+    config_obj: Any, ws_path: Path
+) -> tuple[list, bool]:
+    """设置聊天工具列表.
+
+    Args:
+        config_obj: 配置对象
+        ws_path: 工作目录路径
+
+    Returns:
+        (tools, web_enabled) 元组
+    """
+    from finchbot.tools import (
+        EditFileTool,
+        ExecTool,
+        ForgetTool,
+        ListDirTool,
+        ReadFileTool,
+        RecallTool,
+        RememberTool,
+        WebExtractTool,
+        WebSearchTool,
+        WriteFileTool,
+    )
+
+    tools = [
+        ReadFileTool(allowed_dir=ws_path),
+        WriteFileTool(allowed_dir=ws_path),
+        EditFileTool(allowed_dir=ws_path),
+        ListDirTool(allowed_dir=ws_path),
+        RememberTool(workspace=str(ws_path)),
+        RecallTool(workspace=str(ws_path)),
+        ForgetTool(workspace=str(ws_path)),
+        ExecTool(timeout=config_obj.tools.exec.timeout),
+        WebExtractTool(),
+    ]
+
+    tavily_key = _get_tavily_key(config_obj)
+    brave_key = config_obj.tools.web.search.brave_api_key
+    web_enabled = False
+    if tavily_key or brave_key:
+        tools.append(
+            WebSearchTool(
+                tavily_api_key=tavily_key,
+                brave_api_key=brave_key,
+                max_results=config_obj.tools.web.search.max_results,
+            )
+        )
+        web_enabled = True
+
+    return tools, web_enabled
+
+
+def _run_chat_session(
+    session_id: str,
+    model: str | None,
+    workspace: str | None,
+    first_message: str | None = None,
+) -> None:
+    """启动聊天会话（REPL 模式）.
+
+    Args:
+        session_id: 会话 ID
+        model: 模型名称
+        workspace: 工作目录
+        first_message: 第一条消息（可选，如提供则先发送此消息再进入交互模式）
+    """
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.formatted_text import HTML
+    from prompt_toolkit.history import FileHistory
+    from prompt_toolkit.patch_stdout import patch_stdout
+
+    from finchbot.agent import create_finch_agent
+    from finchbot.memory import EnhancedMemoryStore
+    from finchbot.providers import create_chat_model
+
+    config_obj = load_config()
+    use_model = model or config_obj.default_model
+    api_key, api_base, detected_model = _get_llm_config(use_model, config_obj)
+
+    if detected_model:
+        use_model = detected_model
+        console.print(f"[dim]{t('cli.chat.auto_detected_model').format(use_model)}[/dim]")
+
+    if not api_key:
+        console.print(f"[red]{t('cli.error_no_api_key')}[/red]")
+        console.print(t("cli.error_config_hint"))
+        raise typer.Exit(1)
+
+    ws_path = Path(workspace or config_obj.agents.defaults.workspace).expanduser()
+    ws_path.mkdir(parents=True, exist_ok=True)
+
+    tools, web_enabled = _setup_chat_tools(config_obj, ws_path)
+
+    chat_model = create_chat_model(
+        model=use_model,
+        api_key=api_key,
+        api_base=api_base,
+        temperature=config_obj.agents.defaults.temperature,
+    )
+
+    history_file = Path.home() / ".finchbot" / "history" / "chat_history"
+    history_file.parent.mkdir(parents=True, exist_ok=True)
+
+    console.print(f"\n[bold cyan]{t('cli.chat.title')}[/bold cyan]")
+    console.print(f"[dim]{t('cli.chat.session').format(session_id)}[/dim]")
+    console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
+    console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
+    web_status = t('cli.chat.web_search_enabled') if web_enabled else t('cli.chat.web_search_disabled')
+    console.print(f"[dim]{web_status}[/dim]")
+    console.print(f"[dim]{t('cli.chat.type_to_quit')}[/dim]\n")
+
+    agent, checkpointer = create_finch_agent(
+        model=chat_model,
+        workspace=ws_path,
+        tools=tools,
+        memory=EnhancedMemoryStore(ws_path),
+        use_persistent=True,
+    )
+
+    session_store = SessionMetadataStore(ws_path)
+    if not session_store.session_exists(session_id):
+        session_store.create_session(session_id, title=session_id)
+
+    if first_message:
+        with console.status("[dim]Thinking...[/dim]", spinner="dots"):
+            runnable_config: RunnableConfig = {"configurable": {"thread_id": session_id}}
+            result = agent.invoke(
+                {"messages": [{"role": "user", "content": first_message}]},
+                config=runnable_config,
+            )
+            response = result["messages"][-1].content
+
+            msg_count = len(result.get("messages", []))
+
+            current_session = session_store.get_session(session_id)
+            needs_title = (
+                current_session is None
+                or not current_session.title.strip()
+                or current_session.title == session_id
+            )
+
+            if msg_count >= 2 and needs_title:
+                title = _generate_session_title_with_ai(
+                    chat_model, result.get("messages", [])
+                )
+                if title:
+                    session_store.update_activity(session_id, title=title, message_count=msg_count)
+                    console.print(f"[dim]{t('cli.chat.session_title').format(title)}[/dim]")
+                else:
+                    title = _generate_session_title_simple(first_message)
+                    session_store.update_activity(session_id, title=title, message_count=msg_count)
+            else:
+                session_store.update_activity(session_id, message_count=msg_count)
+
+        console.print(f"\n[cyan]{t('cli.chat.finchbot_response')}[/cyan]")
+        console.print(Panel(response))
+        console.print()
+
+    prompt_session = PromptSession(
+        history=FileHistory(str(history_file)),
+        enable_open_in_editor=False,
+        multiline=False,
+    )
+
+    while True:
+        try:
+            with patch_stdout():
+                user_input = prompt_session.prompt(
+                    HTML("<b fg='ansiblue'>You:</b> "),
+                )
+
+            command = user_input.strip()
+            if not command:
+                continue
+
+            if command.lower() in EXIT_COMMANDS:
+                console.print(GOODBYE_MESSAGE)
+                break
+
+            if command.lower() in {"history", "/history"}:
+                try:
+                    config = {"configurable": {"thread_id": session_id}}
+                    current_state = agent.get_state(config)
+                    messages = current_state.values.get("messages", [])
+
+                    console.print(f"\n[dim]{t('cli.history.title')}[/dim]")
+                    for i, msg in enumerate(messages):
+                        role = t('cli.history.role_you') if msg.type == "human" else t('cli.history.role_bot')
+                        content = msg.content
+                        if len(content) > 60:
+                            content = content[:60] + "..."
+                        console.print(f"[{i}] {role}: {content}")
+                    console.print(f"\n[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]")
+                    console.print(f"[dim]{t('cli.history.rollback_hint')}[/dim]\n")
+                except Exception as e:
+                    console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
+                continue
+
+            if command.startswith("/rollback "):
+                parts = command.split(maxsplit=2)
+                if len(parts) < 2:
+                    console.print(f"[red]{t('cli.rollback.usage_rollback')}[/red]")
+                    continue
+
+                try:
+                    msg_index = int(parts[1])
+                    new_sess = parts[2].strip() if len(parts) > 2 else None
+
+                    config = {"configurable": {"thread_id": session_id}}
+                    current_state = agent.get_state(config)
+                    messages = current_state.values.get("messages", [])
+
+                    if msg_index < 0 or msg_index > len(messages):
+                        console.print(f"[red]{t('cli.rollback.invalid_index').format(len(messages) - 1)}[/red]")
+                        continue
+
+                    rolled_back = messages[:msg_index]
+
+                    if new_sess:
+                        new_config: RunnableConfig = {"configurable": {"thread_id": new_sess}}
+                        agent.update_state(new_config, {"messages": rolled_back})
+                        session_id = new_sess
+                        msg_count = len(rolled_back)
+                        console.print(
+                            f"[green]{t('cli.rollback.create_success').format(new_sess, msg_count)}[/green]"
+                        )
+                    else:
+                        agent.update_state(config, {"messages": rolled_back})
+                        console.print(
+                            f"[green]{t('cli.rollback.rollback_success').format(len(rolled_back))}[/green]"
+                        )
+
+                    console.print(f"[dim]{t('cli.rollback.removed_messages').format(len(messages) - msg_index)}[/dim]\n")
+
+                except ValueError:
+                    console.print(f"[red]{t('cli.rollback.message_index_number')}[/red]")
+                except Exception as e:
+                    console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
+
+                continue
+
+            if command.startswith("/back "):
+                parts = command.split(maxsplit=1)
+                if len(parts) < 2:
+                    console.print(f"[red]{t('cli.rollback.usage_back')}[/red]")
+                    continue
+
+                try:
+                    n = int(parts[1])
+
+                    config = {"configurable": {"thread_id": session_id}}
+                    current_state = agent.get_state(config)
+                    messages = current_state.values.get("messages", [])
+
+                    if n <= 0 or n > len(messages):
+                        console.print(f"[red]{t('cli.rollback.invalid_number').format(len(messages))}[/red]")
+                        continue
+
+                    new_count = len(messages) - n
+                    rolled_back = messages[:new_count]
+                    agent.update_state(config, {"messages": rolled_back})
+
+                    console.print(f"[green]{t('cli.rollback.remove_success').format(n)}[/green]")
+                    console.print(f"[dim]{t('cli.rollback.current_messages').format(new_count)}[/dim]\n")
+
+                except ValueError:
+                    console.print(f"[red]{t('cli.rollback.number_integer')}[/red]")
+                except Exception as e:
+                    console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
+
+                continue
+
+            with console.status("[dim]Thinking...[/dim]", spinner="dots"):
+                config: RunnableConfig = {"configurable": {"thread_id": session_id}}
+                result = agent.invoke(
+                    {"messages": [{"role": "user", "content": command}]},
+                    config=config,
+                )
+                response = result["messages"][-1].content
+
+                msg_count = len(result.get("messages", []))
+
+                current_session = session_store.get_session(session_id)
+                needs_title = (
+                    current_session is None
+                    or not current_session.title.strip()
+                    or current_session.title == session_id
+                )
+
+                if msg_count >= 2 and needs_title:
+                    title = _generate_session_title_with_ai(
+                        chat_model, result.get("messages", [])
+                    )
+                    if title:
+                        session_store.update_activity(
+                            session_id, title=title, message_count=msg_count
+                        )
+                        console.print(f"[dim]{t('cli.chat.session_title').format(title)}[/dim]")
+                    else:
+                        title = _generate_session_title_simple(command)
+                        session_store.update_activity(
+                            session_id, title=title, message_count=msg_count
+                        )
+                else:
+                    session_store.update_activity(session_id, message_count=msg_count)
+
+            console.print(f"\n[cyan]{t('cli.chat.finchbot_response')}[/cyan]")
+            console.print(Panel(response))
+            console.print()
+
+        except KeyboardInterrupt:
+            console.print(GOODBYE_MESSAGE)
+            break
+        except EOFError:
+            console.print(GOODBYE_MESSAGE)
+            break
+        except Exception as e:
+            logger.exception("Error in chat loop")
+            console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
+            console.print(f"[dim]{t('cli.chat.check_logs')}[/dim]")
+
+
+def _get_last_active_session(workspace: Path) -> str:
+    """获取最近活跃的会话 ID.
+
+    Args:
+        workspace: 工作目录路径
+
+    Returns:
+        最近活跃的会话 ID，如果没有会话则返回 "default"
+    """
+    store = SessionMetadataStore(workspace)
+    sessions = store.get_all_sessions()
+
+    if sessions:
+        return sessions[0].session_id
+    return "default"

@@ -15,7 +15,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.graph.state import CompiledStateGraph
+from langgraph.graph.state import CompiledStateGraph  # type: ignore[attr-defined]
 
 from finchbot.i18n import t
 from finchbot.memory.enhanced import EnhancedMemoryStore
@@ -141,6 +141,7 @@ def agent() -> CompiledStateGraph:
     import os
 
     from langchain_openai import ChatOpenAI
+    from pydantic import SecretStr
 
     api_key = os.getenv("OPENAI_API_KEY")
     api_base = os.getenv("OPENAI_API_BASE")
@@ -148,7 +149,7 @@ def agent() -> CompiledStateGraph:
 
     model = ChatOpenAI(
         model=model_name,
-        api_key=api_key,
+        api_key=SecretStr(api_key) if api_key else None,
         base_url=api_base,
     )
 

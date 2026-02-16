@@ -7,6 +7,7 @@ processing = "🐦 FinchBot: 處理中..."
 response_title = "🐦 FinchBot 回覆"
 error_no_api_key = "錯誤: 未設定 LLM API 金鑰"
 error_config_hint = "請設定環境變數或在 ~/.finchbot/config.json 中設定。"
+version = "version"
 
 [cli.config]
 init_title = "🐦 FinchBot 設定精靈"
@@ -96,6 +97,49 @@ remove_provider_help = "刪除 LLM 提供者"
 enabled = "已啟用"
 disabled = "已停用"
 not_configured = "未設定"
+
+[cli.models]
+download_title = "📥 下載 FinchBot 嵌入模型"
+model_name = "模型: BAAI/bge-small-zh-v1.5"
+source = "源: {} ({})"
+download_success = "✓ 模型下載完成"
+download_failed = "✗ 模型下載失敗"
+check_network_proxy = "提示: 檢查網絡連接或嘗試設置代理"
+check_network_retry = "提示: 檢查網絡連接或稍後重試"
+
+[cli.chat]
+title = "🐦 FinchBot 聊天"
+session = "對話: {}"
+model = "模型: {}"
+workspace = "工作目錄: {}"
+web_search_enabled = "網頁搜尋: 已啟用"
+web_search_disabled = "網頁搜尋: 已停用"
+type_to_quit = "輸入 'exit' 或按 Ctrl+C 離開"
+auto_detected_model = "自動偵測模型: {}"
+session_title = "對話標題: {}"
+finchbot_response = "🐦 FinchBot:"
+check_logs = "查看日誌獲取詳細資訊。"
+
+[cli.history]
+title = "對話歷史:"
+role_you = "你"
+role_bot = "FinchBot"
+total_messages = "共 {} 條訊息"
+rollback_hint = "使用 '/rollback <索引> [新對話名]' 回退"
+
+[cli.rollback]
+invalid_index = "無效索引。範圍: 0-{}"
+removed_messages = "已刪除 {} 條訊息"
+rollback_success = "✓ 已回退到 {} 條訊息"
+create_success = "✓ 已建立 '{}'，包含 {} 條訊息"
+invalid_number = "無效數字。範圍: 1-{}"
+remove_success = "✓ 已刪除最近 {} 條訊息"
+current_messages = "目前: {} 條訊息"
+message_index_number = "訊息索引必須是數字"
+number_integer = "數字必須是整數"
+usage_rollback = "用法: /rollback <訊息索引> [新對話名]"
+usage_back = "用法: /back <訊息數量>"
+error_showing = "顯示歷史出錯: {}"
 
 [agent]
 title = "FinchBot (雀翎)"
@@ -305,19 +349,19 @@ gemini-1_5-pro = "Gemini 1.5 Pro (舊版)"
 
 [memory.categories.personal]
 keywords = [
-    "我是",
-    "我的",
-    "名字",
-    "年齡",
-    "生日",
-    "住址",
-    "我叫",
-    "姓名",
-    "歲",
-    "出生",
-    "住",
-    "地址",
-    "老家",
+  "我是",
+  "我的",
+  "名字",
+  "年齡",
+  "生日",
+  "住址",
+  "我叫",
+  "姓名",
+  "歲",
+  "出生",
+  "住",
+  "地址",
+  "老家",
 ]
 description = "個人資訊，包括姓名、年齡、生日、住址等身分相關內容"
 
@@ -339,19 +383,19 @@ description = "目標和計劃，包括想做的事、願望、理想等"
 
 [memory.categories.schedule]
 keywords = [
-    "時間",
-    "日期",
-    "日程",
-    "提醒",
-    "安排",
-    "明天",
-    "後天",
-    "下週",
-    "週末",
-    "今天",
-    "上午",
-    "下午",
-    "晚上",
+  "時間",
+  "日期",
+  "日程",
+  "提醒",
+  "安排",
+  "明天",
+  "後天",
+  "下週",
+  "週末",
+  "今天",
+  "上午",
+  "下午",
+  "晚上",
 ]
 description = "日程安排，包括時間、日期、提醒等"
 
