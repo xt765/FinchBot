@@ -221,6 +221,7 @@ def _keyboard_select(
     title: str,
     help_text: str,
     allow_quit: bool = True,
+    initial_idx: int = 0,
 ) -> Any | None:
     """通用键盘导航选择器.
 
@@ -229,11 +230,12 @@ def _keyboard_select(
         title: 界面标题（已包含样式）
         help_text: 底部帮助文本（已包含样式）
         allow_quit: 是否允许按 Q 退出
+        initial_idx: 初始选中项索引
 
     Returns:
         选中项的 value，或 None（如果用户退出）
     """
-    selected_idx = 0
+    selected_idx = initial_idx
 
     try:
         while True:
@@ -289,23 +291,16 @@ def version() -> None:
     console.print(f"[bold cyan]FinchBot[/bold cyan] version [green]{__version__}[/green]")
 
 
-def _run_chat_session(
-    session_id: str,
-    model: str | None,
-    workspace: str | None,
-    first_message: str | None = None,
-) -> None:
-    """启动聊天会话（REPL 模式）.
+def _setup_chat_tools(config_obj: Config, ws_path: Path) -> tuple[list, bool]:
+    """设置聊天工具列表.
 
     Args:
-        session_id: 会话 ID
-        model: 模型名称
-        workspace: 工作目录
-        first_message: 第一条消息（可选，如提供则先发送此消息再进入交互模式）
+        config_obj: 配置对象
+        ws_path: 工作目录路径
+
+    Returns:
+        (tools, web_enabled) 元组
     """
-    from finchbot.agent import create_finch_agent
-    from finchbot.memory import EnhancedMemoryStore
-    from finchbot.providers import create_chat_model
     from finchbot.tools import (
         EditFileTool,
         ExecTool,
@@ -318,23 +313,6 @@ def _run_chat_session(
         WebSearchTool,
         WriteFileTool,
     )
-
-    config_obj = load_config()
-    use_model = model or config_obj.default_model
-    api_key, api_base, detected_model = _get_llm_config(use_model, config_obj)
-
-    # 如果自动检测到模型，使用检测到的模型
-    if detected_model:
-        use_model = detected_model
-        console.print(f"[dim]Auto-detected model: {use_model}[/dim]")
-
-    if not api_key:
-        console.print(f"[red]{t('cli.error_no_api_key')}[/red]")
-        console.print(t("cli.error_config_hint"))
-        raise typer.Exit(1)
-
-    ws_path = Path(workspace or config_obj.agents.defaults.workspace).expanduser()
-    ws_path.mkdir(parents=True, exist_ok=True)
 
     tools = [
         ReadFileTool(allowed_dir=ws_path),
@@ -360,6 +338,47 @@ def _run_chat_session(
             )
         )
         web_enabled = True
+
+    return tools, web_enabled
+
+
+def _run_chat_session(
+    session_id: str,
+    model: str | None,
+    workspace: str | None,
+    first_message: str | None = None,
+) -> None:
+    """启动聊天会话（REPL 模式）.
+
+    Args:
+        session_id: 会话 ID
+        model: 模型名称
+        workspace: 工作目录
+        first_message: 第一条消息（可选，如提供则先发送此消息再进入交互模式）
+    """
+    from finchbot.agent import create_finch_agent
+    from finchbot.memory import EnhancedMemoryStore
+    from finchbot.providers import create_chat_model
+
+    config_obj = load_config()
+    use_model = model or config_obj.default_model
+    api_key, api_base, detected_model = _get_llm_config(use_model, config_obj)
+
+    # 如果自动检测到模型，使用检测到的模型
+    if detected_model:
+        use_model = detected_model
+        console.print(f"[dim]Auto-detected model: {use_model}[/dim]")
+
+    if not api_key:
+        console.print(f"[red]{t('cli.error_no_api_key')}[/red]")
+        console.print(t("cli.error_config_hint"))
+        raise typer.Exit(1)
+
+    ws_path = Path(workspace or config_obj.agents.defaults.workspace).expanduser()
+    ws_path.mkdir(parents=True, exist_ok=True)
+
+    # 设置工具
+    tools, web_enabled = _setup_chat_tools(config_obj, ws_path)
 
     chat_model = create_chat_model(
         model=use_model,
@@ -615,6 +634,41 @@ def _run_chat_session(
             console.print("[dim]Check logs for more details.[/dim]")
 
 
+def _get_provider_config(provider: str, config_obj: Config) -> tuple[str | None, str | None]:
+    """获取 provider 的 API key 和 base.
+
+    优先级：环境变量 > 配置文件预设 > 配置文件自定义
+
+    Args:
+        provider: Provider 名称
+        config_obj: 配置对象
+
+    Returns:
+        (api_key, api_base) 元组
+    """
+    from finchbot.config.utils import get_api_base, get_api_key
+
+    api_key = get_api_key(provider)
+    api_base = get_api_base(provider)
+
+    if not api_key:
+        # 检查预设 provider
+        if hasattr(config_obj.providers, provider):
+            prov_config = getattr(config_obj.providers, provider)
+            if prov_config and isinstance(prov_config, ProviderConfig):
+                api_key = prov_config.api_key or None
+                api_base = prov_config.api_base or api_base
+
+        # 检查自定义 provider
+        if not api_key and provider in config_obj.providers.custom:
+            custom = config_obj.providers.custom[provider]
+            if custom and isinstance(custom, ProviderConfig):
+                api_key = custom.api_key or None
+                api_base = custom.api_base or api_base
+
+    return api_key, api_base
+
+
 def _get_llm_config(model: str, config_obj: Config) -> tuple[str | None, str | None, str | None]:
     """获取 LLM 配置.
 
@@ -623,8 +677,6 @@ def _get_llm_config(model: str, config_obj: Config) -> tuple[str | None, str | N
     Returns:
         (api_key, api_base, detected_model) 元组，detected_model 为自动检测到的模型名称（如果有）。
     """
-    from finchbot.config.utils import get_api_base, get_api_key
-
     model_lower = model.lower()
 
     provider = "openai"
@@ -633,33 +685,10 @@ def _get_llm_config(model: str, config_obj: Config) -> tuple[str | None, str | N
             provider = name
             break
 
-    api_key: str | None = None
-    api_base: str | None = None
+    # 获取 provider 配置（环境变量 > 配置文件）
+    api_key, api_base = _get_provider_config(provider, config_obj)
 
-    # 优先级：环境变量 > 配置文件（预设/自定义）
-    # 这与项目规则一致：显式传入 > 环境变量 > 配置文件
-
-    # 1. 首先检查环境变量（最高优先级，除了显式传入）
-    api_key = get_api_key(provider)
-    api_base = get_api_base(provider)
-
-    # 2. 如果环境变量未设置，则检查配置文件
-    if not api_key:
-        # 2a. 检查预设 provider 配置
-        if hasattr(config_obj.providers, provider):
-            prov_config = getattr(config_obj.providers, provider)
-            if prov_config and isinstance(prov_config, ProviderConfig):
-                api_key = prov_config.api_key or None
-                api_base = prov_config.api_base or api_base
-
-        # 2b. 检查自定义 provider 配置
-        if not api_key and provider in config_obj.providers.custom:
-            custom = config_obj.providers.custom[provider]
-            if custom and isinstance(custom, ProviderConfig):
-                api_key = custom.api_key or None
-                api_base = custom.api_base or api_base
-
-    # 3. 如果仍然没有 api_key，尝试自动检测（方案 A）
+    # 如果仍然没有 api_key，尝试自动检测
     detected_model = None
     if not api_key:
         api_key, api_base, detected_provider, detected_model = _auto_detect_provider()
@@ -1136,48 +1165,19 @@ class ConfigManager:
         ]
         providers.append({"name": t("cli.config.add_custom_provider"), "value": "custom"})
 
-        selected_idx = 0
+        title = f"\n[bold cyan]{t('cli.config.select_provider_to_configure')}[/bold cyan]\n"
+        help_text = (
+            f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+            f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
+            f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.quit')}[/dim]"
+        )
 
-        try:
-            while True:
-                console.clear()
-                console.print(f"\n[bold cyan]{t('cli.config.select_provider_to_configure')}[/bold cyan]\n")
+        result = _keyboard_select(providers, title, help_text)
 
-                # 渲染提供商列表
-                for idx, prov in enumerate(providers):
-                    is_selected = idx == selected_idx
-                    cursor = "▶" if is_selected else "  "
-                    if is_selected:
-                        console.print(f"{cursor} [cyan bold]{prov['name']}[/cyan bold]")
-                    else:
-                        console.print(f"{cursor} {prov['name']}")
-
-                console.print(
-                    f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
-                    f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
-                    f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.quit')}[/dim]"
-                )
-
-                key = readchar.readkey()
-
-                if key == readchar.key.UP:
-                    selected_idx = max(0, selected_idx - 1)
-                elif key == readchar.key.DOWN:
-                    selected_idx = min(len(providers) - 1, selected_idx + 1)
-                elif key == readchar.key.ENTER:
-                    result = providers[selected_idx]["value"]
-                    if result == "custom":
-                        _configure_custom_provider(self.config)
-                    else:
-                        _configure_preset_provider(self.config, result)
-                    return
-                elif key.lower() == "q":
-                    return
-                elif key == readchar.key.CTRL_C:
-                    raise KeyboardInterrupt
-
-        except KeyboardInterrupt:
-            raise
+        if result == "custom":
+            _configure_custom_provider(self.config)
+        elif result:
+            _configure_preset_provider(self.config, result)
 
     def _edit_custom_provider(self, provider_name: str) -> None:
         """编辑自定义 provider."""
@@ -1234,54 +1234,31 @@ def _configure_language(config_obj: Config) -> None:
     ]
 
     # 找到当前语言的索引
-    selected_idx = 0
+    initial_idx = 0
     for idx, lang in enumerate(languages):
         if lang["value"] == config_obj.language:
-            selected_idx = idx
+            initial_idx = idx
             break
 
-    try:
-        while True:
-            console.clear()
-            console.print(f"\n[bold cyan]{t('cli.config.choose_language')}[/bold cyan]\n")
+    title = f"\n[bold cyan]{t('cli.config.choose_language')}[/bold cyan]\n"
+    help_text = (
+        f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+        f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
+        f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.skip')}[/dim]"
+    )
 
-            # 渲染语言列表
-            for idx, lang in enumerate(languages):
-                is_selected = idx == selected_idx
-                cursor = "▶" if is_selected else "  "
-                if is_selected:
-                    console.print(f"{cursor} [cyan bold]{lang['name']}[/cyan bold]")
-                else:
-                    console.print(f"{cursor} {lang['name']}")
+    result = _keyboard_select(languages, title, help_text, initial_idx=initial_idx)
 
-            console.print(
-                f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
-                f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
-                f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.skip')}[/dim]"
-            )
-
-            key = readchar.readkey()
-
-            if key == readchar.key.UP:
-                selected_idx = max(0, selected_idx - 1)
-            elif key == readchar.key.DOWN:
-                selected_idx = min(len(languages) - 1, selected_idx + 1)
-            elif key == readchar.key.ENTER:
-                result = languages[selected_idx]["value"]
-                config_obj.language = result
-                config_obj.language_set_by_user = True
-                set_language(result)
-                console.print(
-                    f"[green]✓ {t('cli.config.language_set_to')} {languages[selected_idx]['name']}[/green]\n"
-                )
-                return
-            elif key.lower() == "q":
-                return
-            elif key == readchar.key.CTRL_C:
-                raise KeyboardInterrupt
-
-    except KeyboardInterrupt:
-        raise
+    if result:
+        config_obj.language = result
+        config_obj.language_set_by_user = True
+        set_language(result)
+        selected_name = languages[initial_idx]["name"]
+        for lang in languages:
+            if lang["value"] == result:
+                selected_name = lang["name"]
+                break
+        console.print(f"[green]✓ {t('cli.config.language_set_to')} {selected_name}[/green]\n")
 
 
 def _configure_preset_provider(config_obj: Config, provider: str) -> None:
