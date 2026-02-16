@@ -12,6 +12,24 @@ from finchbot.i18n import t
 from finchbot.tools.base import FinchTool
 
 
+def decode_output(data: bytes) -> str:
+    """智能解码输出，自动尝试多种编码.
+
+    Args:
+        data: 要解码的字节数据。
+
+    Returns:
+        解码后的字符串。
+    """
+    encodings = ["utf-8", "gbk", "cp936", "gb18030", "latin-1"]
+    for encoding in encodings:
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("latin-1", errors="replace")
+
+
 def _resolve_path(path: str, allowed_dir: Path | None = None) -> Path:
     """解析路径并可选地限制目录访问.
 
@@ -78,7 +96,8 @@ class ReadFileTool(FinchTool):
             if not file_path.is_file():
                 return f"{t('tools.read_file.error_not_file')}: {path}"
 
-            content = file_path.read_text(encoding="utf-8")
+            content_bytes = file_path.read_bytes()
+            content = decode_output(content_bytes)
             return content
         except PermissionError as e:
             return f"Error: {e}"
@@ -197,7 +216,8 @@ class EditFileTool(FinchTool):
             if not file_path.exists():
                 return f"{t('tools.read_file.error_not_found')}: {path}"
 
-            content = file_path.read_text(encoding="utf-8")
+            content_bytes = file_path.read_bytes()
+            content = decode_output(content_bytes)
 
             if old_text not in content:
                 return "Error: old_text not found, please ensure exact match."
