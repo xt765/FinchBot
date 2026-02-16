@@ -222,6 +222,84 @@ def _update_session_turn_count(
         logger.warning(f"Failed to update turn count for session {session_id}: {e}")
 
 
+def _check_and_ensure_session_title(
+    session_store: SessionMetadataStore,
+    session_id: str,
+    agent: Any,
+    chat_model: Any,
+    ws_path: Path,
+    tools: list,
+) -> None:
+    """检查并确保会话标题已设置。
+
+    如果对话已进行 2 轮以上但标题未设置，则强制 Agent 设置标题。
+
+    Args:
+        session_store: 会话元数据存储
+        session_id: 会话ID
+        agent: Agent 实例
+        chat_model: 聊天模型
+        ws_path: 工作目录路径
+        tools: 工具列表
+    """
+    from finchbot.agent import create_finch_agent
+    from finchbot.memory import EnhancedMemoryStore
+
+    session = session_store.get_session(session_id)
+    if not session:
+        return
+
+    needs_title = (
+        session.turn_count >= 2
+        and (not session.title.strip() or session.title == session_id)
+    )
+
+    if not needs_title:
+        return
+
+    console.print("\n[yellow]⚠️  检测到会话标题尚未设置，正在自动设置...[/yellow]\n")
+
+    try:
+        current_session = session_store.get_session(session_id)
+        session_title = current_session.title if current_session else None
+        if session_title == session_id:
+            session_title = None
+
+        agent_with_title, _ = create_finch_agent(
+            model=chat_model,
+            workspace=ws_path,
+            tools=tools,
+            memory=EnhancedMemoryStore(ws_path),
+            use_persistent=True,
+            session_title=session_title,
+        )
+
+        config = {"configurable": {"thread_id": session_id}}
+        all_messages = []
+        prompt = """请立即使用 session_title 工具为本次会话设置一个合适的标题。
+要求：
+- 5-15 个字符
+- 无标点符号
+- 简洁概括本次对话的主题
+使用 action=set 来设置标题。"""
+
+        for chunk in agent_with_title.stream(
+            {"messages": [{"role": "user", "content": prompt}]},
+            config=config,
+        ):
+            if chunk.get("messages"):
+                new_msgs = chunk["messages"]
+                for msg in new_msgs:
+                    if msg not in all_messages:
+                        all_messages.append(msg)
+                        _format_message(msg, len(all_messages) - 1, show_index=False)
+
+        console.print()
+
+    except Exception as e:
+        logger.warning(f"Failed to auto-set session title: {e}")
+
+
 def _get_llm_config(model: str, config_obj: Any) -> tuple[str | None, str | None, str | None]:
     """获取 LLM 配置.
 
