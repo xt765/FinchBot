@@ -4,6 +4,8 @@
 使用 LangGraph 官方推荐的 create_agent 构建。
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -11,6 +13,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import questionary
 import readchar
@@ -46,14 +49,12 @@ console = Console()
 def _generate_session_title_with_ai(
     chat_model,
     messages: list,
-    config_obj: Config,
 ) -> str | None:
     """使用 AI 分析对话内容生成会话标题.
 
     Args:
         chat_model: 聊天模型实例
         messages: 对话消息列表
-        config_obj: 配置对象
 
     Returns:
         生成的标题，如果失败则返回 None
@@ -186,10 +187,85 @@ PRESET_PROVIDERS = {
     },
 }
 
+# Provider 关键词映射（用于从模型名称检测 provider）
+PROVIDER_KEYWORDS: dict[str, list[str]] = {
+    "openai": ["gpt", "o1", "o3", "o4"],
+    "anthropic": ["claude"],
+    "openrouter": ["openrouter"],
+    "deepseek": ["deepseek"],
+    "groq": ["groq", "llama", "mixtral"],
+    "gemini": ["gemini"],
+    "moonshot": ["moonshot", "kimi"],
+    "dashscope": ["qwen", "tongyi", "dashscope", "qwq"],
+}
+
+# Provider 优先级列表（用于自动检测）
+PROVIDER_PRIORITY: list[tuple[str, str, list[str]]] = [
+    ("openai", "gpt-5", ["OPENAI_API_KEY"]),
+    ("anthropic", "claude-sonnet-4.5", ["ANTHROPIC_API_KEY"]),
+    ("deepseek", "deepseek-chat", ["DEEPSEEK_API_KEY", "DS_API_KEY"]),
+    ("groq", "llama-4-scout", ["GROQ_API_KEY"]),
+    ("moonshot", "kimi-k2.5", ["MOONSHOT_API_KEY"]),
+    ("dashscope", "qwen-turbo", ["DASHSCOPE_API_KEY", "ALIBABA_API_KEY"]),
+    ("gemini", "gemini-2.5-flash", ["GOOGLE_API_KEY", "GEMINI_API_KEY"]),
+]
+
 
 def _get_tavily_key(config_obj: Config) -> str | None:
     """获取 Tavily API 密钥."""
     return os.getenv("TAVILY_API_KEY") or config_obj.tools.web.search.api_key
+
+
+def _keyboard_select(
+    items: list[dict],
+    title: str,
+    help_text: str,
+    allow_quit: bool = True,
+) -> Any | None:
+    """通用键盘导航选择器.
+
+    Args:
+        items: 选项列表，每项包含 'name' 和 'value'
+        title: 界面标题（已包含样式）
+        help_text: 底部帮助文本（已包含样式）
+        allow_quit: 是否允许按 Q 退出
+
+    Returns:
+        选中项的 value，或 None（如果用户退出）
+    """
+    selected_idx = 0
+
+    try:
+        while True:
+            console.clear()
+            console.print(title)
+
+            # 渲染列表
+            for idx, item in enumerate(items):
+                is_selected = idx == selected_idx
+                cursor = "▶" if is_selected else "  "
+                if is_selected:
+                    console.print(f"{cursor} [cyan bold]{item['name']}[/cyan bold]")
+                else:
+                    console.print(f"{cursor} {item['name']}")
+
+            console.print(help_text)
+
+            key = readchar.readkey()
+
+            if key == readchar.key.UP:
+                selected_idx = max(0, selected_idx - 1)
+            elif key == readchar.key.DOWN:
+                selected_idx = min(len(items) - 1, selected_idx + 1)
+            elif key == readchar.key.ENTER:
+                return items[selected_idx]["value"]
+            elif allow_quit and key.lower() == "q":
+                return None
+            elif key == readchar.key.CTRL_C:
+                raise KeyboardInterrupt
+
+    except KeyboardInterrupt:
+        raise
 
 
 @app.callback()
@@ -341,7 +417,7 @@ def _run_chat_session(
             if msg_count >= 2 and needs_title:
                 # 使用 AI 生成标题
                 title = _generate_session_title_with_ai(
-                    chat_model, result.get("messages", []), config_obj
+                    chat_model, result.get("messages", [])
                 )
                 if title:
                     session_store.update_activity(session_id, title=title, message_count=msg_count)
@@ -507,7 +583,7 @@ def _run_chat_session(
                 if msg_count >= 2 and needs_title:
                     # 使用 AI 生成标题
                     title = _generate_session_title_with_ai(
-                        chat_model, result.get("messages", []), config_obj
+                        chat_model, result.get("messages", [])
                     )
                     if title:
                         session_store.update_activity(
@@ -551,19 +627,8 @@ def _get_llm_config(model: str, config_obj: Config) -> tuple[str | None, str | N
 
     model_lower = model.lower()
 
-    provider_keywords: dict[str, list[str]] = {
-        "openai": ["gpt", "o1", "o3", "o4"],
-        "anthropic": ["claude"],
-        "openrouter": ["openrouter"],
-        "deepseek": ["deepseek"],
-        "groq": ["groq", "llama", "mixtral"],
-        "gemini": ["gemini"],
-        "moonshot": ["moonshot", "kimi"],
-        "dashscope": ["qwen", "tongyi", "dashscope", "qwq"],
-    }
-
     provider = "openai"
-    for name, keywords in provider_keywords.items():
+    for name, keywords in PROVIDER_KEYWORDS.items():
         if any(kw in model_lower for kw in keywords):
             provider = name
             break
@@ -608,19 +673,9 @@ def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | N
     Returns:
         (api_key, api_base, provider, detected_model) 元组，如果没有可用的 provider 则返回 (None, None, None, None)。
     """
-    provider_priority = [
-        ("openai", "gpt-5", ["OPENAI_API_KEY"]),
-        ("anthropic", "claude-sonnet-4.5", ["ANTHROPIC_API_KEY"]),
-        ("deepseek", "deepseek-chat", ["DEEPSEEK_API_KEY", "DS_API_KEY"]),
-        ("groq", "llama-4-scout", ["GROQ_API_KEY"]),
-        ("moonshot", "kimi-k2.5", ["MOONSHOT_API_KEY"]),
-        ("dashscope", "qwen-turbo", ["DASHSCOPE_API_KEY", "ALIBABA_API_KEY"]),
-        ("gemini", "gemini-2.5-flash", ["GOOGLE_API_KEY", "GEMINI_API_KEY"]),
-    ]
-
     from finchbot.config.utils import get_api_base
 
-    for provider, default_model, env_vars in provider_priority:
+    for provider, default_model, env_vars in PROVIDER_PRIORITY:
         for env_var in env_vars:
             api_key = os.getenv(env_var)
             if api_key:
@@ -1229,67 +1284,6 @@ def _configure_language(config_obj: Config) -> None:
         raise
 
 
-def _configure_providers(config_obj: Config) -> None:
-    """配置提供商（键盘导航）."""
-    configured = config_obj.get_configured_providers()
-
-    # 构建提供商列表
-    providers = []
-    for name, info in PRESET_PROVIDERS.items():
-        providers.append({"name": info["name"], "value": name, "type": "preset"})
-    providers.append({"name": t("cli.config.other"), "value": "custom", "type": "custom"})
-    providers.append({"name": t("cli.config.skip"), "value": "skip", "type": "skip"})
-
-    selected_idx = 0
-
-    try:
-        while True:
-            console.clear()
-
-            if configured:
-                console.print(
-                    f"\n[dim]{t('cli.config.configured')}: {', '.join(configured)}[/dim]"
-                )
-
-            console.print(f"\n[bold cyan]{t('cli.config.select_provider')}[/bold cyan]\n")
-
-            # 渲染提供商列表
-            for idx, prov in enumerate(providers):
-                is_selected = idx == selected_idx
-                cursor = "▶" if is_selected else "  "
-                if is_selected:
-                    console.print(f"{cursor} [cyan bold]{prov['name']}[/cyan bold]")
-                else:
-                    console.print(f"{cursor} {prov['name']}")
-
-            console.print(
-                f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
-                f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
-                f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.skip')}[/dim]"
-            )
-
-            key = readchar.readkey()
-
-            if key == readchar.key.UP:
-                selected_idx = max(0, selected_idx - 1)
-            elif key == readchar.key.DOWN:
-                selected_idx = min(len(providers) - 1, selected_idx + 1)
-            elif key == readchar.key.ENTER:
-                result = providers[selected_idx]["value"]
-                if result == "custom":
-                    _configure_custom_provider(config_obj)
-                elif result != "skip":
-                    _configure_preset_provider(config_obj, result)
-                return
-            elif key.lower() == "q":
-                return
-            elif key == readchar.key.CTRL_C:
-                raise KeyboardInterrupt
-
-    except KeyboardInterrupt:
-        raise
-
-
 def _configure_preset_provider(config_obj: Config, provider: str) -> None:
     """配置预设提供商."""
     info = PRESET_PROVIDERS[provider]
@@ -1363,22 +1357,6 @@ def _configure_default_model(config_obj: Config) -> None:
     if model:
         config_obj.default_model = model
         config_obj.default_model_set_by_user = True
-
-
-def _show_config_summary(config_obj: Config, config_path: Path) -> None:
-    """显示配置摘要."""
-    configured = config_obj.get_configured_providers()
-
-    table = Table(title=f"✅ {t('cli.config.init_title')}")
-    table.add_column("Key", style="cyan")
-    table.add_column("Value", style="green")
-
-    table.add_row(t("cli.config.current"), config_obj.language)
-    table.add_row(t("cli.config.select_model"), config_obj.default_model)
-    table.add_row(t("cli.config.configured"), ", ".join(configured) or "None")
-    table.add_row("Config File", str(config_path))
-
-    console.print(table)
 
 
 models_app = typer.Typer(help="Manage models / 管理模型")
