@@ -76,9 +76,7 @@ def _update_session_turn_count(
         logger.warning(f"Failed to update turn count for session {session_id}: {e}")
 
 
-def _get_llm_config(
-    model: str, config_obj: Any
-) -> tuple[str | None, str | None, str | None]:
+def _get_llm_config(model: str, config_obj: Any) -> tuple[str | None, str | None, str | None]:
     """获取 LLM 配置.
 
     优先级：显式传入 > 环境变量 > 配置文件 > 自动检测。
@@ -117,9 +115,7 @@ def _get_llm_config(
     return api_key, api_base, detected_model
 
 
-def _get_provider_config(
-    provider: str, config_obj: Any
-) -> tuple[str | None, str | None]:
+def _get_provider_config(provider: str, config_obj: Any) -> tuple[str | None, str | None]:
     """获取指定 provider 的 API key 和 base.
 
     Args:
@@ -190,9 +186,7 @@ def _get_tavily_key(config_obj: Any) -> str | None:
     return None
 
 
-def _setup_chat_tools(
-    config_obj: Any, ws_path: Path, session_id: str
-) -> tuple[list, bool]:
+def _setup_chat_tools(config_obj: Any, ws_path: Path, session_id: str) -> tuple[list, bool]:
     """设置聊天工具列表.
 
     Args:
@@ -313,7 +307,9 @@ def _run_chat_session(
 
     console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
     console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
-    web_status = t('cli.chat.web_search_enabled') if web_enabled else t('cli.chat.web_search_disabled')
+    web_status = (
+        t("cli.chat.web_search_enabled") if web_enabled else t("cli.chat.web_search_disabled")
+    )
     console.print(f"[dim]{web_status}[/dim]")
     console.print(f"[dim]{t('cli.chat.type_to_quit')}[/dim]\n")
 
@@ -325,6 +321,19 @@ def _run_chat_session(
         use_persistent=True,
         session_title=session_title,
     )
+
+    config = {"configurable": {"thread_id": session_id}}
+    current_state = agent.get_state(config)
+    messages = current_state.values.get("messages", []) if current_state else []
+    if messages:
+        console.print(f"\n[dim]{t('cli.history.title')}[/dim]")
+        for msg in messages:
+            role = t("cli.history.role_you") if msg.type == "human" else t("cli.history.role_bot")
+            content = msg.content
+            if len(content) > 80:
+                content = content[:80] + "..."
+            console.print(f"[cyan]{role}:[/cyan] {content}")
+        console.print()
 
     if first_message:
         with console.status("[dim]Thinking...[/dim]", spinner="dots"):
@@ -373,12 +382,18 @@ def _run_chat_session(
 
                     console.print(f"\n[dim]{t('cli.history.title')}[/dim]")
                     for i, msg in enumerate(messages):
-                        role = t('cli.history.role_you') if msg.type == "human" else t('cli.history.role_bot')
+                        role = (
+                            t("cli.history.role_you")
+                            if msg.type == "human"
+                            else t("cli.history.role_bot")
+                        )
                         content = msg.content
                         if len(content) > 60:
                             content = content[:60] + "..."
                         console.print(f"[{i}] {role}: {content}")
-                    console.print(f"\n[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]")
+                    console.print(
+                        f"\n[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]"
+                    )
                     console.print(f"[dim]{t('cli.history.rollback_hint')}[/dim]\n")
                 except Exception as e:
                     console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
@@ -399,7 +414,9 @@ def _run_chat_session(
                     messages = current_state.values.get("messages", [])
 
                     if msg_index < 0 or msg_index > len(messages):
-                        console.print(f"[red]{t('cli.rollback.invalid_index').format(len(messages) - 1)}[/red]")
+                        console.print(
+                            f"[red]{t('cli.rollback.invalid_index').format(len(messages) - 1)}[/red]"
+                        )
                         continue
 
                     rolled_back = messages[:msg_index]
@@ -418,7 +435,9 @@ def _run_chat_session(
                             f"[green]{t('cli.rollback.rollback_success').format(len(rolled_back))}[/green]"
                         )
 
-                    console.print(f"[dim]{t('cli.rollback.removed_messages').format(len(messages) - msg_index)}[/dim]\n")
+                    console.print(
+                        f"[dim]{t('cli.rollback.removed_messages').format(len(messages) - msg_index)}[/dim]\n"
+                    )
 
                 except ValueError:
                     console.print(f"[red]{t('cli.rollback.message_index_number')}[/red]")
@@ -441,7 +460,9 @@ def _run_chat_session(
                     messages = current_state.values.get("messages", [])
 
                     if n <= 0 or n > len(messages):
-                        console.print(f"[red]{t('cli.rollback.invalid_number').format(len(messages))}[/red]")
+                        console.print(
+                            f"[red]{t('cli.rollback.invalid_number').format(len(messages))}[/red]"
+                        )
                         continue
 
                     new_count = len(messages) - n
@@ -449,7 +470,9 @@ def _run_chat_session(
                     agent.update_state(config, {"messages": rolled_back})
 
                     console.print(f"[green]{t('cli.rollback.remove_success').format(n)}[/green]")
-                    console.print(f"[dim]{t('cli.rollback.current_messages').format(new_count)}[/dim]\n")
+                    console.print(
+                        f"[dim]{t('cli.rollback.current_messages').format(new_count)}[/dim]\n"
+                    )
 
                 except ValueError:
                     console.print(f"[red]{t('cli.rollback.number_integer')}[/red]")
