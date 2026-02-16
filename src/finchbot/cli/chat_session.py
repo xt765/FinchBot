@@ -480,18 +480,41 @@ def _run_chat_session(
     if first_message:
         with console.status("[dim]Thinking...[/dim]", spinner="dots"):
             runnable_config: RunnableConfig = {"configurable": {"thread_id": session_id}}
-            result = agent.invoke(
-                {"messages": [{"role": "user", "content": first_message}]},
-                config=runnable_config,
-            )
-            all_messages = result.get("messages", [])
+            all_messages = []
+            try:
+                for chunk in agent.stream(
+                    {"messages": [{"role": "user", "content": first_message}]},
+                    config=runnable_config,
+                ):
+                    if chunk.get("messages"):
+                        new_msgs = chunk["messages"]
+                        for msg in new_msgs:
+                            if msg not in all_messages:
+                                all_messages.append(msg)
+                                _format_message(msg, len(all_messages) - 1, show_index=False)
+                    elif chunk.get("model", {}).get("messages"):
+                        new_msgs = chunk["model"]["messages"]
+                        for msg in new_msgs:
+                            if msg not in all_messages:
+                                all_messages.append(msg)
+                                _format_message(msg, len(all_messages) - 1, show_index=False)
+                    elif chunk.get("tools", {}).get("messages"):
+                        new_msgs = chunk["tools"]["messages"]
+                        for msg in new_msgs:
+                            if msg not in all_messages:
+                                all_messages.append(msg)
+                                _format_message(msg, len(all_messages) - 1, show_index=False)
+            except Exception as stream_error:
+                logger.error(f"Stream error: {stream_error}")
+                console.print(f"[red]Error: {stream_error}[/red]")
+
+            if not all_messages:
+                console.print("[yellow]No response from agent[/yellow]")
 
             msg_count = len(all_messages)
             session_store.update_activity(session_id, message_count=msg_count)
             _update_session_turn_count(session_store, session_id, agent)
 
-        for i, msg in enumerate(all_messages):
-            _format_message(msg, i, show_index=False)
         console.print()
 
     prompt_session = PromptSession(
@@ -614,17 +637,40 @@ def _run_chat_session(
 
             with console.status("[dim]Thinking...[/dim]", spinner="dots"):
                 config: RunnableConfig = {"configurable": {"thread_id": session_id}}
-                result = agent.invoke(
-                    {"messages": [{"role": "user", "content": command}]},
-                    config=config,
-                )
-                all_messages = result.get("messages", [])
+                all_messages = []
+                try:
+                    for chunk in agent.stream(
+                        {"messages": [{"role": "user", "content": command}]},
+                        config=config,
+                    ):
+                        if chunk.get("messages"):
+                            new_msgs = chunk["messages"]
+                            for msg in new_msgs:
+                                if msg not in all_messages:
+                                    all_messages.append(msg)
+                                    _format_message(msg, len(all_messages) - 1, show_index=False)
+                        elif chunk.get("model", {}).get("messages"):
+                            new_msgs = chunk["model"]["messages"]
+                            for msg in new_msgs:
+                                if msg not in all_messages:
+                                    all_messages.append(msg)
+                                    _format_message(msg, len(all_messages) - 1, show_index=False)
+                        elif chunk.get("tools", {}).get("messages"):
+                            new_msgs = chunk["tools"]["messages"]
+                            for msg in new_msgs:
+                                if msg not in all_messages:
+                                    all_messages.append(msg)
+                                    _format_message(msg, len(all_messages) - 1, show_index=False)
+                except Exception as stream_error:
+                    logger.error(f"Stream error: {stream_error}")
+                    console.print(f"[red]Error: {stream_error}[/red]")
+
+                if not all_messages:
+                    console.print("[yellow]No response from agent[/yellow]")
 
                 msg_count = len(all_messages)
                 session_store.update_activity(session_id, message_count=msg_count)
 
-            for i, msg in enumerate(all_messages):
-                _format_message(msg, i, show_index=False)
             console.print()
 
         except KeyboardInterrupt:
