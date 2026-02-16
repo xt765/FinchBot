@@ -17,6 +17,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph.state import CompiledStateGraph  # type: ignore[attr-defined]
 
+from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
 from finchbot.memory.enhanced import EnhancedMemoryStore
 
@@ -27,6 +28,8 @@ def build_system_prompt(
     session_title: str | None = None,
 ) -> str:
     """构建系统提示.
+
+    支持 Bootstrap 文件和技能系统。
 
     Args:
         workspace: 工作目录路径。
@@ -43,6 +46,12 @@ def build_system_prompt(
 
 {t("agent.system_prompt")}
 
+You have access to tools that allow you to:
+- Read, write, and edit files
+- Execute shell commands
+- Search the web and fetch web pages
+- Manage memory and notes
+
 ## {t("agent.current_time")}
 {now}
 
@@ -51,11 +60,19 @@ def build_system_prompt(
 
 ## {t("agent.workspace")}
 {workspace}
+- Memory files: {workspace}/memory/
+- Custom skills: {workspace}/skills/{{skill-name}}/SKILL.md
 """
+
+    context_builder = ContextBuilder(workspace)
+    bootstrap_and_skills = context_builder.build_system_prompt()
+    if bootstrap_and_skills:
+        prompt += f"\n\n{bootstrap_and_skills}"
+
     if memory:
         memory_context = memory.get_memory_context()
         if memory_context:
-            prompt += f"\n## {t('agent.memory')}\n{memory_context}"
+            prompt += f"\n\n## {t('agent.memory')}\n{memory_context}"
 
     if session_title is not None:
         prompt += f"""

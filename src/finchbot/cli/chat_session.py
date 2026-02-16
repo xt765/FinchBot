@@ -670,6 +670,7 @@ def _run_chat_session(
 
                 msg_count = len(all_messages)
                 session_store.update_activity(session_id, message_count=msg_count)
+                _update_session_turn_count(session_store, session_id, agent)
 
             console.print()
 

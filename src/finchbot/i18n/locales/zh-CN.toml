@@ -203,6 +203,13 @@ runtime = "运行环境"
 workspace = "工作目录"
 memory = "记忆"
 
+[agent.skills]
+active_skills = "常驻技能"
+available_skills = "可用技能"
+skills_intro = "以下技能扩展了你的能力。要使用技能，请使用 read_file 工具读取其 SKILL.md 文件。"
+skills_unavailable_hint = "available=\"false\" 的技能需要先安装依赖 - 你可以尝试使用 apt/brew 安装。"
+skills_read_hint = "使用 read_file 工具加载技能详情。"
+
 [tools.read_file]
 name = "read_file"
 description = "读取指定路径的文本文件内容。仅支持 UTF-8 编码，二进制文件可能显示乱码。"
@@ -302,6 +309,10 @@ when_to_set = "### 何时设置/修改标题"
 first_set = "**首次设置**：当对话进行 2-3 轮后，如果当前标题为空或与会话ID相同，应主动生成一个简洁的标题"
 modify = "**更新标题**：当对话主题发生明显变化时，应更新标题以反映新主题"
 requirements = "**标题要求**：5-15个字符，无标点，简洁概括对话主题"
+urgent_reminder = """### ⚠️ 紧急提醒：必须立即设置会话标题！
+当前对话已进行 {turn_count} 轮，但会话标题尚未设置。请**立即**使用 `session_title` 工具设置一个合适的标题！
+- 使用 `action=get` 查看当前状态
+- 使用 `action=set` 并提供合适的标题（5-15字符）"""
 
 [search.engines]
 tavily = "Tavily (质量最佳，专为 AI 优化)"

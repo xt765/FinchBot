@@ -109,11 +109,21 @@ class ExecTool(FinchTool):
 
             output_parts = []
 
+            def decode_output(data: bytes) -> str:
+                """智能解码输出，自动尝试多种编码."""
+                encodings = ["utf-8", "gbk", "cp936", "gb18030", "latin-1"]
+                for enc in encodings:
+                    try:
+                        return data.decode(enc)
+                    except UnicodeDecodeError:
+                        continue
+                return data.decode("utf-8", errors="replace")
+
             if stdout:
-                output_parts.append(stdout.decode("utf-8", errors="replace"))
+                output_parts.append(decode_output(stdout))
 
             if stderr:
-                stderr_text = stderr.decode("utf-8", errors="replace")
+                stderr_text = decode_output(stderr)
                 if stderr_text.strip():
                     output_parts.append(f"STDERR:\n{stderr_text}")
 
