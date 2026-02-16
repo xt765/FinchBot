@@ -1251,5 +1251,32 @@ def _show_config_summary(config_obj: Config, config_path: Path) -> None:
     console.print(table)
 
 
+@app.command("download-models")
+def download_models(
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="静默模式"),
+) -> None:
+    """下载嵌入模型到本地.
+
+    自动从 HuggingFace 镜像下载 BAAI/bge-small-zh-v1.5 模型。
+    使用国内镜像 https://hf-mirror.com 加速下载。
+    """
+    from finchbot.utils import ensure_models
+
+    console.print("[bold cyan]📥 下载 FinchBot 嵌入模型[/bold cyan]\n")
+    console.print("模型: BAAI/bge-small-zh-v1.5")
+    console.print("镜像: https://hf-mirror.com (国内加速)")
+    console.print()
+
+    success = ensure_models(verbose=not quiet)
+
+    if success:
+        console.print("\n[green]✓ 模型下载完成[/green]")
+        raise typer.Exit(0)
+    else:
+        console.print("\n[red]✗ 模型下载失败[/red]")
+        console.print("[dim]提示: 检查网络连接或稍后重试[/dim]")
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()
