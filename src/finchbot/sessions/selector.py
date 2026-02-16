@@ -4,6 +4,7 @@
 支持选择、删除、重命名等操作。
 """
 
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -208,8 +209,11 @@ class SessionSelector:
             # 选中标记
             cursor = "▶" if is_selected else " "
 
-            # ID（序号）
-            session_id = str(idx + 1)
+            # ID（从 session_id 中提取数字）
+            display_id = session.session_id
+            if session.session_id.startswith("session_"):
+                with suppress(IndexError, ValueError):
+                    display_id = str(int(session.session_id.split("_")[1]))
 
             # 标题（为空时显示占位符）
             title = session.title if session.title.strip() else t("sessions.empty_title")
@@ -231,7 +235,7 @@ class SessionSelector:
             # 应用样式
             if is_selected:
                 cursor_text = Text(cursor, style="cyan bold")
-                id_text = Text(session_id, style="cyan")
+                id_text = Text(display_id, style="cyan")
                 title_text = Text(title, style="cyan bold")
                 msg_text = Text(msg_count, style="cyan")
                 turn_text = Text(turn_count, style="cyan")
@@ -239,7 +243,7 @@ class SessionSelector:
                 time_text = Text(time_str, style="cyan")
             else:
                 cursor_text = Text(cursor, style="")
-                id_text = Text(session_id, style="dim")
+                id_text = Text(display_id, style="dim")
                 title_text = Text(title, style="white")
                 msg_text = Text(msg_count, style="green")
                 turn_text = Text(turn_count, style="yellow")
