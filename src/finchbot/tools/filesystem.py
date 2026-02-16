@@ -30,12 +30,12 @@ def decode_output(data: bytes) -> str:
     return data.decode("latin-1", errors="replace")
 
 
-def _resolve_path(path: str, allowed_dir: Path | None = None) -> Path:
+def _resolve_path(path: str, allowed_dirs: list[Path] | Path | None = None) -> Path:
     """解析路径并可选地限制目录访问.
 
     Args:
         path: 要解析的路径字符串。
-        allowed_dir: 允许访问的目录，如果指定则限制路径必须在此目录下。
+        allowed_dirs: 允许访问的目录列表或单个目录，如果指定则限制路径必须在此目录下。
 
     Returns:
         解析后的绝对路径。
@@ -44,8 +44,12 @@ def _resolve_path(path: str, allowed_dir: Path | None = None) -> Path:
         PermissionError: 如果路径不在允许的目录内。
     """
     resolved = Path(path).expanduser().resolve()
-    if allowed_dir and not str(resolved).startswith(str(allowed_dir.resolve())):
-        raise PermissionError(f"Path {path} not in allowed directory {allowed_dir}")
+    if allowed_dirs is not None:
+        if isinstance(allowed_dirs, Path):
+            allowed_dirs = [allowed_dirs]
+        in_allowed = any(str(resolved).startswith(str(d.resolve())) for d in allowed_dirs)
+        if not in_allowed:
+            raise PermissionError(f"Path {path} not in allowed directories")
     return resolved
 
 
@@ -55,12 +59,12 @@ class ReadFileTool(FinchTool):
     读取指定路径的文件内容。
 
     Attributes:
-        allowed_dir: 允许访问的目录限制。
+        allowed_dirs: 允许访问的目录限制列表。
     """
 
     name: str = Field(default="read_file", description="Tool name")
     description: str = Field(default="", description="Tool description")
-    allowed_dir: Path | None = Field(default=None, exclude=True)
+    allowed_dirs: list[Path] | Path | None = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -90,7 +94,7 @@ class ReadFileTool(FinchTool):
             文件内容或错误信息。
         """
         try:
-            file_path = _resolve_path(path, self.allowed_dir)
+            file_path = _resolve_path(path, self.allowed_dirs)
             if not file_path.exists():
                 return f"{t('tools.read_file.error_not_found')}: {path}"
             if not file_path.is_file():
@@ -111,12 +115,12 @@ class WriteFileTool(FinchTool):
     将内容写入指定路径的文件，自动创建父目录。
 
     Attributes:
-        allowed_dir: 允许访问的目录限制。
+        allowed_dirs: 允许访问的目录限制列表。
     """
 
     name: str = Field(default="write_file", description="Tool name")
     description: str = Field(default="", description="Tool description")
-    allowed_dir: Path | None = Field(default=None, exclude=True)
+    allowed_dirs: list[Path] | Path | None = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -151,7 +155,7 @@ class WriteFileTool(FinchTool):
             操作结果信息。
         """
         try:
-            file_path = _resolve_path(path, self.allowed_dir)
+            file_path = _resolve_path(path, self.allowed_dirs)
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content, encoding="utf-8")
             return f"Successfully wrote {len(content)} bytes to {path}"
@@ -167,12 +171,12 @@ class EditFileTool(FinchTool):
     通过替换文本编辑文件内容。
 
     Attributes:
-        allowed_dir: 允许访问的目录限制。
+        allowed_dirs: 允许访问的目录限制列表。
     """
 
     name: str = Field(default="edit_file", description="Tool name")
     description: str = Field(default="", description="Tool description")
-    allowed_dir: Path | None = Field(default=None, exclude=True)
+    allowed_dirs: list[Path] | Path | None = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -212,7 +216,7 @@ class EditFileTool(FinchTool):
             操作结果信息。
         """
         try:
-            file_path = _resolve_path(path, self.allowed_dir)
+            file_path = _resolve_path(path, self.allowed_dirs)
             if not file_path.exists():
                 return f"{t('tools.read_file.error_not_found')}: {path}"
 
@@ -242,12 +246,12 @@ class ListDirTool(FinchTool):
     列出指定目录的内容。
 
     Attributes:
-        allowed_dir: 允许访问的目录限制。
+        allowed_dirs: 允许访问的目录限制列表。
     """
 
     name: str = Field(default="list_dir", description="Tool name")
     description: str = Field(default="", description="Tool description")
-    allowed_dir: Path | None = Field(default=None, exclude=True)
+    allowed_dirs: list[Path] | Path | None = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -277,7 +281,7 @@ class ListDirTool(FinchTool):
             目录内容列表或错误信息。
         """
         try:
-            dir_path = _resolve_path(path, self.allowed_dir)
+            dir_path = _resolve_path(path, self.allowed_dirs)
             if not dir_path.exists():
                 return f"Error: Directory not found: {path}"
             if not dir_path.is_dir():

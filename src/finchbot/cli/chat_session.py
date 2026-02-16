@@ -435,6 +435,7 @@ def _setup_chat_tools(config_obj: Any, ws_path: Path, session_id: str) -> tuple[
     Returns:
         (tools, web_enabled) 元组
     """
+    from finchbot.agent.skills import BUILTIN_SKILLS_DIR
     from finchbot.tools import (
         EditFileTool,
         ExecTool,
@@ -449,11 +450,16 @@ def _setup_chat_tools(config_obj: Any, ws_path: Path, session_id: str) -> tuple[
         WriteFileTool,
     )
 
+    allowed_read_dirs = [
+        ws_path,
+        BUILTIN_SKILLS_DIR.parent,
+    ]
+
     tools = [
-        ReadFileTool(allowed_dir=ws_path),
-        WriteFileTool(allowed_dir=ws_path),
-        EditFileTool(allowed_dir=ws_path),
-        ListDirTool(allowed_dir=ws_path),
+        ReadFileTool(allowed_dirs=allowed_read_dirs),
+        WriteFileTool(allowed_dirs=ws_path),
+        EditFileTool(allowed_dirs=ws_path),
+        ListDirTool(allowed_dirs=allowed_read_dirs),
         RememberTool(workspace=str(ws_path)),
         RecallTool(workspace=str(ws_path)),
         ForgetTool(workspace=str(ws_path)),
