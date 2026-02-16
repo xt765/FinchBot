@@ -82,13 +82,3 @@ class ModelDownloadHook(BuildHookInterface):
             print("提示: 首次运行时将会自动下载模型")
 
         print("=" * 60)
-
-    def finalize(self, version: str, build_data: dict, artifact_path: str) -> None:
-        """ finalize 钩子.
-
-        Args:
-            version: 版本号
-            build_data: 构建数据
-            artifact_path: 构建产物路径
-        """
-        pass

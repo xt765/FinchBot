@@ -1,0 +1,4 @@
+# UV Configuration
+# 缓存放在 D 盘
+
+cache-dir = "D:\\.cache\\uv"
