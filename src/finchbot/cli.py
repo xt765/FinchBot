@@ -35,7 +35,12 @@ from finchbot.sessions import SessionMetadataStore, SessionSelector
 logger.add(
     lambda msg: print(msg, end=""),
     colorize=True,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    format=(
+        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+        "<level>{message}</level>"
+    ),
     level="DEBUG",
 )
 
@@ -73,15 +78,16 @@ def _generate_session_title_with_ai(
         conversation_text = "\n".join(conversation)
 
         # 构建提示词
-        system_prompt = """你是一个会话标题生成助手。请根据以下对话内容，生成一个简洁的标题（不超过15个字符）。
-
-要求：
-1. 标题要准确概括对话主题
-2. 使用中文
-3. 不要包含标点符号
-4. 长度控制在 5-15 个字符
-
-请直接输出标题，不要添加任何解释。"""
+        system_prompt = (
+            "你是一个会话标题生成助手。请根据以下对话内容，"
+            "生成一个简洁的标题（不超过15个字符）。\n\n"
+            "要求：\n"
+            "1. 标题要准确概括对话主题\n"
+            "2. 使用中文\n"
+            "3. 不要包含标点符号\n"
+            "4. 长度控制在 5-15 个字符\n\n"
+            "请直接输出标题，不要添加任何解释。"
+        )
 
         user_prompt = f"请为以下对话生成标题：\n\n{conversation_text}"
 
@@ -527,8 +533,9 @@ def _run_chat_session(
                         new_config: RunnableConfig = {"configurable": {"thread_id": new_sess}}
                         agent.update_state(new_config, {"messages": rolled_back})
                         session_id = new_sess  # 切换到新会话
+                        msg_count = len(rolled_back)
                         console.print(
-                            f"[green]✓ Created '{new_sess}' with {len(rolled_back)} messages[/green]"
+                            f"[green]✓ Created '{new_sess}' with {msg_count} messages[/green]"
                         )
                     else:
                         # 原地回退
@@ -700,7 +707,8 @@ def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | N
     """根据环境变量自动检测可用的 provider.
 
     Returns:
-        (api_key, api_base, provider, detected_model) 元组，如果没有可用的 provider 则返回 (None, None, None, None)。
+        (api_key, api_base, provider, detected_model) 元组，
+        如果没有可用的 provider 则返回 (None, None, None, None)。
     """
     from finchbot.config.utils import get_api_base
 
@@ -838,8 +846,10 @@ def sessions_show(
             if role == "user":
                 console.print(f"{prefix}[blue]You:[/blue] {content}")
             elif role == "assistant":
+                display_content = content[:200]
+                suffix = "..." if len(content) > 200 else ""
                 console.print(
-                    f"{prefix}[cyan]FinchBot:[/cyan] {content[:200]}{'...' if len(content) > 200 else ''}"
+                    f"{prefix}[cyan]FinchBot:[/cyan] {display_content}{suffix}"
                 )
             console.print()
 
@@ -902,11 +912,14 @@ def sessions_rollback(
 
             # 确认回退
             if not force:
-                confirm_msg = (
-                    f"{t('sessions.rollback.confirm_rollback').format(message_index)} "
-                    f"{t('sessions.rollback.keep_messages').format(message_index - 1, message_index)}, "
-                    f"{t('sessions.rollback.remove_messages').format(message_index, len(messages) - 1, len(messages) - message_index)}."
-                )
+                keep_count = message_index
+                remove_start = message_index
+                remove_end = len(messages) - 1
+                remove_count = len(messages) - message_index
+                rollback_msg = t('sessions.rollback.confirm_rollback').format(message_index)
+                keep_msg = t('sessions.rollback.keep_messages').format(message_index - 1, keep_count)
+                remove_msg = t('sessions.rollback.remove_messages').format(remove_start, remove_end, remove_count)
+                confirm_msg = f"{rollback_msg} {keep_msg}, {remove_msg}."
                 confirm = questionary.confirm(confirm_msg, default=False).ask()
                 if not confirm:
                     console.print(f"[dim]{t('sessions.rollback.cancelled')}[/dim]")
@@ -929,7 +942,8 @@ def sessions_rollback(
 
                 cursor.execute(
                     """
-                    INSERT INTO checkpoints (thread_id, checkpoint_id, checkpoint, metadata, created_at)
+                    INSERT INTO checkpoints
+                    (thread_id, checkpoint_id, checkpoint, metadata, created_at)
                     VALUES (?, ?, ?, ?, ?)
                     """,
                     (
@@ -977,13 +991,13 @@ def sessions_rollback(
                 )
                 conn.commit()
 
+                kept = len(rolled_back_messages)
+                removed = len(messages) - message_index
                 console.print(
                     f"[green]✓ Rolled back session '{session_id}' "
                     f"to message {message_index}[/green]"
                 )
-                console.print(
-                    f"[dim]Kept {len(rolled_back_messages)} messages, removed {len(messages) - message_index}[/dim]"
-                )
+                console.print(f"[dim]Kept {kept} messages, removed {removed}[/dim]")
 
     except Exception as e:
         console.print(f"[red]Error rolling back session: {e}[/red]")
@@ -1081,7 +1095,10 @@ class ConfigManager:
             {
                 "key": "providers",
                 "name": t("cli.config.configured_providers").rstrip("："),
-                "value": ", ".join(self.config.get_configured_providers()) or t("cli.status.not_configured"),
+                "value": (
+                    ", ".join(self.config.get_configured_providers())
+                    or t("cli.status.not_configured")
+                ),
                 "editable": False,  # 通过子菜单编辑
             },
         ]
@@ -1273,8 +1290,10 @@ def _configure_preset_provider(config_obj: Config, provider: str) -> None:
     if not api_key:
         return
 
+    default_base = info["default_base"]
     use_custom_base = questionary.confirm(
-        f"{t('cli.config.use_custom_api_base')} ({t('cli.config.default_hint').format(info['default_base'])})",
+        f"{t('cli.config.use_custom_api_base')} "
+        f"({t('cli.config.default_hint').format(default_base)})",
         default=False,
     ).ask()
 
