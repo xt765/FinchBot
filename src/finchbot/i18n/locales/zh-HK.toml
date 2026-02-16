@@ -151,6 +151,12 @@ system_prompt = """你是一個輕量級 AI 助手，基於 LangChain Ecosystem 
 - 當需要回憶之前的資訊時，使用 `recall` 工具檢索
 - 記憶是持久化的，跨會話可用
 
+### 記憶檢索優化
+檢索採用分層策略，性能從快到準：
+- **L0 快取**：相同查詢直接返回快取結果（最快）
+- **L1 精確查詢**：識別「郵箱/電話/生日/地址/微信」等關鍵詞，直接文字匹配
+- **L2 語義/關鍵詞/混合**：根據策略執行向量語義或關鍵詞匹配
+
 ## 檔案系統工具使用指南
 - `list_dir`: 探索目錄結構，了解有哪些檔案
 - `read_file`: 讀取檔案內容，了解檔案詳情
@@ -271,6 +277,29 @@ description = "從記憶庫中刪除指定的資訊。刪除是永久性的，�
 hint = "當用戶明確要求忘記、刪除或清除某些資訊時呼叫此工具。刪除後無法恢復，請謹慎使用。"
 param_pattern = "要刪除的內容匹配模式，支援部分匹配。例如輸入'郵箱'會刪除所有包含'郵箱'的記憶。"
 success = "記憶項目已刪除"
+
+[tools.session_title]
+name = "session_title"
+description = "取得或設定目前對話的標題。"
+hint = "當對話進行 2-3 輪後，若標題為空或需要更新時使用。"
+param_action = "操作類型: get(取得標題) 或 set(設定標題)"
+param_title = "新標題（僅 set 時需要），5-15 個字元，無標點"
+error_no_title = "錯誤: 設定標題時必須提供標題"
+error_invalid_action = "錯誤: 無效的操作類型，請使用 get 或 set"
+error_too_short = "錯誤: 標題至少需要 5 個字元"
+no_session = "未找到目前對話"
+current = "目前標題: {title}（{message_count} 條訊息）"
+current_none = "目前無標題（對話ID: {session_id}）。{hint}"
+get_hint = "對話 2-3 輪後可使用 action=set 產生標題"
+set_success = "✅ 標題已設定為: {title}"
+
+[agent.session_title]
+section = "## 對話標題"
+current = "目前對話標題: {title}"
+when_to_set = "### 何時設定/更新標題"
+first_set = "**首次設定**：當對話進行 2-3 輪後，若目前標題為空或與對話ID相同，應主動產生一個簡潔的標題"
+modify = "**更新標題**：當對話主題發生明顯變化時，應更新標題以反映新主題"
+requirements = "**標題要求**：5-15個字元，無標點，簡潔概括對話主題"
 
 [search.engines]
 tavily = "Tavily (品質最佳，專為 AI 優化)"

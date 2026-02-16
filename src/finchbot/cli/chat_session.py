@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import os
-import re
 from pathlib import Path
 from typing import Any
 
@@ -140,76 +139,8 @@ def _get_tavily_key(config_obj: Any) -> str | None:
     return None
 
 
-def _generate_session_title_simple(first_message: str) -> str:
-    """使用简单规则生成会话标题.
-
-    Args:
-        first_message: 第一条消息
-
-    Returns:
-        生成的标题
-    """
-    content = first_message.strip()
-    if len(content) <= 30:
-        return content
-
-    words = content.split()
-    if len(words) <= 4:
-        return content
-
-    title = " ".join(words[:4])
-    if len(title) > 30:
-        title = content[:27] + "..."
-
-    return title
-
-
-def _generate_session_title_with_ai(chat_model, messages: list) -> str | None:
-    """使用 AI 分析对话内容生成会话标题.
-
-    Args:
-        chat_model: 聊天模型实例
-        messages: 消息列表
-
-    Returns:
-        生成的标题，失败返回 None
-    """
-    if not messages or len(messages) < 2:
-        return None
-
-    try:
-        human_msgs = [m for m in messages if hasattr(m, "type") and m.type == "human"]
-        if not human_msgs:
-            return None
-
-        last_human_msg = human_msgs[-1].content
-        prompt = f"""根据以下用户请求生成一个简短（不超过30字符）的会话标题。
-
-用户请求: {last_human_msg[:100]}
-
-只返回标题，不要其他内容。"""
-
-        from langchain_core.messages import HumanMessage
-
-        response = chat_model.invoke([HumanMessage(content=prompt)])
-        title = response.content.strip()
-
-        title = re.sub(r"^[\"'【\[『]", "", title)
-        title = re.sub(r"[\"'】\]』]$", "", title)
-        title = title.strip()
-
-        if len(title) > 30:
-            title = title[:27] + "..."
-
-        return title if title else None
-
-    except Exception:
-        logger.debug("Failed to generate session title with AI")
-        return None
-
-
 def _setup_chat_tools(
-    config_obj: Any, ws_path: Path
+    config_obj: Any, ws_path: Path, session_id: str
 ) -> tuple[list, bool]:
     """设置聊天工具列表.
 
@@ -228,6 +159,7 @@ def _setup_chat_tools(
         ReadFileTool,
         RecallTool,
         RememberTool,
+        SessionTitleTool,
         WebExtractTool,
         WebSearchTool,
         WriteFileTool,
@@ -241,6 +173,7 @@ def _setup_chat_tools(
         RememberTool(workspace=str(ws_path)),
         RecallTool(workspace=str(ws_path)),
         ForgetTool(workspace=str(ws_path)),
+        SessionTitleTool(workspace=str(ws_path), session_id=session_id),
         ExecTool(timeout=config_obj.tools.exec.timeout),
         WebExtractTool(),
     ]
@@ -300,7 +233,7 @@ def _run_chat_session(
     ws_path = Path(workspace or config_obj.agents.defaults.workspace).expanduser()
     ws_path.mkdir(parents=True, exist_ok=True)
 
-    tools, web_enabled = _setup_chat_tools(config_obj, ws_path)
+    tools, web_enabled = _setup_chat_tools(config_obj, ws_path, session_id)
 
     chat_model = create_chat_model(
         model=use_model,
@@ -320,17 +253,23 @@ def _run_chat_session(
     console.print(f"[dim]{web_status}[/dim]")
     console.print(f"[dim]{t('cli.chat.type_to_quit')}[/dim]\n")
 
+    session_store = SessionMetadataStore(ws_path)
+    if not session_store.session_exists(session_id):
+        session_store.create_session(session_id, title=session_id)
+
+    current_session = session_store.get_session(session_id)
+    session_title = current_session.title if current_session else None
+    if session_title == session_id:
+        session_title = None
+
     agent, checkpointer = create_finch_agent(
         model=chat_model,
         workspace=ws_path,
         tools=tools,
         memory=EnhancedMemoryStore(ws_path),
         use_persistent=True,
+        session_title=session_title,
     )
-
-    session_store = SessionMetadataStore(ws_path)
-    if not session_store.session_exists(session_id):
-        session_store.create_session(session_id, title=session_id)
 
     if first_message:
         with console.status("[dim]Thinking...[/dim]", spinner="dots"):
@@ -342,26 +281,7 @@ def _run_chat_session(
             response = result["messages"][-1].content
 
             msg_count = len(result.get("messages", []))
-
-            current_session = session_store.get_session(session_id)
-            needs_title = (
-                current_session is None
-                or not current_session.title.strip()
-                or current_session.title == session_id
-            )
-
-            if msg_count >= 2 and needs_title:
-                title = _generate_session_title_with_ai(
-                    chat_model, result.get("messages", [])
-                )
-                if title:
-                    session_store.update_activity(session_id, title=title, message_count=msg_count)
-                    console.print(f"[dim]{t('cli.chat.session_title').format(title)}[/dim]")
-                else:
-                    title = _generate_session_title_simple(first_message)
-                    session_store.update_activity(session_id, title=title, message_count=msg_count)
-            else:
-                session_store.update_activity(session_id, message_count=msg_count)
+            session_store.update_activity(session_id, message_count=msg_count)
 
         console.print(f"\n[cyan]{t('cli.chat.finchbot_response')}[/cyan]")
         console.print(Panel(response))
@@ -490,30 +410,7 @@ def _run_chat_session(
                 response = result["messages"][-1].content
 
                 msg_count = len(result.get("messages", []))
-
-                current_session = session_store.get_session(session_id)
-                needs_title = (
-                    current_session is None
-                    or not current_session.title.strip()
-                    or current_session.title == session_id
-                )
-
-                if msg_count >= 2 and needs_title:
-                    title = _generate_session_title_with_ai(
-                        chat_model, result.get("messages", [])
-                    )
-                    if title:
-                        session_store.update_activity(
-                            session_id, title=title, message_count=msg_count
-                        )
-                        console.print(f"[dim]{t('cli.chat.session_title').format(title)}[/dim]")
-                    else:
-                        title = _generate_session_title_simple(command)
-                        session_store.update_activity(
-                            session_id, title=title, message_count=msg_count
-                        )
-                else:
-                    session_store.update_activity(session_id, message_count=msg_count)
+                session_store.update_activity(session_id, message_count=msg_count)
 
             console.print(f"\n[cyan]{t('cli.chat.finchbot_response')}[/cyan]")
             console.print(Panel(response))

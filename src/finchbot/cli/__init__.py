@@ -2,7 +2,6 @@
 
 提供命令行界面的核心功能，包括：
 - 提供商配置与管理
-- 会话标题生成
 - UI 交互组件
 - 配置管理
 - 聊天会话处理
@@ -32,10 +31,6 @@ from finchbot.cli.providers import (
     _get_provider_config,
     _get_tavily_key,
 )
-from finchbot.cli.session_title import (
-    _generate_session_title_simple,
-    _generate_session_title_with_ai,
-)
 from finchbot.cli.ui import (
     _keyboard_select,
     console,
@@ -49,8 +44,6 @@ __all__ = [
     "_get_provider_config",
     "_get_llm_config",
     "_auto_detect_provider",
-    "_generate_session_title_with_ai",
-    "_generate_session_title_simple",
     "console",
     "_keyboard_select",
     "ConfigManager",

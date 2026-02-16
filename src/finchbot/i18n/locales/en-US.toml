@@ -151,6 +151,12 @@ You have memory functionality to save and retrieve important information:
 - Use the `recall` tool to retrieve previously saved information
 - Memories persist across sessions
 
+### Memory Retrieval Optimization
+Retrieval uses layered strategy (fast → accurate):
+- **L0 Cache**: Same query returns cached results (fastest)
+- **L1 Exact Query**: Detects keywords like "email/phone/birthday/address/WeChat", uses direct text matching
+- **L2 Semantic/Keyword/Hybrid**: Executes vector semantic or keyword matching based on strategy
+
 ## File System Tool Guidelines
 - `list_dir`: Explore directory structure to understand what files exist
 - `read_file`: Read file content to understand file details
@@ -271,6 +277,29 @@ description = "Remove specified information from memory. Deletion is permanent a
 hint = "Call this tool when users explicitly request to forget, delete, or clear certain information. Cannot be undone after deletion, use with caution."
 param_pattern = "Content pattern to remove, supports partial matching. E.g., entering 'email' will delete all memories containing 'email'."
 success = "Memory entries removed"
+
+[tools.session_title]
+name = "session_title"
+description = "Get or set the current session title."
+hint = "Use when the conversation has 2-3 turns and the title is empty or needs updating."
+param_action = "Action type: get (get title) or set (set title)"
+param_title = "New title (required only for set), 5-15 characters, no punctuation"
+error_no_title = "Error: Title is required when setting title"
+error_invalid_action = "Error: Invalid action type, use get or set"
+error_too_short = "Error: Title must be at least 5 characters"
+no_session = "Current session not found"
+current = "Current title: {title} ({message_count} messages)"
+current_none = "No title (Session ID: {session_id}). {hint}"
+get_hint = "After 2-3 turns, use action=set to generate a title"
+set_success = "✅ Title set to: {title}"
+
+[agent.session_title]
+section = "## Session Title"
+current = "Current session title: {title}"
+when_to_set = "### When to Set/Update Title"
+first_set = "**Initial Set**: After 2-3 turns of conversation, if the current title is empty or same as session ID, proactively generate a concise title"
+modify = "**Update Title**: When the conversation topic changes significantly, update the title to reflect the new topic"
+requirements = "**Title Requirements**: 5-15 characters, concise and summarize the conversation topic"
 
 [search.engines]
 tavily = "Tavily (Best quality, AI-optimized)"

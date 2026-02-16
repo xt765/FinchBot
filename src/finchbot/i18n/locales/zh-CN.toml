@@ -150,6 +150,12 @@ system_prompt = """你是一个轻量级 AI 助手，基于 LangChain Ecosystem 
 - 当需要回忆之前的信息时，使用 `recall` 工具检索
 - 记忆是持久化的，跨会话可用
 
+### 记忆检索优化
+检索采用分层策略，性能从快到准：
+- **L0 缓存**：相同查询直接返回缓存结果（最快）
+- **L1 精确查询**：识别"邮箱/电话/生日/地址/微信"等关键词，直接文本匹配
+- **L2 语义/关键词/混合**：根据策略执行向量语义或关键词匹配
+
 ## 文件系统工具使用指南
 - `list_dir`: 探索目录结构，了解有哪些文件
 - `read_file`: 读取文件内容，了解文件详情
@@ -270,6 +276,29 @@ description = "从记忆库中删除指定的信息。删除是永久性的，�
 hint = "当用户明确要求忘记、删除或清除某些信息时调用此工具。删除后无法恢复，请谨慎使用。"
 param_pattern = "要删除的内容匹配模式，支持部分匹配。例如输入'邮箱'会删除所有包含'邮箱'的记忆。"
 success = "记忆条目已删除"
+
+[tools.session_title]
+name = "session_title"
+description = "获取或设置当前会话的标题。"
+hint = "当对话进行 2-3 轮后，如果标题为空或需要修改时使用。"
+param_action = "操作类型: get(获取标题) 或 set(设置标题)"
+param_title = "新标题（仅 set 时需要），5-15 个字符，无标点"
+error_no_title = "错误: 设置标题时必须提供标题"
+error_invalid_action = "错误: 无效的操作类型，请使用 get 或 set"
+error_too_short = "错误: 标题至少需要 5 个字符"
+no_session = "未找到当前会话"
+current = "当前标题: {title}（{message_count} 条消息）"
+current_none = "当前无标题（会话ID: {session_id}）。{hint}"
+get_hint = "对话 2-3 轮后可使用 action=set 生成标题"
+set_success = "✅ 标题已设置为: {title}"
+
+[agent.session_title]
+section = "## 会话标题"
+current = "当前会话标题: {title}"
+when_to_set = "### 何时设置/修改标题"
+first_set = "**首次设置**：当对话进行 2-3 轮后，如果当前标题为空或与会话ID相同，应主动生成一个简洁的标题"
+modify = "**更新标题**：当对话主题发生明显变化时，应更新标题以反映新主题"
+requirements = "**标题要求**：5-15个字符，无标点，简洁概括对话主题"
 
 [search.engines]
 tavily = "Tavily (质量最佳，专为 AI 优化)"

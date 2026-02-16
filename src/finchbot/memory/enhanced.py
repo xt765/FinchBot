@@ -9,10 +9,18 @@
 3. HYBRID (混合): 向量 + 关键词检索，RRF 融合结果
 
 分类采用混合方案：关键词快速匹配 + 向量语义确认。
+
+性能优化特性：
+- L0: 查询结果缓存
+- L1: 精确查询快速路径
+- 性能统计追踪
 """
 
+import hashlib
 import math
 import re
+import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -74,12 +82,21 @@ class EnhancedMemoryStore:
     - JSON 文件持久化
     - 混合分类：关键词快速匹配 + 向量语义确认
 
+    性能优化：
+    - L0: 查询结果缓存（LRU，100 条）
+    - L1: 精确查询快速路径
+    - 性能统计追踪
+
     Attributes:
         workspace: 工作目录路径。
         vectorstore: 向量存储（可选）。
         category_keywords: 分类关键词（从 i18n 加载）。
         category_descriptions: 分类描述（用于向量语义分类）。
     """
+
+    EXACT_QUERY_KEYWORDS = frozenset({"邮箱", "电话", "生日", "名字", "年龄", "地址", "微信", "QQ", "手机", "账号"})
+
+    MAX_CACHE_SIZE = 100
 
     def __init__(self, workspace: Path, lang: str | None = None) -> None:
         """初始化增强记忆存储.
@@ -100,6 +117,16 @@ class EnhancedMemoryStore:
         self.lang = lang or self._detect_language()
         self.category_keywords: dict[str, list[str]] = {}
         self.category_descriptions: dict[str, str] = {}
+
+        self._query_cache: OrderedDict[str, list[MemoryEntry]] = OrderedDict()
+        self._stats = {
+            "total_queries": 0,
+            "cache_hits": 0,
+            "exact_hits": 0,
+            "keyword_hits": 0,
+            "vector_hits": 0,
+            "total_response_time_ms": 0.0,
+        }
 
         self._load_category_config()
         self._load_entries()
@@ -159,6 +186,149 @@ class EnhancedMemoryStore:
             logger.debug(f"Vector store init failed: {e}")
             self._vectorstore = None
             self._embeddings = None
+
+    def _generate_cache_key(
+        self,
+        query: str,
+        category: str | None,
+        strategy: RetrievalStrategy,
+        top_k: int,
+    ) -> str:
+        """生成查询缓存键.
+
+        Args:
+            query: 查询文本。
+            category: 分类过滤。
+            strategy: 检索策略。
+            top_k: 返回数量。
+
+        Returns:
+            MD5 缓存键。
+        """
+        key_str = f"{query}|{category or ''}|{strategy.value}|{top_k}"
+        return hashlib.md5(key_str.encode()).hexdigest()
+
+    def _get_from_cache(self, cache_key: str) -> list[MemoryEntry] | None:
+        """从缓存获取结果.
+
+        Args:
+            cache_key: 缓存键。
+
+        Returns:
+            缓存的记忆条目列表，如果未命中返回 None。
+        """
+        if cache_key in self._query_cache:
+            self._query_cache.move_to_end(cache_key)
+            return self._query_cache[cache_key]
+        return None
+
+    def _update_cache(self, cache_key: str, results: list[MemoryEntry]) -> None:
+        """更新查询缓存.
+
+        Args:
+            cache_key: 缓存键。
+            results: 记忆条目列表。
+        """
+        self._query_cache[cache_key] = results[:5]
+        self._query_cache.move_to_end(cache_key)
+        if len(self._query_cache) > self.MAX_CACHE_SIZE:
+            self._query_cache.popitem(last=False)
+
+    def _is_exact_query(self, query: str) -> bool:
+        """判断是否为精确查询.
+
+        Args:
+            query: 查询文本。
+
+        Returns:
+            是否为精确查询。
+        """
+        return any(keyword in query for keyword in self.EXACT_QUERY_KEYWORDS)
+
+    def _exact_match(self, query: str, category: str | None) -> list[MemoryEntry]:
+        """精确匹配检索.
+
+        Args:
+            query: 查询文本。
+            category: 分类过滤。
+
+        Returns:
+            匹配的记忆条目列表。
+        """
+        results = []
+        query_lower = query.lower()
+        for entry in self._entries:
+            if category and entry.category != category:
+                continue
+            if query_lower in entry.content.lower():
+                results.append(entry)
+        results.sort(key=lambda x: x.importance, reverse=True)
+        return results
+
+    def _update_stats(
+        self,
+        response_time_ms: float,
+        cache_hit: bool = False,
+        exact_hit: bool = False,
+        keyword_hit: bool = False,
+        vector_hit: bool = False,
+    ) -> None:
+        """更新性能统计.
+
+        Args:
+            response_time_ms: 响应时间（毫秒）。
+            cache_hit: 是否命中缓存。
+            exact_hit: 是否命中精确匹配。
+            keyword_hit: 是否命中关键词匹配。
+            vector_hit: 是否使用了向量检索。
+        """
+        self._stats["total_queries"] += 1
+        if cache_hit:
+            self._stats["cache_hits"] += 1
+        if exact_hit:
+            self._stats["exact_hits"] += 1
+        if keyword_hit:
+            self._stats["keyword_hits"] += 1
+        if vector_hit:
+            self._stats["vector_hits"] += 1
+        self._stats["total_response_time_ms"] += response_time_ms
+
+    def get_stats(self) -> dict[str, Any]:
+        """获取性能统计.
+
+        Returns:
+            性能统计字典。
+        """
+        stats = self._stats.copy()
+        total = stats["total_queries"]
+        if total > 0:
+            stats["cache_hit_rate"] = stats["cache_hits"] / total
+            stats["exact_hit_rate"] = stats["exact_hits"] / total
+            stats["keyword_hit_rate"] = stats["keyword_hits"] / total
+            stats["vector_hit_rate"] = stats["vector_hits"] / total
+            stats["avg_response_time_ms"] = stats["total_response_time_ms"] / total
+        else:
+            stats["cache_hit_rate"] = 0.0
+            stats["exact_hit_rate"] = 0.0
+            stats["keyword_hit_rate"] = 0.0
+            stats["vector_hit_rate"] = 0.0
+            stats["avg_response_time_ms"] = 0.0
+        stats["cache_size"] = len(self._query_cache)
+        stats["total_memories"] = len(self._entries)
+        return stats
+
+    def get_cache_size(self) -> int:
+        """获取缓存大小.
+
+        Returns:
+            当前缓存条目数。
+        """
+        return len(self._query_cache)
+
+    def clear_cache(self) -> None:
+        """清空查询缓存."""
+        self._query_cache.clear()
+        logger.info("Query cache cleared")
 
     def _load_entries(self) -> None:
         """从文件加载记忆条目."""
@@ -467,6 +637,11 @@ class EnhancedMemoryStore:
         支持三种检索策略：语义检索、关键词检索、混合检索。
         支持元数据过滤（category）和重要性过滤。
 
+        性能优化：
+        - L0: 查询结果缓存
+        - L1: 精确查询快速路径
+        - 性能统计追踪
+
         Args:
             query: 查询文本。
             top_k: 返回的最大条目数。
@@ -479,17 +654,62 @@ class EnhancedMemoryStore:
         Returns:
             匹配的记忆条目列表。
         """
-        # 根据策略执行不同的检索逻辑
-        if strategy == RetrievalStrategy.SEMANTIC:
-            return self._recall_semantic(
-                query, top_k, category, min_importance, similarity_threshold
+        start_time = time.time()
+
+        cache_key = self._generate_cache_key(query, category, strategy, top_k)
+        cached_results = self._get_from_cache(cache_key)
+        if cached_results is not None:
+            response_time = (time.time() - start_time) * 1000
+            self._update_stats(response_time, cache_hit=True)
+            logger.debug(f"[缓存命中] 查询: {query}")
+            return cached_results[:top_k]
+
+        exact_hit = False
+        vector_hit = False
+        keyword_hit = False
+        results: list[MemoryEntry] = []
+
+        if self._is_exact_query(query) and strategy != RetrievalStrategy.SEMANTIC:
+            results = self._exact_match(query, category)
+            if results:
+                exact_hit = True
+                logger.debug(f"[精确匹配] 查询: {query} -> 找到 {len(results)} 条")
+
+        if not results:
+            if strategy == RetrievalStrategy.SEMANTIC:
+                results = self._recall_semantic(
+                    query, top_k, category, min_importance, similarity_threshold
+                )
+                vector_hit = True
+            elif strategy == RetrievalStrategy.KEYWORD:
+                results = self._recall_from_entries(query, top_k, category, min_importance)
+                keyword_hit = True
+            else:
+                results = self._recall_hybrid(
+                    query, top_k, category, min_importance, similarity_threshold, keyword_weight
+                )
+                vector_hit = self._vectorstore is not None
+
+        if min_importance > 0:
+            results = [e for e in results if e.importance >= min_importance]
+        results = results[:top_k]
+
+        response_time = (time.time() - start_time) * 1000
+        self._update_stats(
+            response_time,
+            exact_hit=exact_hit,
+            keyword_hit=keyword_hit,
+            vector_hit=vector_hit,
+        )
+
+        if results:
+            self._update_cache(cache_key, results)
+            logger.debug(
+                f"[检索完成] 查询: {query} -> 找到 {len(results)} 条, "
+                f"耗时: {response_time:.2f}ms"
             )
-        elif strategy == RetrievalStrategy.KEYWORD:
-            return self._recall_from_entries(query, top_k, category, min_importance)
-        else:  # HYBRID
-            return self._recall_hybrid(
-                query, top_k, category, min_importance, similarity_threshold, keyword_weight
-            )
+
+        return results
 
     def _recall_semantic(
         self,
