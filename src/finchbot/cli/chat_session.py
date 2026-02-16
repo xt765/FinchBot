@@ -297,13 +297,6 @@ def _run_chat_session(
     history_file.parent.mkdir(parents=True, exist_ok=True)
 
     console.print(f"\n[bold cyan]{t('cli.chat.title')}[/bold cyan]")
-    console.print(f"[dim]{t('cli.chat.session').format(session_id)}[/dim]")
-    console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
-    console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
-    web_status = t('cli.chat.web_search_enabled') if web_enabled else t('cli.chat.web_search_disabled')
-    console.print(f"[dim]{web_status}[/dim]")
-    console.print(f"[dim]{t('cli.chat.type_to_quit')}[/dim]\n")
-
     session_store = SessionMetadataStore(ws_path)
     if not session_store.session_exists(session_id):
         session_store.create_session(session_id, title=session_id)
@@ -313,8 +306,16 @@ def _run_chat_session(
     if session_title == session_id:
         session_title = None
 
+    session_display = session_id
     if session_title:
-        console.print(f"[dim]{t('cli.chat.session_title').format(session_title)}[/dim]\n")
+        session_display = f"{session_id} ({session_title})"
+    console.print(f"[dim]{t('cli.chat.session').format(session_display)}[/dim]")
+
+    console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
+    console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
+    web_status = t('cli.chat.web_search_enabled') if web_enabled else t('cli.chat.web_search_disabled')
+    console.print(f"[dim]{web_status}[/dim]")
+    console.print(f"[dim]{t('cli.chat.type_to_quit')}[/dim]\n")
 
     agent, checkpointer = create_finch_agent(
         model=chat_model,
