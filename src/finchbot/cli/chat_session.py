@@ -26,7 +26,9 @@ EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q", "q"}
 GOODBYE_MESSAGE = "\n[dim]Goodbye! 👋[/dim]"
 
 
-def _format_message(msg: Any, index: int, show_index: bool = True, max_content_len: int = 9999) -> None:
+def _format_message(
+    msg: Any, index: int, show_index: bool = True, max_content_len: int = 9999
+) -> None:
     """格式化并显示单条消息。
 
     Args:
@@ -48,25 +50,29 @@ def _format_message(msg: Any, index: int, show_index: bool = True, max_content_l
         role_label = t("cli.history.role_you")
         role_icon = "👤"
         role_color = "cyan"
-        console.print(Panel(
-            content,
-            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
-            border_style=role_color,
-            padding=(0, 1),
-            width=panel_width,
-        ))
+        console.print(
+            Panel(
+                content,
+                title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+                border_style=role_color,
+                padding=(0, 1),
+                width=panel_width,
+            )
+        )
 
     elif msg_type == "ai" or (hasattr(msg, "role") and msg.role == "assistant"):
         role_label = t("cli.history.role_bot")
-        role_icon = "🤖"
+        role_icon = "🐦"
         role_color = "green"
-        console.print(Panel(
-            content,
-            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
-            border_style=role_color,
-            padding=(0, 1),
-            width=panel_width,
-        ))
+        console.print(
+            Panel(
+                content,
+                title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+                border_style=role_color,
+                padding=(0, 1),
+                width=panel_width,
+            )
+        )
 
     elif tool_calls:
         role_label = t("cli.history.role_tool")
@@ -74,49 +80,57 @@ def _format_message(msg: Any, index: int, show_index: bool = True, max_content_l
         role_color = "yellow"
         tool_names = [tc.get("name", "unknown") for tc in tool_calls]
         tool_info = f" {', '.join(tool_names)}" if tool_names else ""
-        console.print(Panel(
-            tool_info.strip() or "tool",
-            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
-            border_style=role_color,
-            padding=(0, 1),
-            width=panel_width,
-        ))
+        console.print(
+            Panel(
+                tool_info.strip() or "tool",
+                title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+                border_style=role_color,
+                padding=(0, 1),
+                width=panel_width,
+            )
+        )
 
     elif name:
         role_label = t("cli.history.role_tool")
         role_icon = "🔧"
         role_color = "yellow"
-        console.print(Panel(
-            content,
-            title=f"[{role_color}]{prefix}{role_icon} {name}[/{role_color}]",
-            border_style=role_color,
-            padding=(0, 1),
-            width=panel_width,
-        ))
+        console.print(
+            Panel(
+                content,
+                title=f"[{role_color}]{prefix}{role_icon} {name}[/{role_color}]",
+                border_style=role_color,
+                padding=(0, 1),
+                width=panel_width,
+            )
+        )
 
     elif msg_type == "system" or (hasattr(msg, "role") and msg.role == "system"):
         role_label = t("cli.history.role_system")
         role_icon = "⚙️"
         role_color = "dim"
-        console.print(Panel(
-            content,
-            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
-            border_style=role_color,
-            padding=(0, 1),
-            width=panel_width,
-        ))
+        console.print(
+            Panel(
+                content,
+                title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+                border_style=role_color,
+                padding=(0, 1),
+                width=panel_width,
+            )
+        )
 
     else:
         role_label = "未知"
         role_icon = "❓"
         role_color = "red"
-        console.print(Panel(
-            content,
-            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
-            border_style=role_color,
-            padding=(0, 1),
-            width=panel_width,
-        ))
+        console.print(
+            Panel(
+                content,
+                title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+                border_style=role_color,
+                padding=(0, 1),
+                width=panel_width,
+            )
+        )
 
 
 def _display_messages_by_turn(messages: list[Any], show_index: bool = True) -> None:
@@ -151,9 +165,11 @@ def _display_messages_by_turn(messages: list[Any], show_index: bool = True) -> N
                 tool_calls = getattr(next_msg, "tool_calls", None) or []
                 name = getattr(next_msg, "name", None)
 
-                if (next_type == "human" or (hasattr(next_msg, "role") and next_msg.role == "user")):
+                if next_type == "human" or (hasattr(next_msg, "role") and next_msg.role == "user"):
                     break
-                if next_type == "ai" or (hasattr(next_msg, "role") and next_msg.role == "assistant"):
+                if next_type == "ai" or (
+                    hasattr(next_msg, "role") and next_msg.role == "assistant"
+                ):
                     _format_message(next_msg, j, show_index=show_index, max_content_len=80)
                     j += 1
                     break
@@ -249,9 +265,8 @@ def _check_and_ensure_session_title(
     if not session:
         return
 
-    needs_title = (
-        session.turn_count >= 2
-        and (not session.title.strip() or session.title == session_id)
+    needs_title = session.turn_count >= 2 and (
+        not session.title.strip() or session.title == session_id
     )
 
     if not needs_title:
@@ -274,7 +289,7 @@ def _check_and_ensure_session_title(
             session_title=session_title,
         )
 
-        config = {"configurable": {"thread_id": session_id}}
+        config: RunnableConfig = {"configurable": {"thread_id": session_id}}
         all_messages = []
         prompt = """请立即使用 session_title 工具为本次会话设置一个合适的标题。
 要求：
@@ -614,6 +629,9 @@ def _run_chat_session(
 
             if command.lower() in EXIT_COMMANDS:
                 _update_session_turn_count(session_store, session_id, agent)
+                _check_and_ensure_session_title(
+                    session_store, session_id, agent, chat_model, ws_path, tools
+                )
                 console.print(GOODBYE_MESSAGE)
                 break
 
@@ -625,7 +643,9 @@ def _run_chat_session(
 
                     console.print(f"\n[dim]{t('cli.history.title')}[/dim]")
                     _display_messages_by_turn(messages, show_index=True)
-                    console.print(f"[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]")
+                    console.print(
+                        f"[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]"
+                    )
                     console.print(f"[dim]{t('cli.history.rollback_hint')}[/dim]\n")
                 except Exception as e:
                     console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
@@ -754,10 +774,16 @@ def _run_chat_session(
 
         except KeyboardInterrupt:
             _update_session_turn_count(session_store, session_id, agent)
+            _check_and_ensure_session_title(
+                session_store, session_id, agent, chat_model, ws_path, tools
+            )
             console.print(GOODBYE_MESSAGE)
             break
         except EOFError:
             _update_session_turn_count(session_store, session_id, agent)
+            _check_and_ensure_session_title(
+                session_store, session_id, agent, chat_model, ws_path, tools
+            )
             console.print(GOODBYE_MESSAGE)
             break
         except Exception as e:
