@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "agent": "./src/finchbot/agent/core.py:agent"
+  },
+  "env": ".env"
+}

@@ -1,0 +1,100 @@
+[project]
+name = "finchbot"
+version = "0.1.0"
+description = "FinchBot (雀翎) - 轻量级 AI Agent 框架 | Built with LangChain Ecosystem"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [{ name = "FinchBot contributors" }]
+keywords = ["ai", "agent", "langchain", "langgraph", "chatbot"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "langchain>=1.2.10",
+    "langchain-community>=0.4.1",
+    "langchain-openai>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+    "langgraph>=1.0.8",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+    "langgraph-cli[inmem]>=0.1.0",
+    "pydantic-settings>=2.12.0",
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "typer>=0.23.0",
+    "rich>=14.3.0",
+    "python-dotenv>=1.1.0",
+    "questionary>=2.1.0",
+    "readchar>=4.0.0",
+    "ddgs>=8.0.0",
+    "chromadb>=0.5.0",
+    "fastembed>=0.4.0",
+    "jieba>=0.42.1",
+    "langchain-chroma>=1.1.0",
+    "rank-bm25>=0.2.2",
+    "langchain-classic>=1.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.0",
+    "basedpyright>=1.38.0",
+]
+google = ["langchain-google-genai>=2.0.0"]
+
+[project.scripts]
+finchbot = "finchbot.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/finchbot"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.basedpyright]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+reportMissingImports = true
+reportMissingTypeStubs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--cov=src --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = ["tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

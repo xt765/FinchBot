@@ -1,0 +1,432 @@
+# en-US.toml - English (US)
+# FinchBot Language Pack
+
+[cli]
+help = "FinchBot - Lightweight AI Agent Framework"
+processing = "🐦 FinchBot: Processing..."
+response_title = "🐦 FinchBot Response"
+error_no_api_key = "Error: LLM API key not configured"
+error_config_hint = "Please set environment variables or configure in ~/.finchbot/config.json."
+
+[cli.config]
+init_title = "🐦 FinchBot Configuration"
+updating_title = "🐦 FinchBot Configuration (Updating)"
+choose_language = "Choose your language:"
+current = "Current:"
+keep_current = "Keep current"
+skip = "Skip"
+yes = "Yes"
+no = "No"
+other = "Other..."
+cancel = "Cancel"
+
+select_provider = "Select LLM provider:"
+configured = "Configured:"
+add_new_provider = "Add new provider"
+remove_provider = "Remove provider"
+keep_all = "Keep all"
+
+api_key_prompt = "{} API Key (or press Enter to skip):"
+api_key_current = "Current: {} (hidden)"
+enter_new_key = "Enter new key"
+
+base_url_prompt = "Base URL (press Enter for default or skip):"
+base_url_default = "Default: {}"
+base_url_current = "Current: {}"
+reset_to_default = "Reset to default"
+
+select_model = "Select default model:"
+enter_model_name = "Enter model name:"
+model_for_provider = "Select default model for {}:"
+
+add_another_provider = "Add another provider?"
+no_continue = "No, continue"
+
+configure_web_search = "Configure web search (Tavily)?"
+tavily_key_prompt = "Tavily API Key (or press Enter to skip):"
+tavily_hint = "Get free API key at: https://tavily.com"
+web_search_enabled = "Enabled"
+web_search_disabled = "Disabled"
+web_search_not_configured = "Not configured"
+reconfigure = "Reconfigure"
+disable = "Disable"
+
+config_saved = "Configuration saved"
+config_updated = "Configuration updated"
+config_file = "Config file:"
+language_set = "Language:"
+default_model = "Default Model:"
+configured_providers = "Configured Providers:"
+web_search = "Web Search:"
+
+select_provider_to_remove = "Select provider to remove:"
+confirm_remove = "Confirm remove {}?"
+warning_remove = "Warning: This will remove {} configuration."
+
+[cli.commands]
+version_help = "Show version information"
+chat_help = "Chat with FinchBot"
+config_help = "Manage FinchBot configuration"
+show_help = "Show current configuration"
+init_help = "Initialize configuration interactively"
+set_help = "Set a configuration value"
+get_help = "Get a configuration value"
+add_provider_help = "Add a new LLM provider"
+remove_provider_help = "Remove an LLM provider"
+
+[cli.status]
+enabled = "Enabled"
+disabled = "Disabled"
+not_configured = "Not configured"
+
+[agent]
+title = "FinchBot"
+system_prompt = """You are a lightweight AI assistant built with LangChain Ecosystem.
+
+## Memory Capabilities
+You have memory functionality to save and retrieve important information:
+- Use the `remember` tool when users share important info (name, preferences, contacts, etc.)
+- Use the `recall` tool to retrieve previously saved information
+- Memories persist across sessions
+
+## File System Tool Guidelines
+- `list_dir`: Explore directory structure to understand what files exist
+- `read_file`: Read file content to understand file details
+- `write_file`: Create new files or completely overwrite existing files (use with caution, will overwrite)
+- `edit_file`: Modify specific content in existing files (old_text must match exactly)
+- Best practice: First list_dir to understand structure, then read_file to view content, finally use write_file or edit_file based on needs
+
+## Web Search Tool Guidelines
+- `web_search`: Get latest information, verify facts, find external resources
+- `web_extract`: Extract detailed content from specific URLs
+- Best practice: First use web_search to find relevant URLs, then use web_extract to get detailed content
+
+## Execution Tool Guidelines
+- `exec`: Execute shell commands for complex operations
+- Prefer file system tools for file operations, only use exec for batch operations or complex processing
+- Note: exec has 60-second timeout and output length limits
+
+## Memory Tool Guidelines
+- `remember`: Save important information, memories persist across sessions
+- `recall`: Retrieve memories, supports three strategies:
+  - semantic: Good for conceptually related queries (e.g., "food I like")
+  - keyword: Good for exact matches (e.g., "what is my email")
+  - hybrid: Good for most scenarios (default)
+- `forget`: Delete memories, operation is irreversible
+
+### Correct Process for Updating Memories
+When users ask to "update memory", "modify memory", or "correct memory", you MUST perform these two steps:
+1. **Add correct memory**: Use `remember` tool to save the updated correct information
+2. **Delete incorrect memory**: Use `forget` tool to remove old, incorrect information
+
+**Example**:
+- User says "My previous email was wrong, it should be new@example.com"
+- Correct action: First `remember` to save "User's email is new@example.com", then `forget` to remove memories containing the old email
+
+## Tool Usage Principles
+- Proactively use tools to complete tasks, don't just say "I'll remember"
+- Call the remember tool immediately when users say keywords like "remember", "don't forget"
+- Check for relevant memories before answering questions
+- If a tool call fails, analyze the error message and try alternative methods"""
+current_time = "Current Time"
+runtime = "Runtime"
+workspace = "Workspace"
+memory = "Memory"
+
+[tools.read_file]
+name = "read_file"
+description = "Read text file content from the specified path. Only supports UTF-8 encoding, binary files may display garbled text."
+hint = "Recommended to use list_dir first to explore directory structure, then use read_file to read specific files."
+param_path = "File path, must be a complete path"
+error_not_found = "Error: File not found"
+error_not_file = "Error: Not a file"
+
+[tools.write_file]
+name = "write_file"
+description = "Write content to a file, creating parent directories if needed. Warning: If file exists, it will be overwritten!"
+hint = "Use for creating new files or completely rewriting existing files. To modify part of an existing file, use edit_file instead."
+param_path = "File path, parent directories will be created automatically if they don't exist"
+param_content = "Content to write to the file"
+
+[tools.edit_file]
+name = "edit_file"
+description = "Edit file by replacing text. old_text must match exactly (including spaces and newlines). If old_text appears multiple times, a warning will be returned asking for more context."
+hint = "Recommended to use read_file first to view file content, ensure old_text matches exactly before calling. Suitable for modifying specific parts of a file."
+param_path = "Path to the file to edit"
+param_old_text = "Text to be replaced, must match exactly (including spaces and newlines)"
+param_new_text = "New text to replace with"
+
+[tools.list_dir]
+name = "list_dir"
+description = "List directory contents, sorted alphabetically by name. 📁 indicates directory, 📄 indicates file."
+hint = "Use this tool to explore directory structure, then use read_file to read specific file contents."
+param_path = "Directory path"
+
+[tools.exec]
+name = "exec"
+description = "Execute shell commands and return output. Default timeout is 60 seconds, output over 10000 characters will be truncated. Includes safety checks, dangerous commands are prohibited."
+hint = "Prefer filesystem tools (read_file/write_file/edit_file) for file operations. Use exec only for batch operations, complex text processing, or system commands. Suitable for: batch file operations, complex text processing, system info queries, scenarios requiring pipes or redirects."
+param_command = "Shell command to execute"
+param_working_dir = "Optional working directory, defaults to current directory"
+
+[tools.web_search]
+name = "web_search"
+description = "Search the internet for latest information. Returns 5 results by default, supports Tavily, Brave Search, and DuckDuckGo with automatic fallback."
+hint = "Use when you need latest information, verify facts, or get external resources. Search queries should be concise and clear. For detailed content, first use web_search to get URLs, then use web_extract to get full content."
+param_query = "Search query, should be concise and clear"
+param_max_results = "Maximum number of results to return, default is 5"
+
+[tools.web_extract]
+name = "web_extract"
+description = "Extract content from web page URLs. Supports batch extraction (recommend no more than 5 URLs at a time). Content over 5000 characters will be truncated."
+hint = "Best practice: First use web_search to get relevant URLs, then use web_extract to get detailed content. Suitable for scenarios requiring reading full web page content."
+param_urls = "List of URLs to extract content from, supports batch (recommend no more than 5 at a time)"
+param_extract_depth = "Extraction depth: basic (fast extraction) or advanced (deep extraction, default)"
+
+[tools.remember]
+name = "remember"
+description = "Save important information to memory for later recall. Memories persist across sessions."
+hint = "Must call this tool when users share important info (name, preferences, contacts, schedule, etc.). Don't just say 'I'll remember', call the tool immediately."
+param_content = "Information to remember, should be concise and clear"
+param_category = "Category label: personal (personal info), preference (preferences), work (work-related), contact (contact info), goal (goals), schedule (schedule), general (general). Choose the most appropriate category based on content type."
+param_importance = "Importance score 0.0-1.0, default 0.5. Key info (name, important preferences) use 0.8-1.0, general info use 0.3-0.7, temporary info use 0.1-0.3"
+success = "Information saved to memory"
+
+[tools.recall]
+name = "recall"
+description = "Search and retrieve information from memory. Supports multiple retrieval strategies: semantic (vector search), keyword (text matching), hybrid (combined, default)."
+hint = "Must call this tool first when users ask about their own information. Choose strategy based on query type: semantic for conceptually related queries (e.g., 'food I like'), keyword for exact matches (e.g., 'what is my email'), hybrid for general queries (default)."
+param_query = "Search query, can be keywords or natural language description"
+param_category = "Filter by category (optional), such as personal, work, preference, etc. If not specified, searches all categories."
+param_top_k = "Maximum number of results to return, default 5. Increase to get more relevant memories, decrease to get most relevant results."
+param_strategy = "Search strategy: semantic (vector search, good for conceptually related queries), keyword (text matching, good for exact matches), hybrid (combined, default, good for most cases)"
+param_similarity_threshold = "Similarity threshold 0.0-1.0, default 0.5. Used to filter semantically unrelated results. Increase (e.g., 0.7) when getting irrelevant results, decrease (e.g., 0.3) when getting too few results"
+not_found = "No matching memories found"
+
+[tools.forget]
+name = "forget"
+description = "Remove specified information from memory. Deletion is permanent and cannot be undone. Supports partial matching, e.g., entering 'email' will delete all memories containing 'email'."
+hint = "Call this tool when users explicitly request to forget, delete, or clear certain information. Cannot be undone after deletion, use with caution."
+param_pattern = "Content pattern to remove, supports partial matching. E.g., entering 'email' will delete all memories containing 'email'."
+success = "Memory entries removed"
+
+[search.engines]
+tavily = "Tavily (Best quality, AI-optimized)"
+brave = "Brave Search (Free tier, privacy-friendly)"
+duckduckgo = "DuckDuckGo (No API key required, always available)"
+
+[search.status]
+available = "Available"
+unavailable = "Unavailable"
+no_api_key = "No API key configured"
+using_fallback = "Using fallback engine"
+
+[errors]
+generic = "An error occurred"
+timeout = "Request timed out"
+invalid_input = "Invalid input"
+
+[providers]
+openai = "OpenAI (GPT-4, GPT-4o, O1, O3)"
+anthropic = "Anthropic (Claude 3.5/3.7 Sonnet, Opus)"
+deepseek = "DeepSeek (DeepSeek-V3, DeepSeek-R1)"
+dashscope = "DashScope / Alibaba Qwen"
+groq = "Groq (Llama, Mixtral - Fast inference)"
+moonshot = "Moonshot / Kimi"
+openrouter = "OpenRouter (Multi-provider gateway)"
+gemini = "Google Gemini (Gemini 1.5/2.0)"
+custom = "Custom Provider"
+
+[models.openai]
+gpt-5 = "GPT-5 (Recommended)"
+gpt-5_2 = "GPT-5.2 (Stronger reasoning)"
+o3 = "O3 (Advanced reasoning)"
+o3-mini = "O3 Mini (Lightweight reasoning)"
+o4-mini = "O4 Mini (Latest lightweight)"
+
+[models.anthropic]
+claude-sonnet-4_5 = "Claude Sonnet 4.5 (Recommended)"
+claude-opus-4_6 = "Claude Opus 4.6 (Most capable)"
+claude-3-5-sonnet-latest = "Claude 3.5 Sonnet (Legacy)"
+claude-3-opus-latest = "Claude 3 Opus (Legacy)"
+
+[models.deepseek]
+deepseek-chat = "DeepSeek Chat"
+deepseek-reasoner = "DeepSeek Reasoner"
+
+[models.dashscope]
+qwen-turbo = "Qwen Turbo"
+qwen-plus = "Qwen Plus"
+qwen-max = "Qwen Max"
+qwen-coder-plus = "Qwen Coder Plus"
+qwq-32b = "QWQ 32B (Reasoning model)"
+
+[models.groq]
+llama-4-scout = "Llama 4 Scout (Recommended)"
+llama-4-maverick = "Llama 4 Maverick (Stronger)"
+llama-3_3-70b = "Llama 3.3 70B (Legacy)"
+llama-3_1-8b = "Llama 3.1 8B (Lightweight)"
+mixtral-8x7b = "Mixtral 8x7B"
+gemma2-9b-it = "Gemma 2 9B"
+
+[models.moonshot]
+kimi-k2_5 = "Kimi K2.5 (Recommended)"
+kimi-k1_5 = "Kimi K1.5 (Long context)"
+moonshot-v1-8k = "Moonshot V1 8K (Legacy)"
+moonshot-v1-32k = "Moonshot V1 32K (Legacy)"
+moonshot-v1-128k = "Moonshot V1 128K (Legacy)"
+
+[models.gemini]
+gemini-2_5-flash = "Gemini 2.5 Flash (Recommended)"
+gemini-2_5-flash-lite = "Gemini 2.5 Flash Lite (Lightweight)"
+gemini-2_0-flash = "Gemini 2.0 Flash (Legacy)"
+gemini-1_5-pro = "Gemini 1.5 Pro (Legacy)"
+
+# Memory Classification Configuration
+# Used for hybrid classification: keyword matching + semantic embedding fallback
+
+[memory.categories.personal]
+keywords = [
+    "I am",
+    "my",
+    "name",
+    "age",
+    "birthday",
+    "address",
+    "I'm",
+    "years old",
+    "born",
+    "live",
+    "hometown",
+]
+description = "Personal information, including name, age, birthday, address, and identity-related content"
+
+[memory.categories.preference]
+keywords = [
+    "like",
+    "hate",
+    "prefer",
+    "habit",
+    "favorite",
+    "hobby",
+    "interest",
+    "dislike",
+    "love",
+    "enjoy",
+]
+description = "User preferences, including likes, dislikes, habits, and hobbies"
+
+[memory.categories.work]
+keywords = [
+    "work",
+    "project",
+    "task",
+    "meeting",
+    "deadline",
+    "company",
+    "colleague",
+    "boss",
+    "client",
+    "report",
+    "weekly",
+]
+description = "Work-related, including projects, tasks, meetings, and deadlines"
+
+[memory.categories.contact]
+keywords = [
+    "email",
+    "phone",
+    "wechat",
+    "contact",
+    "mobile",
+    "mail",
+    "address",
+    "number",
+]
+description = "Contact information, including phone, email, and messaging apps"
+
+[memory.categories.goal]
+keywords = [
+    "goal",
+    "plan",
+    "want",
+    "hope",
+    "dream",
+    "intend",
+    "prepare",
+    "wish",
+    "aspire",
+    "pursue",
+]
+description = "Goals and plans, including objectives, wishes, and aspirations"
+
+[memory.categories.schedule]
+keywords = [
+    "time",
+    "date",
+    "schedule",
+    "remind",
+    "arrange",
+    "tomorrow",
+    "next week",
+    "weekend",
+    "today",
+    "morning",
+    "afternoon",
+    "evening",
+]
+description = "Schedule and time, including dates, reminders, and appointments"
+
+# Session management translations
+[sessions]
+title = "Sessions"
+no_sessions = "No sessions found"
+session_count = "{count} sessions"
+new_session = "Create New Session"
+enter_to_chat = "Press Enter to chat"
+input_title_prompt = "Enter title, press Enter to skip, Ctrl+C to cancel"
+
+[sessions.actions]
+select = "Select"
+delete = "Delete"
+rename = "Rename"
+enter_chat = "Enter Chat"
+confirm_delete = "Are you sure you want to delete session '{session_id}'? This action cannot be undone."
+delete_success = "✓ Deleted session: {session_id}"
+delete_cancelled = "Delete cancelled"
+rename_success = "✓ Renamed to: {title}"
+back = "Back"
+cancel = "Cancel"
+cancelled = "Cancelled"
+
+[sessions.columns]
+id = "ID"
+title = "Title"
+messages = "Messages"
+created = "Created"
+last_active = "Last Active"
+
+[sessions.empty_title]
+title = "[Empty]"
+
+[sessions.time]
+just_now = "just now"
+minutes_ago = "{n}m ago"
+hours_ago = "{n}h ago"
+yesterday = "yesterday"
+days_ago = "{n}d ago"
+weeks_ago = "{n}w ago"
+
+[sessions.help]
+navigate = "Navigate"
+enter_select = "Select"
+d_delete = "Delete"
+r_rename = "Rename"
+n_new = "New"
+q_quit = "Quit"
+
+[sessions.selected]
+title = "Selected"
+
+[sessions.using_last_active]
+title = "Using last active session"

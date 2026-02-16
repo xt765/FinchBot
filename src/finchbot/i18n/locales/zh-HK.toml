@@ -1,0 +1,392 @@
+# zh-HK.toml - 繁體中文（香港）
+# FinchBot 語言包
+
+[cli]
+help = "FinchBot (雀翎) - 輕量級 AI Agent 框架"
+processing = "🐦 FinchBot: 處理中..."
+response_title = "🐦 FinchBot 回覆"
+error_no_api_key = "錯誤: 未設定 LLM API 金鑰"
+error_config_hint = "請設定環境變數或在 ~/.finchbot/config.json 中設定。"
+
+[cli.config]
+init_title = "🐦 FinchBot 設定精靈"
+updating_title = "🐦 FinchBot 設定精靈 (更新設定)"
+choose_language = "請選擇語言："
+current = "目前："
+keep_current = "維持現狀"
+skip = "跳過"
+yes = "是"
+no = "否"
+other = "其他..."
+cancel = "取消"
+
+select_provider = "選擇 LLM 提供者："
+configured = "已設定："
+add_new_provider = "新增提供者"
+remove_provider = "刪除提供者"
+keep_all = "維持現狀"
+
+api_key_prompt = "{} API 金鑰（或按 Enter 跳過）："
+api_key_current = "目前：{}（已隱藏）"
+enter_new_key = "輸入新金鑰"
+
+base_url_prompt = "Base URL（按 Enter 使用預設或跳過）："
+base_url_default = "預設：{}"
+base_url_current = "目前：{}"
+reset_to_default = "重設為預設"
+
+select_model = "選擇預設模型："
+enter_model_name = "輸入模型名稱："
+model_for_provider = "為 {} 選擇預設模型："
+
+add_another_provider = "新增更多提供者？"
+no_continue = "不，繼續"
+
+configure_web_search = "設定網頁搜尋？"
+tavily_key_prompt = "Tavily API 金鑰（或按 Enter 跳過）："
+tavily_hint = "免費取得 API Key: https://tavily.com"
+web_search_enabled = "已啟用"
+web_search_disabled = "已停用"
+web_search_not_configured = "未設定"
+reconfigure = "重新設定"
+disable = "停用"
+
+config_saved = "設定已儲存"
+config_updated = "設定已更新"
+config_file = "設定檔："
+language_set = "語言："
+default_model = "預設模型："
+configured_providers = "已設定提供者："
+web_search = "網頁搜尋："
+
+select_provider_to_remove = "選擇要刪除的提供者："
+confirm_remove = "確認刪除 {}？"
+warning_remove = "警告：這將刪除 {} 的設定。"
+
+[cli.commands]
+version_help = "顯示版本資訊"
+chat_help = "與 FinchBot 對話"
+config_help = "管理 FinchBot 設定"
+show_help = "顯示目前設定"
+init_help = "互動式初始化設定"
+set_help = "設定設定項"
+get_help = "取得設定項"
+add_provider_help = "新增 LLM 提供者"
+remove_provider_help = "刪除 LLM 提供者"
+
+[cli.status]
+enabled = "已啟用"
+disabled = "已停用"
+not_configured = "未設定"
+
+[agent]
+title = "FinchBot (雀翎)"
+system_prompt = """你是一個輕量級 AI 助手，基於 LangChain Ecosystem 构建。
+
+## 記憶能力
+你有記憶功能，可以保存和檢索重要資訊：
+- 當用戶告訴你重要資訊（如名字、偏好、聯絡方式等）時，使用 `remember` 工具保存
+- 當需要回憶之前的資訊時，使用 `recall` 工具檢索
+- 記憶是持久化的，跨會話可用
+
+## 檔案系統工具使用指南
+- `list_dir`: 探索目錄結構，了解有哪些檔案
+- `read_file`: 讀取檔案內容，了解檔案詳情
+- `write_file`: 建立新檔案或完全重寫已有檔案（謹慎使用，會覆蓋）
+- `edit_file`: 修改現有檔案的特定內容（old_text 必須精確匹配）
+- 最佳實踐：先 list_dir 了解結構，再 read_file 檢視內容，最後根據需求使用 write_file 或 edit_file
+
+## 網頁搜尋工具使用指南
+- `web_search`: 取得最新資訊、驗證事實、查找外部資源
+- `web_extract`: 從特定 URL 提取詳細內容
+- 最佳實踐：先用 web_search 找到相關 URL，再用 web_extract 取得詳細內容
+
+## 執行工具使用指南
+- `exec`: 執行 shell 命令，用於複雜操作
+- 優先使用檔案系統工具處理檔案，僅在需要批次操作或複雜處理時使用 exec
+- 注意：exec 有 60 秒逾時和輸出長度限制
+
+## 記憶工具使用指南
+- `remember`: 保存重要資訊，記憶持久化跨會話可用
+- `recall`: 檢索記憶，支援三種策略：
+  - semantic（語義檢索）：適合概念相關查詢（如"我喜歡的食物"）
+  - keyword（關鍵詞匹配）：適合精確查詢（如"我的信箱是多少"）
+  - hybrid（混合檢索）：適合大多數場景（預設）
+- `forget`: 刪除記憶，操作不可逆
+
+### 更新記憶的正確流程
+當用戶要求"更新記憶"、"修改記憶"或"更正記憶"時，必須執行以下兩步：
+1. **添加正確記憶**：使用 `remember` 工具保存更新後的正確資訊
+2. **刪除錯誤記憶**：使用 `forget` 工具刪除舊的、錯誤的資訊
+
+**示例**：
+- 用戶說"我之前的信箱錯了，應該是 new@example.com"
+- 正確操作：先 `remember` 保存"用戶的信箱是 new@example.com"，再 `forget` 刪除包含舊信箱的記憶
+
+## 工具使用原則
+- 主動使用工具完成任務，不要只是說"我會記住"
+- 當用戶說"記住"、"別忘了"等關鍵詞時，立即呼叫 remember 工具
+- 在回答問題前，先檢查是否有相關的記憶
+- 如果工具呼叫失敗，分析錯誤訊息並嘗試其他方法"""
+current_time = "目前時間"
+runtime = "執行環境"
+workspace = "工作目錄"
+memory = "記憶"
+
+[tools.read_file]
+name = "read_file"
+description = "讀取指定路徑的文字檔案內容。僅支援 UTF-8 編碼，二進位檔案可能顯示亂碼。"
+hint = "建議先使用 list_dir 檢視目錄結構，再使用 read_file 讀取具體檔案。"
+param_path = "檔案路徑，必須是完整路徑"
+error_not_found = "錯誤: 檔案不存在"
+error_not_file = "錯誤: 不是檔案"
+
+[tools.write_file]
+name = "write_file"
+description = "將內容寫入檔案，自動建立父目錄。警告：如果檔案已存在，將直接覆蓋！"
+hint = "用於建立新檔案或完全重寫已有檔案。如需修改現有檔案的部分內容，請使用 edit_file。"
+param_path = "檔案路徑，將自動建立不存在的父目錄"
+param_content = "要寫入的檔案內容"
+
+[tools.edit_file]
+name = "edit_file"
+description = "透過替換文字編輯檔案。old_text 必須精確匹配（包括空格和換行）。如果 old_text 出現多次，會返回警告要求提供更多上下文。"
+hint = "建議先用 read_file 檢視檔案內容，確保 old_text 精確匹配後再呼叫。適用於修改檔案的特定部分。"
+param_path = "要編輯的檔案路徑"
+param_old_text = "要被替換的文字，必須精確匹配（包括空格和換行）"
+param_new_text = "用於替換的新文字"
+
+[tools.list_dir]
+name = "list_dir"
+description = "列出目錄內容，按名稱字母順序排序。📁 表示目錄，📄 表示檔案。"
+hint = "使用此工具探索目錄結構後，可使用 read_file 讀取具體檔案內容。"
+param_path = "目錄路徑"
+
+[tools.exec]
+name = "exec"
+description = "執行 shell 命令並返回輸出。預設逾時 60 秒，輸出超過 10000 字元會被截斷。包含安全檢查，禁止危險命令。"
+hint = "優先使用檔案系統工具（read_file/write_file/edit_file）處理檔案，僅在需要批次操作、複雜文字處理或系統命令時使用 exec。適用於：批次檔案操作、複雜文字處理、系統資訊查詢、需要管道或重定向的場景。"
+param_command = "要執行的 shell 命令"
+param_working_dir = "可選的工作目錄，預設為目前目錄"
+
+[tools.web_search]
+name = "web_search"
+description = "搜尋網際網路取得最新資訊。預設返回 5 條結果，支援 Tavily、Brave Search 和 DuckDuckGo 自動降級。"
+hint = "當需要最新資訊、驗證事實、或取得外部資源時使用。搜尋查詢應簡潔明確。如需詳細內容，先用 web_search 取得 URL，再用 web_extract 提取全文。"
+param_query = "搜尋查詢，應簡潔明確"
+param_max_results = "最大返回結果數，預設 5"
+
+[tools.web_extract]
+name = "web_extract"
+description = "從網頁 URL 提取內容。支援批次提取（建議一次不超過 5 個 URL）。返回內容超過 5000 字元會被截斷。"
+hint = "最佳實踐：先用 web_search 取得相關 URL，再用 web_extract 取得詳細內容。適用於需要閱讀網頁全文內容的場景。"
+param_urls = "要提取內容的 URL 列表，支援批次（建議一次不超過 5 個）"
+param_extract_depth = "提取深度: basic(快速提取) 或 advanced(深入提取，預設)"
+
+[tools.remember]
+name = "remember"
+description = "儲存重要資訊到記憶庫，以便後續檢索。記憶是持久化的，跨會話可用。"
+hint = "當用戶告訴你重要資訊（如名字、偏好、聯絡方式、日程等）時，必須呼叫此工具。不要只是說'我會記住'，要立即呼叫工具儲存。"
+param_content = "要記住的資訊內容，建議簡潔明瞭"
+param_category = "分類標籤: personal(個人資訊), preference(偏好), work(工作), contact(聯絡方式), goal(目標), schedule(日程), general(通用)。根據內容類型選擇最合適的分類。"
+param_importance = "重要性評分 0.0-1.0，預設 0.5。關鍵資訊（如姓名、重要偏好）用 0.8-1.0，一般資訊用 0.3-0.7，臨時資訊用 0.1-0.3"
+success = "資訊已儲存到記憶庫"
+
+[tools.recall]
+name = "recall"
+description = "從記憶庫中搜尋和檢索資訊。支援多種檢索策略：semantic(語義檢索)、keyword(關鍵詞匹配)、hybrid(混合檢索，預設)。"
+hint = "當用戶詢問關於他自己的資訊時，必須先呼叫此工具檢索記憶。根據查詢類型選擇合適的 strategy：semantic 用於語義相關的查詢（如'我喜歡的食物'），keyword 用於精確匹配（如'我的郵箱是多少'），hybrid 用於一般查詢（預設）。"
+param_query = "搜尋查詢內容，可以是關鍵詞或自然語言描述"
+param_category = "按分類過濾（可選），如 personal、work、preference 等。不指定則搜尋所有分類。"
+param_top_k = "最大返回數量，預設 5。增加可取得更多相關記憶，減少可取得最相關的結果。"
+param_strategy = "檢索策略: semantic(語義檢索，適合概念相關查詢), keyword(關鍵詞匹配，適合精確查詢), hybrid(混合檢索，預設，適合大多數場景)"
+param_similarity_threshold = "相似度閾值 0.0-1.0，預設 0.5。用於過濾語義不相關的結果，當返回不相關結果時可提高閾值（如 0.7），當返回結果過少時可降低閾值（如 0.3）"
+not_found = "未找到匹配的記憶"
+
+[tools.forget]
+name = "forget"
+description = "從記憶庫中刪除指定的資訊。刪除是永久性的，無法恢復。支援部分匹配，例如輸入'郵箱'會刪除所有包含'郵箱'的記憶。"
+hint = "當用戶明確要求忘記、刪除或清除某些資訊時呼叫此工具。刪除後無法恢復，請謹慎使用。"
+param_pattern = "要刪除的內容匹配模式，支援部分匹配。例如輸入'郵箱'會刪除所有包含'郵箱'的記憶。"
+success = "記憶項目已刪除"
+
+[search.engines]
+tavily = "Tavily (品質最佳，專為 AI 優化)"
+brave = "Brave Search (免費額度大，隱私友善)"
+duckduckgo = "DuckDuckGo (無需 API 金鑰，始終可用)"
+
+[search.status]
+available = "可用"
+unavailable = "不可用"
+no_api_key = "未設定 API 金鑰"
+using_fallback = "使用備用引擎"
+
+[errors]
+generic = "發生錯誤"
+timeout = "請求逾時"
+invalid_input = "輸入無效"
+
+[providers]
+openai = "OpenAI (GPT-4, GPT-4o, O1, O3)"
+anthropic = "Anthropic (Claude 3.5/3.7 Sonnet, Opus)"
+deepseek = "DeepSeek (DeepSeek-V3, DeepSeek-R1)"
+dashscope = "DashScope / 阿里雲通義千問"
+groq = "Groq (Llama, Mixtral - 快速推論)"
+moonshot = "Moonshot / Kimi 月之暗面"
+openrouter = "OpenRouter (多提供者閘道)"
+gemini = "Google Gemini (Gemini 1.5/2.0)"
+custom = "自訂提供者"
+
+[models.openai]
+gpt-5 = "GPT-5 (推薦)"
+gpt-5_2 = "GPT-5.2 (更強推理)"
+o3 = "O3 (進階推論)"
+o3-mini = "O3 Mini (輕量推理)"
+o4-mini = "O4 Mini (最新輕量)"
+
+[models.anthropic]
+claude-sonnet-4_5 = "Claude Sonnet 4.5 (推薦)"
+claude-opus-4_6 = "Claude Opus 4.6 (最強)"
+claude-3-5-sonnet-latest = "Claude 3.5 Sonnet (舊版)"
+claude-3-opus-latest = "Claude 3 Opus (舊版)"
+
+[models.deepseek]
+deepseek-chat = "DeepSeek Chat"
+deepseek-reasoner = "DeepSeek Reasoner"
+
+[models.dashscope]
+qwen-turbo = "通義千問 Turbo"
+qwen-plus = "通義千問 Plus"
+qwen-max = "通義千問 Max"
+qwen-coder-plus = "通義千問 Coder Plus"
+qwq-32b = "QWQ 32B (推理模型)"
+
+[models.groq]
+llama-4-scout = "Llama 4 Scout (推薦)"
+llama-4-maverick = "Llama 4 Maverick (更強)"
+llama-3_3-70b = "Llama 3.3 70B (舊版)"
+llama-3_1-8b = "Llama 3.1 8B (輕量)"
+mixtral-8x7b = "Mixtral 8x7B"
+gemma2-9b-it = "Gemma 2 9B"
+
+[models.moonshot]
+kimi-k2_5 = "Kimi K2.5 (推薦)"
+kimi-k1_5 = "Kimi K1.5 (長文本)"
+moonshot-v1-8k = "Moonshot V1 8K (舊版)"
+moonshot-v1-32k = "Moonshot V1 32K (舊版)"
+moonshot-v1-128k = "Moonshot V1 128K (舊版)"
+
+[models.gemini]
+gemini-2_5-flash = "Gemini 2.5 Flash (推薦)"
+gemini-2_5-flash-lite = "Gemini 2.5 Flash Lite (輕量)"
+gemini-2_0-flash = "Gemini 2.0 Flash (舊版)"
+gemini-1_5-pro = "Gemini 1.5 Pro (舊版)"
+
+# 記憶分類設定
+# 用於混合分類方案：關鍵字快速匹配 + 向量語義確認
+
+[memory.categories.personal]
+keywords = [
+    "我是",
+    "我的",
+    "名字",
+    "年齡",
+    "生日",
+    "住址",
+    "我叫",
+    "姓名",
+    "歲",
+    "出生",
+    "住",
+    "地址",
+    "老家",
+]
+description = "個人資訊，包括姓名、年齡、生日、住址等身分相關內容"
+
+[memory.categories.preference]
+keywords = ["喜歡", "討厭", "偏好", "習慣", "最愛", "愛好", "興趣", "不喜歡", "愛"]
+description = "使用者偏好，包括喜歡、討厭、習慣、愛好等"
+
+[memory.categories.work]
+keywords = ["工作", "專案", "任務", "會議", "截止", "公司", "同事", "老闆", "客戶", "報告", "週報"]
+description = "工作相關，包括專案、任務、會議、截止日期等"
+
+[memory.categories.contact]
+keywords = ["信箱", "電話", "微信", "聯絡方式", "手機", "郵件", "QQ", "地址", "號碼"]
+description = "聯絡方式，包括電話、信箱、微信等"
+
+[memory.categories.goal]
+keywords = ["目標", "計劃", "想要", "希望", "夢想", "打算", "準備", "願望", "理想", "追求"]
+description = "目標和計劃，包括想做的事、願望、理想等"
+
+[memory.categories.schedule]
+keywords = [
+    "時間",
+    "日期",
+    "日程",
+    "提醒",
+    "安排",
+    "明天",
+    "後天",
+    "下週",
+    "週末",
+    "今天",
+    "上午",
+    "下午",
+    "晚上",
+]
+description = "日程安排，包括時間、日期、提醒等"
+
+# 會話管理相關翻譯
+[sessions]
+title = "會話列表"
+no_sessions = "暫無會話"
+session_count = "共 {count} 個會話"
+new_session = "建立新會話"
+enter_to_chat = "按 Enter 進入對話"
+input_title_prompt = "輸入標題，直接回車跳過，Ctrl+C 取消"
+
+[sessions.actions]
+select = "選擇"
+delete = "刪除"
+rename = "重新命名"
+enter_chat = "進入對話"
+confirm_delete = "確定要刪除會話 '{session_id}' 嗎？此操作無法恢復。"
+delete_success = "✓ 已刪除會話: {session_id}"
+delete_cancelled = "已取消刪除"
+rename_success = "✓ 已重新命名為: {title}"
+back = "返回"
+cancel = "取消"
+cancelled = "已取消"
+
+[sessions.columns]
+id = "ID"
+title = "標題"
+messages = "訊息數"
+created = "建立時間"
+last_active = "最後活躍"
+
+[sessions.empty_title]
+title = "[空]"
+
+[sessions.time]
+just_now = "剛剛"
+minutes_ago = "{n}分鐘前"
+hours_ago = "{n}小時前"
+yesterday = "昨天"
+days_ago = "{n}天前"
+weeks_ago = "{n}週前"
+
+[sessions.help]
+navigate = "導航"
+enter_select = "選擇"
+d_delete = "刪除"
+r_rename = "重新命名"
+n_new = "新建"
+q_quit = "退出"
+
+[sessions.selected]
+title = "已選擇"
+
+[sessions.using_last_active]
+title = "使用最近活躍會話"
