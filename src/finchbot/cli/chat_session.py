@@ -314,7 +314,7 @@ def _run_chat_session(
         session_title = None
 
     if session_title:
-        console.print(f"[dim]{t('cli.chat.session_title', session_title=session_title)}[/dim]\n")
+        console.print(f"[dim]{t('cli.chat.session_title').format(session_title)}[/dim]\n")
 
     agent, checkpointer = create_finch_agent(
         model=chat_model,
