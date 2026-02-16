@@ -234,13 +234,17 @@ class SessionMetadataStore:
         """获取所有会话元数据.
 
         Returns:
-            按最后活跃时间倒序排列的会话列表
+            按 session_id 数字顺序排列的会话列表
         """
         with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.execute(
                 """
                 SELECT * FROM sessions
-                ORDER BY last_active DESC
+                ORDER BY
+                    CASE
+                        WHEN session_id LIKE 'session_%' THEN CAST(SUBSTR(session_id, 9) AS INTEGER)
+                        ELSE 2147483647
+                    END
             """
             )
             rows = cursor.fetchall()
