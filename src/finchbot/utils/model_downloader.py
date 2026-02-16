@@ -1,9 +1,11 @@
 """模型下载工具.
 
 提供嵌入模型的预下载功能，支持安装时自动下载和手动下载。
+自动检测网络环境，国内用户使用 hf-mirror.com 镜像，国外用户使用官方源。
 """
 
 import os
+import socket
 from pathlib import Path
 
 from loguru import logger
@@ -20,12 +22,41 @@ def get_model_cache_dir() -> Path:
     return project_root / ".models" / "fastembed"
 
 
+def _detect_best_mirror() -> tuple[str, str]:
+    """检测最佳下载镜像.
+
+    优先检测国内镜像（hf-mirror.com），如果可访问则使用国内镜像。
+    否则使用官方源（huggingface.co）。
+
+    Returns:
+        (镜像URL, 镜像名称) 元组
+    """
+    # 检测国内镜像
+    try:
+        socket.create_connection(("hf-mirror.com", 443), timeout=2)
+        return ("https://hf-mirror.com", "国内镜像")
+    except OSError:
+        pass
+
+    # 检测官方源
+    try:
+        socket.create_connection(("huggingface.co", 443), timeout=2)
+        return ("https://huggingface.co", "官方源")
+    except OSError:
+        pass
+
+    # 默认使用官方源（可能离线，但会给出正确提示）
+    return ("https://huggingface.co", "官方源")
+
+
 def download_embedding_model(
     model_name: str = "BAAI/bge-small-zh-v1.5",
     cache_dir: Path | None = None,
     verbose: bool = True,
 ) -> bool:
     """下载嵌入模型.
+
+    自动检测网络环境，选择最佳镜像源。
 
     Args:
         model_name: 模型名称，默认为 BAAI/bge-small-zh-v1.5
@@ -38,9 +69,10 @@ def download_embedding_model(
     try:
         from fastembed import TextEmbedding
 
-        # 设置 HuggingFace 镜像（国内加速）
+        # 检测最佳镜像（如果用户未手动设置）
+        mirror_url, mirror_name = _detect_best_mirror()
         if "HF_ENDPOINT" not in os.environ:
-            os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+            os.environ["HF_ENDPOINT"] = mirror_url
 
         # 确定缓存目录
         model_cache = cache_dir or get_model_cache_dir()
@@ -48,6 +80,7 @@ def download_embedding_model(
 
         if verbose:
             logger.info(f"正在下载嵌入模型: {model_name}")
+            logger.info(f"源: {mirror_name} ({mirror_url})")
             logger.info(f"缓存目录: {model_cache}")
 
         # 使用 FastEmbed 下载模型
@@ -58,7 +91,7 @@ def download_embedding_model(
         )
 
         # 执行一次简单的嵌入来确保模型完全下载
-        list(embedding.embed(["测试"]))
+        list(embedding.embed(["test"]))
 
         if verbose:
             logger.info(f"✓ 模型下载完成: {model_name}")

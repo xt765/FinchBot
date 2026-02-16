@@ -1257,14 +1257,20 @@ def download_models(
 ) -> None:
     """下载嵌入模型到本地.
 
-    自动从 HuggingFace 镜像下载 BAAI/bge-small-zh-v1.5 模型。
-    使用国内镜像 https://hf-mirror.com 加速下载。
+    自动检测网络环境，选择最佳镜像源下载模型。
+    国内用户使用 hf-mirror.com 镜像，国外用户使用官方源。
     """
-    from finchbot.utils import ensure_models
+    from finchbot.utils.model_downloader import (
+        _detect_best_mirror,
+        ensure_models,
+    )
+
+    # 检测最佳镜像
+    mirror_url, mirror_name = _detect_best_mirror()
 
     console.print("[bold cyan]📥 下载 FinchBot 嵌入模型[/bold cyan]\n")
     console.print("模型: BAAI/bge-small-zh-v1.5")
-    console.print("镜像: https://hf-mirror.com (国内加速)")
+    console.print(f"源: {mirror_name} ({mirror_url})")
     console.print()
 
     success = ensure_models(verbose=not quiet)
@@ -1274,7 +1280,10 @@ def download_models(
         raise typer.Exit(0)
     else:
         console.print("\n[red]✗ 模型下载失败[/red]")
-        console.print("[dim]提示: 检查网络连接或稍后重试[/dim]")
+        if mirror_name == "官方源":
+            console.print("[dim]提示: 检查网络连接或尝试设置代理[/dim]")
+        else:
+            console.print("[dim]提示: 检查网络连接或稍后重试[/dim]")
         raise typer.Exit(1)
 
 

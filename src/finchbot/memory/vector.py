@@ -22,7 +22,9 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 MODEL_CACHE_DIR = PROJECT_ROOT / ".models" / "fastembed"
 
 
-def _check_internet_connection(host: str = "hf-mirror.com", port: int = 443, timeout: int = 3) -> bool:
+def _check_internet_connection(
+    host: str = "huggingface.co", port: int = 443, timeout: int = 3
+) -> bool:
     """检查网络连接.
 
     Args:
@@ -38,6 +40,33 @@ def _check_internet_connection(host: str = "hf-mirror.com", port: int = 443, tim
         return True
     except OSError:
         return False
+
+
+def _detect_best_mirror() -> tuple[str, str]:
+    """检测最佳下载镜像.
+
+    优先检测国内镜像（hf-mirror.com），如果可访问则使用国内镜像。
+    否则使用官方源（huggingface.co）。
+
+    Returns:
+        (镜像URL, 镜像名称) 元组
+    """
+    # 检测国内镜像
+    try:
+        socket.create_connection(("hf-mirror.com", 443), timeout=2)
+        return ("https://hf-mirror.com", "国内镜像")
+    except OSError:
+        pass
+
+    # 检测官方源
+    try:
+        socket.create_connection(("huggingface.co", 443), timeout=2)
+        return ("https://huggingface.co", "官方源")
+    except OSError:
+        pass
+
+    # 默认使用官方源（可能离线，但会给出正确提示）
+    return ("https://huggingface.co", "官方源")
 
 
 def _check_model_exists(cache_dir: Path | None = None) -> bool:
@@ -56,13 +85,19 @@ def _check_model_exists(cache_dir: Path | None = None) -> bool:
     return any(model_cache.rglob("model_optimized.onnx"))
 
 
-def _print_model_status(model_exists: bool, has_internet: bool, cache_dir: Path) -> None:
+def _print_model_status(
+    model_exists: bool,
+    has_internet: bool,
+    cache_dir: Path,
+    mirror_url: str | None = None,
+) -> None:
     """打印模型状态提示.
 
     Args:
         model_exists: 模型是否存在
         has_internet: 是否有网络连接
         cache_dir: 缓存目录
+        mirror_url: 使用的镜像URL
     """
     from rich.console import Console
     from rich.panel import Panel
@@ -77,29 +112,34 @@ def _print_model_status(model_exists: bool, has_internet: bool, cache_dir: Path)
     # 模型不存在
     if has_internet:
         # 有网络，会自动下载
-        console.print(Panel(
-            "[yellow]⚠ 嵌入模型未找到[/yellow]\n\n"
-            "模型将在首次使用时自动下载:\n"
-            "• 模型: BAAI/bge-small-zh-v1.5\n"
-            "• 镜像: https://hf-mirror.com\n"
-            "• 大小: 约 50MB\n\n"
-            "或手动下载: [cyan]finchbot download-models[/cyan]",
-            title="模型状态",
-            border_style="yellow"
-        ))
+        mirror_display = mirror_url or "自动检测"
+        console.print(
+            Panel(
+                f"[yellow]⚠ 嵌入模型未找到[/yellow]\n\n"
+                f"模型将在首次使用时自动下载:\n"
+                f"• 模型: BAAI/bge-small-zh-v1.5\n"
+                f"• 源: {mirror_display}\n"
+                f"• 大小: 约 50MB\n\n"
+                f"或手动下载: [cyan]finchbot download-models[/cyan]",
+                title="模型状态",
+                border_style="yellow",
+            )
+        )
     else:
         # 无网络，离线模式
-        console.print(Panel(
-            "[red]✗ 嵌入模型未找到且无法连接网络[/red]\n\n"
-            "当前处于离线模式，无法下载模型。\n\n"
-            "解决方案:\n"
-            "1. 连接网络后运行: [cyan]finchbot download-models[/cyan]\n"
-            "2. 或从其他机器复制模型到:\n"
-            f"   [dim]{cache_dir}[/dim]\n\n"
-            "注意: 离线模式下语义记忆功能将不可用",
-            title="离线模式",
-            border_style="red"
-        ))
+        console.print(
+            Panel(
+                "[red]✗ 嵌入模型未找到且无法连接网络[/red]\n\n"
+                "当前处于离线模式，无法下载模型。\n\n"
+                "解决方案:\n"
+                "1. 连接网络后运行: [cyan]finchbot download-models[/cyan]\n"
+                "2. 或从其他机器复制模型到:\n"
+                f"   [dim]{cache_dir}[/dim]\n\n"
+                "注意: 离线模式下语义记忆功能将不可用",
+                title="离线模式",
+                border_style="red",
+            )
+        )
 
 
 def get_embeddings(cache_dir: Path | None = None, verbose: bool = True):
@@ -108,6 +148,8 @@ def get_embeddings(cache_dir: Path | None = None, verbose: bool = True):
     FastEmbed 使用 ONNX Runtime，无 PyTorch 依赖，轻量快速。
     支持多语言模型，适合中文。
     模型默认下载到项目 .models 目录，方便打包分发。
+
+    自动检测网络环境，国内用户使用 hf-mirror.com 镜像，国外用户使用官方源。
 
     Args:
         cache_dir: 可选的自定义缓存目录。
@@ -120,21 +162,23 @@ def get_embeddings(cache_dir: Path | None = None, verbose: bool = True):
     model_cache = cache_dir or MODEL_CACHE_DIR
     model_cache.mkdir(parents=True, exist_ok=True)
 
-    # 检查模型状态
+    # 检查模型状态和网络
     model_exists = _check_model_exists(model_cache)
     has_internet = _check_internet_connection()
 
+    # 检测最佳镜像（如果用户未手动设置）
+    mirror_url, mirror_name = _detect_best_mirror()
+    if "HF_ENDPOINT" not in os.environ:
+        os.environ["HF_ENDPOINT"] = mirror_url
+        logger.debug(f"Auto-selected mirror: {mirror_name} ({mirror_url})")
+
     if verbose:
-        _print_model_status(model_exists, has_internet, model_cache)
+        _print_model_status(model_exists, has_internet, model_cache, mirror_url)
 
     try:
         from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 
-        # 设置 HuggingFace 镜像（国内加速）
-        if "HF_ENDPOINT" not in os.environ:
-            os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-
-        logger.debug(f"Using FastEmbed embeddings (cache: {model_cache})")
+        logger.debug(f"Using FastEmbed embeddings (cache: {model_cache}, mirror: {mirror_name})")
 
         # 尝试初始化 embeddings
         embeddings = FastEmbedEmbeddings(
@@ -146,6 +190,7 @@ def get_embeddings(cache_dir: Path | None = None, verbose: bool = True):
         # 如果模型之前不存在，说明是刚下载的，显示成功信息
         if verbose and not model_exists:
             from rich.console import Console
+
             console = Console()
             console.print("[green]✓ 嵌入模型加载成功[/green]")
 
@@ -166,10 +211,7 @@ def get_embeddings(cache_dir: Path | None = None, verbose: bool = True):
             )
         elif "download" in error_msg.lower() or "connection" in error_msg.lower():
             # 下载失败
-            logger.error(
-                f"模型下载失败: {e}\n"
-                "请检查网络连接或手动下载: finchbot download-models"
-            )
+            logger.error(f"模型下载失败: {e}\n请检查网络连接或手动下载: finchbot download-models")
         else:
             logger.warning(f"FastEmbed embeddings failed: {e}")
 
