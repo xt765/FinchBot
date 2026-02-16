@@ -132,14 +132,18 @@ class Config(BaseSettings):
 
     Attributes:
         language: 界面语言。
+        language_set_by_user: 语言是否由用户手动设置。
         default_model: 默认模型。
+        default_model_set_by_user: 默认模型是否由用户手动设置。
         agents: Agent 配置。
         providers: 提供商配置。
         tools: 工具配置。
     """
 
     language: str = "en-US"
+    language_set_by_user: bool = False
     default_model: str = "gpt-5"
+    default_model_set_by_user: bool = False
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)

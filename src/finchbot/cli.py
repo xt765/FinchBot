@@ -4,16 +4,24 @@
 使用 LangGraph 官方推荐的 create_agent 构建。
 """
 
+import json
 import os
+import re
+import sqlite3
+from contextlib import closing
+from datetime import datetime
 from pathlib import Path
 
 import questionary
+import readchar
 import typer
 from langchain_core.runnables import RunnableConfig
 from loguru import logger
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from finchbot.config import get_config_path, load_config, save_config
 from finchbot.config.schema import Config, ProviderConfig
@@ -33,20 +41,6 @@ app = typer.Typer(
     help="FinchBot (雀翎) - Lightweight AI Agent Framework",
 )
 console = Console()
-
-
-def _safe_choice_value(result: str | None, valid_values: list[str] | None = None) -> str | None:
-    """安全获取 questionary 选择结果."""
-    if result is None:
-        return None
-
-    if valid_values is not None and result not in valid_values:
-        for valid in valid_values:
-            if valid.lower() in result.lower():
-                return valid
-        return None
-
-    return result
 
 
 def _generate_session_title_with_ai(
@@ -101,8 +95,6 @@ def _generate_session_title_with_ai(
         title = response.content.strip()
 
         # 清理标题
-        import re
-
         title = re.sub(r'["\'""' r"，。？！,.?!\s]+", "", title)
 
         # 限制长度
@@ -135,7 +127,6 @@ def _generate_session_title_simple(first_message: str, max_length: int = 20) -> 
             break
 
     # 提取核心内容（去除标点）
-    import re
 
     content = re.sub(r"[，。？！,.?!\"'\s]+", " ", content).strip()
 
@@ -209,7 +200,9 @@ def main(
     if lang:
         set_language(lang)
     else:
-        init_language_from_config()
+        # 从配置加载语言
+        config_obj = load_config()
+        init_language_from_config(config_obj.language)
 
 
 @app.command()
@@ -326,10 +319,10 @@ def _run_chat_session(
     # 如果有第一条消息，先处理
     if first_message:
         with console.status("[dim]Thinking...[/dim]", spinner="dots"):
-            config: RunnableConfig = {"configurable": {"thread_id": session_id}}
+            runnable_config: RunnableConfig = {"configurable": {"thread_id": session_id}}
             result = agent.invoke(
                 {"messages": [{"role": "user", "content": first_message}]},
-                config=config,
+                config=runnable_config,
             )
             response = result["messages"][-1].content
 
@@ -436,7 +429,7 @@ def _run_chat_session(
 
                     if new_sess:
                         # 创建新会话
-                        new_config = {"configurable": {"thread_id": new_sess}}
+                        new_config: RunnableConfig = {"configurable": {"thread_id": new_sess}}
                         agent.update_state(new_config, {"messages": rolled_back})
                         session_id = new_sess  # 切换到新会话
                         console.print(
@@ -625,8 +618,6 @@ def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | N
         ("gemini", "gemini-2.5-flash", ["GOOGLE_API_KEY", "GEMINI_API_KEY"]),
     ]
 
-    import os
-
     from finchbot.config.utils import get_api_base
 
     for provider, default_model, env_vars in provider_priority:
@@ -684,19 +675,6 @@ sessions_app = typer.Typer(help="Manage sessions / 管理会话")
 app.add_typer(sessions_app, name="sessions")
 
 
-@sessions_app.command("list")
-def sessions_list() -> None:
-    """列出所有会话（使用元数据）."""
-    config_obj = load_config()
-    ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
-
-    # 使用新的 UI 组件显示会话列表
-    from finchbot.sessions import SessionSelector
-
-    selector = SessionSelector(ws_path)
-    selector.display_session_list()
-
-
 @sessions_app.callback(invoke_without_command=True)
 def sessions_callback(ctx: typer.Context) -> None:
     """会话管理命令组.
@@ -712,71 +690,6 @@ def sessions_callback(ctx: typer.Context) -> None:
         selector.interactive_manage()
 
 
-@sessions_app.command("select")
-def sessions_select() -> None:
-    """交互式选择会话并进入对话."""
-    config_obj = load_config()
-    ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
-
-    selector = SessionSelector(ws_path)
-    selector.interactive_manage()
-
-
-@sessions_app.command("rename")
-def sessions_rename(
-    session_id: str = typer.Argument("default", help="Session ID to rename"),
-) -> None:
-    """重命名会话."""
-    config_obj = load_config()
-    ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
-
-    selector = SessionSelector(ws_path)
-    selector.rename_session(session_id)
-
-
-@sessions_app.command("interactive-delete")
-def sessions_interactive_delete() -> None:
-    """交互式删除会话."""
-    config_obj = load_config()
-    ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
-
-    selector = SessionSelector(ws_path)
-    selector.delete_session_interactive()
-
-
-@sessions_app.command("clear")
-def sessions_clear(
-    session_id: str = typer.Argument("default", help="Session ID to clear"),
-) -> None:
-    """清空会话历史."""
-    import sqlite3
-    from contextlib import closing
-
-    config_obj = load_config()
-    ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
-    db_path = ws_path / "checkpoints.db"
-
-    if not db_path.exists():
-        console.print("[yellow]No sessions database found.[/yellow]")
-        return
-
-    try:
-        with closing(sqlite3.connect(str(db_path))) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM checkpoints WHERE thread_id = ?", (session_id,))
-            deleted = cursor.rowcount
-            conn.commit()
-
-        if deleted > 0:
-            console.print(
-                f"[green]✓ Cleared session '{session_id}' ({deleted} checkpoints removed)[/green]"
-            )
-        else:
-            console.print(f"[yellow]Session '{session_id}' not found.[/yellow]")
-    except Exception as e:
-        console.print(f"[red]Error clearing session: {e}[/red]")
-
-
 @sessions_app.command("show")
 def sessions_show(
     session_id: str = typer.Argument("default", help="Session ID to show"),
@@ -784,9 +697,6 @@ def sessions_show(
     show_index: bool = typer.Option(False, "--index", "-i", help="Show message index for rollback"),
 ) -> None:
     """显示会话历史."""
-    import json
-    import sqlite3
-    from contextlib import closing
 
     config_obj = load_config()
     ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
@@ -858,63 +768,6 @@ def sessions_show(
         console.print(f"[red]Error reading session: {e}[/red]")
 
 
-@sessions_app.command("delete")
-def sessions_delete(
-    session_id: str = typer.Argument("default", help="Session ID to delete"),
-    force: bool = typer.Option(False, "--force", "-f", help="Force delete without confirmation"),
-) -> None:
-    """删除会话及其所有历史记录."""
-    import sqlite3
-    from contextlib import closing
-
-    config_obj = load_config()
-    ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
-    db_path = ws_path / "checkpoints.db"
-
-    if not db_path.exists():
-        console.print("[yellow]No sessions database found.[/yellow]")
-        return
-
-    # 先检查会话是否存在
-    try:
-        with closing(sqlite3.connect(str(db_path))) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?", (session_id,))
-            count = cursor.fetchone()[0]
-
-        if count == 0:
-            console.print(f"[yellow]Session '{session_id}' not found.[/yellow]")
-            return
-
-    except Exception as e:
-        console.print(f"[red]Error checking session: {e}[/red]")
-        return
-
-    # 确认删除
-    if not force:
-        confirm = questionary.confirm(
-            f"Are you sure you want to delete session '{session_id}'? This cannot be undone.",
-            default=False,
-        ).ask()
-        if not confirm:
-            console.print("[dim]Delete cancelled.[/dim]")
-            return
-
-    # 执行删除
-    try:
-        with closing(sqlite3.connect(str(db_path))) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM checkpoints WHERE thread_id = ?", (session_id,))
-            deleted = cursor.rowcount
-            conn.commit()
-
-        console.print(
-            f"[green]✓ Deleted session '{session_id}' ({deleted} checkpoints removed)[/green]"
-        )
-    except Exception as e:
-        console.print(f"[red]Error deleting session: {e}[/red]")
-
-
 @sessions_app.command("rollback")
 def sessions_rollback(
     session_id: str = typer.Argument(..., help="Session ID to rollback"),
@@ -927,11 +780,6 @@ def sessions_rollback(
     force: bool = typer.Option(False, "--force", "-f", help="Force rollback without confirmation"),
 ) -> None:
     """回退到指定消息之前，可选创建新会话."""
-    import json
-    import sqlite3
-    from contextlib import closing
-    from datetime import datetime
-
     config_obj = load_config()
     ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
     db_path = ws_path / "checkpoints.db"
@@ -970,14 +818,14 @@ def sessions_rollback(
 
             # 确认回退
             if not force:
-                confirm = questionary.confirm(
-                    f"Rollback to before message {message_index}? "
-                    f"This will keep messages 0-{message_index - 1} ({message_index} messages), "
-                    f"remove messages {message_index}-{len(messages) - 1} ({len(messages) - message_index} messages).",
-                    default=False,
-                ).ask()
+                confirm_msg = (
+                    f"{t('sessions.rollback.confirm_rollback').format(message_index)} "
+                    f"{t('sessions.rollback.keep_messages').format(message_index - 1, message_index)}, "
+                    f"{t('sessions.rollback.remove_messages').format(message_index, len(messages) - 1, len(messages) - message_index)}."
+                )
+                confirm = questionary.confirm(confirm_msg, default=False).ask()
                 if not confirm:
-                    console.print("[dim]Cancelled.[/dim]")
+                    console.print(f"[dim]{t('sessions.rollback.cancelled')}[/dim]")
                     return
 
             # 截取消息（保留 0 到 message_index-1）
@@ -1057,123 +905,389 @@ def sessions_rollback(
         console.print(f"[red]Error rolling back session: {e}[/red]")
 
 
+class ConfigManager:
+    """交互式配置管理器.
+
+    提供键盘导航的配置管理界面，支持：
+    - 查看所有配置项
+    - 选中配置项后按 Enter 修改
+    - 格式化重置配置（带确认）
+    """
+
+    def __init__(self) -> None:
+        self.config = load_config()
+        self.config_path = get_config_path()
+
+    def interactive_manage(self) -> None:
+        """启动交互式配置管理."""
+        try:
+            # 直接进入配置管理界面（配置已自动初始化）
+            self._run_config_manager()
+        except KeyboardInterrupt:
+            console.print("\n[dim]配置已取消。[/dim]")
+            raise
+
+    def _run_config_manager(self) -> None:
+        """运行配置管理界面（键盘导航）."""
+        config_items = self._get_config_items()
+        selected_idx = 0
+
+        try:
+            while True:
+                console.clear()
+                console.print(f"[bold blue]🔧 {t('cli.config.init_title')}[/bold blue]")
+                console.print(f"[dim]{t('cli.config.config_file')} {self.config_path}[/dim]\n")
+
+                # 渲染配置项列表
+                self._render_config_list(config_items, selected_idx)
+
+                # 显示帮助信息
+                console.print()
+                console.print(
+                    f"[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+                    f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.edit')}[/dim]  "
+                    f"[dim cyan]R[/dim cyan] [dim]{t('config.manager.reset_all')}[/dim]  "
+                    f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.quit')}[/dim]"
+                )
+
+                key = readchar.readkey()
+
+                if key == readchar.key.UP:
+                    selected_idx = max(0, selected_idx - 1)
+                elif key == readchar.key.DOWN:
+                    selected_idx = min(len(config_items) - 1, selected_idx + 1)
+                elif key == readchar.key.ENTER:
+                    # 编辑选中的配置项
+                    self._edit_config_item(config_items[selected_idx])
+                    # 重新加载配置
+                    self.config = load_config()
+                    config_items = self._get_config_items()
+                elif key.lower() == "r":
+                    # 重置所有配置（带确认）
+                    if self._confirm_reset():
+                        self._reset_config()
+                        return
+                elif key.lower() == "q" or key == readchar.key.CTRL_C:
+                    return
+
+        except KeyboardInterrupt:
+            logger.debug("Config management cancelled by user")
+
+    def _get_config_items(self) -> list[dict]:
+        """获取配置项列表（用于展示）."""
+        items = [
+            {
+                "key": "language",
+                "name": t("cli.config.language_set").rstrip("："),
+                "value": self.config.language,
+                "editable": True,
+            },
+            {
+                "key": "default_model",
+                "name": t("cli.config.default_model").rstrip("："),
+                "value": self.config.default_model,
+                "editable": True,
+            },
+            {
+                "key": "workspace",
+                "name": t("cli.config.workspace"),
+                "value": self.config.agents.defaults.workspace,
+                "editable": True,
+            },
+            {
+                "key": "providers",
+                "name": t("cli.config.configured_providers").rstrip("："),
+                "value": ", ".join(self.config.get_configured_providers()) or t("cli.status.not_configured"),
+                "editable": False,  # 通过子菜单编辑
+            },
+        ]
+
+        # 添加已配置的 provider
+        for provider_name in self.config.get_configured_providers():
+            if provider_name.startswith("custom:"):
+                name = provider_name.replace("custom:", "")
+                items.append({
+                    "key": f"custom.{name}",
+                    "name": f"  └─ {t('cli.config.custom')}: {name}",
+                    "value": "***",
+                    "editable": True,
+                })
+
+        return items
+
+    def _render_config_list(self, items: list[dict], selected_idx: int) -> None:
+        """渲染配置项列表."""
+        table = Table(
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="blue bold",
+            border_style="dim",
+        )
+        table.add_column("", width=2, justify="center")
+        table.add_column(t("config.manager.setting"), min_width=20)
+        table.add_column(t("config.manager.value"), min_width=30)
+
+        for idx, item in enumerate(items):
+            is_selected = idx == selected_idx
+            cursor = "▶" if is_selected else " "
+
+            if is_selected:
+                cursor_text = Text(cursor, style="cyan bold")
+                name_text = Text(item["name"], style="cyan bold")
+                value_text = Text(str(item["value"]), style="cyan")
+            else:
+                cursor_text = Text(cursor, style="")
+                name_text = Text(item["name"], style="white")
+                value_text = Text(str(item["value"]), style="green")
+
+            table.add_row(cursor_text, name_text, value_text)
+
+        console.print(table)
+
+    def _edit_config_item(self, item: dict) -> None:
+        """编辑单个配置项."""
+        key = item["key"]
+
+        if key == "language":
+            _configure_language(self.config)
+        elif key == "default_model":
+            _configure_default_model(self.config)
+        elif key == "workspace":
+            new_path = questionary.text(
+                t("cli.config.workspace_path"),
+                default=self.config.agents.defaults.workspace,
+            ).unsafe_ask()
+            if new_path:
+                self.config.agents.defaults.workspace = new_path
+        elif key == "providers":
+            # 进入 provider 配置子菜单
+            self._configure_providers_submenu()
+        elif key.startswith("custom."):
+            # 编辑自定义 provider
+            provider_name = key.replace("custom.", "")
+            self._edit_custom_provider(provider_name)
+
+        save_config(self.config)
+        console.print(f"[green]✓ {t('cli.config.config_updated')}[/green]")
+        console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
+        readchar.readkey()
+
+    def _configure_providers_submenu(self) -> None:
+        """配置提供商子菜单（键盘导航）."""
+        # 构建提供商列表
+        providers = [
+            {"name": info["name"], "value": name}
+            for name, info in PRESET_PROVIDERS.items()
+        ]
+        providers.append({"name": t("cli.config.add_custom_provider"), "value": "custom"})
+
+        selected_idx = 0
+
+        try:
+            while True:
+                console.clear()
+                console.print(f"\n[bold cyan]{t('cli.config.select_provider_to_configure')}[/bold cyan]\n")
+
+                # 渲染提供商列表
+                for idx, prov in enumerate(providers):
+                    is_selected = idx == selected_idx
+                    cursor = "▶" if is_selected else "  "
+                    if is_selected:
+                        console.print(f"{cursor} [cyan bold]{prov['name']}[/cyan bold]")
+                    else:
+                        console.print(f"{cursor} {prov['name']}")
+
+                console.print(
+                    f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+                    f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
+                    f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.quit')}[/dim]"
+                )
+
+                key = readchar.readkey()
+
+                if key == readchar.key.UP:
+                    selected_idx = max(0, selected_idx - 1)
+                elif key == readchar.key.DOWN:
+                    selected_idx = min(len(providers) - 1, selected_idx + 1)
+                elif key == readchar.key.ENTER:
+                    result = providers[selected_idx]["value"]
+                    if result == "custom":
+                        _configure_custom_provider(self.config)
+                    else:
+                        _configure_preset_provider(self.config, result)
+                    return
+                elif key.lower() == "q":
+                    return
+                elif key == readchar.key.CTRL_C:
+                    raise KeyboardInterrupt
+
+        except KeyboardInterrupt:
+            raise
+
+    def _edit_custom_provider(self, provider_name: str) -> None:
+        """编辑自定义 provider."""
+        if provider_name in self.config.providers.custom:
+            prov = self.config.providers.custom[provider_name]
+            new_key = questionary.text(
+                t("cli.config.api_key"),
+                default=prov.api_key,
+                is_password=True,
+            ).unsafe_ask()
+            if new_key:
+                prov.api_key = new_key
+
+    def _confirm_reset(self) -> bool:
+        """确认重置配置."""
+        console.print(f"\n[red]{t('cli.config.reset_warning')}[/red]")
+        console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
+        console.print(f"[dim]{t('cli.config.reset_confirm')} (Y/n)[/dim]")
+        key = readchar.readkey()
+        return key.lower() == "y"
+
+    def _reset_config(self) -> None:
+        """重置配置为默认值."""
+        # 创建默认配置
+        default_config = Config()
+        save_config(default_config)
+        console.print(f"[green]✓ {t('cli.config.reset_success')}[/green]")
+        console.print(f"[dim]{t('cli.config.reset_run_again')}[/dim]")
+
+
+def _run_interactive_config() -> None:
+    """运行交互式配置（入口函数）."""
+    manager = ConfigManager()
+    manager.interactive_manage()
+
+
 config_app = typer.Typer(help="Manage configuration / 管理配置")
 app.add_typer(config_app, name="config")
 
 
-@config_app.command("init")
-def config_init() -> None:
-    """交互式配置向导."""
-    config_obj = load_config()
-    config_path = get_config_path()
-
-    console.print(f"\n[bold cyan]🔧 {t('cli.config.title')}[/bold cyan]\n")
-
-    _configure_language(config_obj)
-    _configure_providers(config_obj)
-    _configure_default_model(config_obj)
-
-    save_config(config_obj)
-    _show_config_summary(config_obj, config_path)
-
-
-@config_app.command("show")
-def config_show() -> None:
-    """显示当前配置."""
-    config_obj = load_config()
-    config_path = get_config_path()
-
-    table = Table(title=f"📋 Configuration ({config_path})")
-    table.add_column("Key", style="cyan")
-    table.add_column("Value", style="green")
-
-    table.add_row("language", config_obj.language)
-    table.add_row("default_model", config_obj.default_model)
-    table.add_row("providers", ", ".join(config_obj.get_configured_providers()) or "None")
-
-    console.print(table)
-
-
-@config_app.command("set")
-def config_set(
-    key: str = typer.Argument(..., help="Configuration key to set (e.g., default_model, language)"),
-    value: str = typer.Argument(..., help="Value to set"),
-) -> None:
-    """设置配置项."""
-    config_obj = load_config()
-    config_path = get_config_path()
-
-    valid_keys = ["language", "default_model"]
-
-    if key not in valid_keys:
-        console.print(f"[red]Error: Invalid key '{key}'. Valid keys: {', '.join(valid_keys)}[/red]")
-        raise typer.Exit(1)
-
-    # 验证值
-    if key == "language":
-        supported_languages = ["en-US", "zh-CN", "zh-HK"]
-        if value not in supported_languages:
-            console.print(
-                f"[red]Error: Unsupported language '{value}'. Supported: {', '.join(supported_languages)}[/red]"
-            )
-            raise typer.Exit(1)
-        config_obj.language = value
-        set_language(value)
-
-    elif key == "default_model":
-        if not value.strip():
-            console.print("[red]Error: Model name cannot be empty[/red]")
-            raise typer.Exit(1)
-        config_obj.default_model = value
-
-    save_config(config_obj)
-    console.print(f"[green]✓ Set {key} = {value}[/green]")
-    console.print(f"[dim]Config saved to: {config_path}[/dim]")
+@config_app.callback(invoke_without_command=True)
+def config_callback(ctx: typer.Context) -> None:
+    """配置管理（完全交互式界面）."""
+    if ctx.invoked_subcommand is None:
+        _run_interactive_config()
 
 
 def _configure_language(config_obj: Config) -> None:
-    """配置语言."""
-    choices = [
-        questionary.Choice("English (en-US)", value="en-US"),
-        questionary.Choice("简体中文 (zh-CN)", value="zh-CN"),
-        questionary.Choice("繁體中文 (zh-HK)", value="zh-HK"),
+    """配置语言（键盘导航）."""
+    languages = [
+        {"name": "English (en-US)", "value": "en-US"},
+        {"name": "简体中文 (zh-CN)", "value": "zh-CN"},
+        {"name": "繁體中文 (zh-HK)", "value": "zh-HK"},
     ]
 
-    result = questionary.select(
-        t("cli.config.select_language"),
-        choices=choices,
-        default=config_obj.language,
-    ).ask()
+    # 找到当前语言的索引
+    selected_idx = 0
+    for idx, lang in enumerate(languages):
+        if lang["value"] == config_obj.language:
+            selected_idx = idx
+            break
 
-    if result:
-        config_obj.language = result
-        set_language(result)
+    try:
+        while True:
+            console.clear()
+            console.print(f"\n[bold cyan]{t('cli.config.choose_language')}[/bold cyan]\n")
+
+            # 渲染语言列表
+            for idx, lang in enumerate(languages):
+                is_selected = idx == selected_idx
+                cursor = "▶" if is_selected else "  "
+                if is_selected:
+                    console.print(f"{cursor} [cyan bold]{lang['name']}[/cyan bold]")
+                else:
+                    console.print(f"{cursor} {lang['name']}")
+
+            console.print(
+                f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+                f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
+                f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.skip')}[/dim]"
+            )
+
+            key = readchar.readkey()
+
+            if key == readchar.key.UP:
+                selected_idx = max(0, selected_idx - 1)
+            elif key == readchar.key.DOWN:
+                selected_idx = min(len(languages) - 1, selected_idx + 1)
+            elif key == readchar.key.ENTER:
+                result = languages[selected_idx]["value"]
+                config_obj.language = result
+                config_obj.language_set_by_user = True
+                set_language(result)
+                console.print(
+                    f"[green]✓ {t('cli.config.language_set_to')} {languages[selected_idx]['name']}[/green]\n"
+                )
+                return
+            elif key.lower() == "q":
+                return
+            elif key == readchar.key.CTRL_C:
+                raise KeyboardInterrupt
+
+    except KeyboardInterrupt:
+        raise
 
 
 def _configure_providers(config_obj: Config) -> None:
-    """配置提供商."""
+    """配置提供商（键盘导航）."""
     configured = config_obj.get_configured_providers()
 
-    if configured:
-        console.print(
-            f"\n[dim]{t('cli.config.configured_providers')}: {', '.join(configured)}[/dim]"
-        )
+    # 构建提供商列表
+    providers = []
+    for name, info in PRESET_PROVIDERS.items():
+        providers.append({"name": info["name"], "value": name, "type": "preset"})
+    providers.append({"name": t("cli.config.other"), "value": "custom", "type": "custom"})
+    providers.append({"name": t("cli.config.skip"), "value": "skip", "type": "skip"})
 
-    choices = [
-        questionary.Choice(f"{info['name']}", value=name) for name, info in PRESET_PROVIDERS.items()
-    ]
-    choices.append(questionary.Choice(t("cli.config.custom_provider"), value="custom"))
-    choices.append(questionary.Choice(t("cli.config.skip"), value=None))
+    selected_idx = 0
 
-    result = questionary.select(
-        t("cli.config.select_provider"),
-        choices=choices,
-    ).ask()
+    try:
+        while True:
+            console.clear()
 
-    if result == "custom":
-        _configure_custom_provider(config_obj)
-    elif result and result != "skip":
-        _configure_preset_provider(config_obj, result)
+            if configured:
+                console.print(
+                    f"\n[dim]{t('cli.config.configured')}: {', '.join(configured)}[/dim]"
+                )
+
+            console.print(f"\n[bold cyan]{t('cli.config.select_provider')}[/bold cyan]\n")
+
+            # 渲染提供商列表
+            for idx, prov in enumerate(providers):
+                is_selected = idx == selected_idx
+                cursor = "▶" if is_selected else "  "
+                if is_selected:
+                    console.print(f"{cursor} [cyan bold]{prov['name']}[/cyan bold]")
+                else:
+                    console.print(f"{cursor} {prov['name']}")
+
+            console.print(
+                f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+                f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
+                f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.skip')}[/dim]"
+            )
+
+            key = readchar.readkey()
+
+            if key == readchar.key.UP:
+                selected_idx = max(0, selected_idx - 1)
+            elif key == readchar.key.DOWN:
+                selected_idx = min(len(providers) - 1, selected_idx + 1)
+            elif key == readchar.key.ENTER:
+                result = providers[selected_idx]["value"]
+                if result == "custom":
+                    _configure_custom_provider(config_obj)
+                elif result != "skip":
+                    _configure_preset_provider(config_obj, result)
+                return
+            elif key.lower() == "q":
+                return
+            elif key == readchar.key.CTRL_C:
+                raise KeyboardInterrupt
+
+    except KeyboardInterrupt:
+        raise
 
 
 def _configure_preset_provider(config_obj: Config, provider: str) -> None:
@@ -1181,7 +1295,7 @@ def _configure_preset_provider(config_obj: Config, provider: str) -> None:
     info = PRESET_PROVIDERS[provider]
 
     api_key = questionary.text(
-        f"Enter API key for {info['name']}:",
+        t("cli.config.api_key_for").format(info["name"]),
         is_password=True,
     ).ask()
 
@@ -1189,14 +1303,14 @@ def _configure_preset_provider(config_obj: Config, provider: str) -> None:
         return
 
     use_custom_base = questionary.confirm(
-        f"Use custom API base? (default: {info['default_base']})",
+        f"{t('cli.config.use_custom_api_base')} ({t('cli.config.default_hint').format(info['default_base'])})",
         default=False,
     ).ask()
 
     api_base = None
     if use_custom_base:
         api_base = questionary.text(
-            "Enter API base URL:",
+            t("cli.config.api_base_url"),
             default=info["default_base"],
         ).ask()
 
@@ -1210,49 +1324,69 @@ def _configure_preset_provider(config_obj: Config, provider: str) -> None:
 
 def _configure_custom_provider(config_obj: Config) -> None:
     """配置自定义提供商."""
-    name = questionary.text("Provider name:").ask()
-    if not name:
-        return
+    console.print(f"\n[bold cyan]{t('cli.config.add_custom_provider')}[/bold cyan]")
+    console.print(f"[dim]Ctrl+C {t('sessions.actions.cancel')}[/dim]")
 
-    api_key = questionary.text("API key:", is_password=True).ask()
-    api_base = questionary.text("API base URL:").ask()
+    try:
+        name = questionary.text(
+            t("cli.config.provider_name"),
+        ).unsafe_ask()
+
+        if not name:
+            return
+
+        api_key = questionary.password(
+            t("cli.config.api_key"),
+        ).unsafe_ask()
+
+        api_base = questionary.text(
+            t("cli.config.api_base_url"),
+        ).unsafe_ask()
+    except KeyboardInterrupt:
+        console.print(f"\n[dim]{t('sessions.actions.cancelled')}[/dim]")
+        return
 
     config_obj.providers.custom[name] = ProviderConfig(
         api_key=api_key,
         api_base=api_base,
     )
-    console.print(f"[green]✓ Configured custom provider: {name}[/green]")
+    console.print(f"[green]✓ {t('cli.config.configured_custom_provider')}: {name}[/green]")
 
 
 def _configure_default_model(config_obj: Config) -> None:
     """配置默认模型."""
     model = questionary.text(
-        t("cli.config.default_model"),
+        t("cli.config.enter_model_name"),
         default=config_obj.default_model,
     ).ask()
 
     if model:
         config_obj.default_model = model
+        config_obj.default_model_set_by_user = True
 
 
 def _show_config_summary(config_obj: Config, config_path: Path) -> None:
     """显示配置摘要."""
     configured = config_obj.get_configured_providers()
 
-    table = Table(title=f"✅ {t('cli.config.config_saved')}")
+    table = Table(title=f"✅ {t('cli.config.init_title')}")
     table.add_column("Key", style="cyan")
     table.add_column("Value", style="green")
 
-    table.add_row(t("cli.config.language_set"), config_obj.language)
-    table.add_row(t("cli.config.default_model"), config_obj.default_model)
-    table.add_row(t("cli.config.configured_providers"), ", ".join(configured) or "None")
-    table.add_row(t("cli.config.config_file"), str(config_path))
+    table.add_row(t("cli.config.current"), config_obj.language)
+    table.add_row(t("cli.config.select_model"), config_obj.default_model)
+    table.add_row(t("cli.config.configured"), ", ".join(configured) or "None")
+    table.add_row("Config File", str(config_path))
 
     console.print(table)
 
 
-@app.command("download-models")
-def download_models(
+models_app = typer.Typer(help="Manage models / 管理模型")
+app.add_typer(models_app, name="models")
+
+
+@models_app.command("download")
+def models_download(
     quiet: bool = typer.Option(False, "--quiet", "-q", help="静默模式"),
 ) -> None:
     """下载嵌入模型到本地.

@@ -21,9 +21,12 @@ other = "其他..."
 cancel = "取消"
 
 select_provider = "选择 LLM 提供商："
+select_provider_to_configure = "选择要配置的提供商："
 configured = "已配置："
 add_new_provider = "添加新提供商"
+add_custom_provider = "添加自定义提供商"
 remove_provider = "删除提供商"
+configure = "配置"
 keep_all = "维持现状"
 
 api_key_prompt = "{} API 密钥（或按 Enter 跳过）："
@@ -54,14 +57,29 @@ disable = "禁用"
 config_saved = "配置已保存"
 config_updated = "配置已更新"
 config_file = "配置文件："
+language_set_to = "语言已设置为"
 language_set = "语言："
 default_model = "默认模型："
+workspace = "工作目录"
+workspace_path = "工作目录路径："
 configured_providers = "已配置提供商："
 web_search = "网页搜索："
+reset_warning = "警告：这将删除所有配置并重置为默认值。"
+reset_confirm = "确定吗？"
+reset_success = "配置已重置为默认值"
+reset_run_again = "请再次运行 'finchbot config' 进行设置。"
 
 select_provider_to_remove = "选择要删除的提供商："
 confirm_remove = "确认删除 {}？"
 warning_remove = "警告：这将删除 {} 的配置。"
+custom = "自定义"
+provider_name = "提供商名称："
+api_key = "API 密钥："
+api_key_for = "{} API 密钥："
+api_base_url = "API Base URL："
+use_custom_api_base = "使用自定义 API Base？"
+default_hint = "默认：{}"
+configured_custom_provider = "已配置自定义提供商"
 
 [cli.commands]
 version_help = "显示版本信息"
@@ -385,8 +403,26 @@ r_rename = "重命名"
 n_new = "新建"
 q_quit = "退出"
 
+[sessions.rollback]
+confirm_rollback = "回退到消息 {} 之前？"
+keep_messages = "将保留消息 0-{} ({} 条消息)"
+remove_messages = "将删除消息 {}-{} ({} 条消息)"
+cancelled = "已取消"
+
 [sessions.selected]
 title = "已选择"
 
 [sessions.using_last_active]
 title = "使用最近活跃会话"
+
+# 配置管理器界面
+[config.manager]
+setting = "设置"
+value = "值"
+navigate = "导航"
+edit = "编辑"
+reset_all = "重置全部"
+quit = "退出"
+select = "选择"
+skip = "跳过"
+press_any_key_to_continue = "按任意键继续..."

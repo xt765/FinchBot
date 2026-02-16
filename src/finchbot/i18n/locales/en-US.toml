@@ -21,9 +21,12 @@ other = "Other..."
 cancel = "Cancel"
 
 select_provider = "Select LLM provider:"
+select_provider_to_configure = "Select provider to configure:"
 configured = "Configured:"
 add_new_provider = "Add new provider"
+add_custom_provider = "Add Custom Provider"
 remove_provider = "Remove provider"
+configure = "Configure"
 keep_all = "Keep all"
 
 api_key_prompt = "{} API Key (or press Enter to skip):"
@@ -54,14 +57,29 @@ disable = "Disable"
 config_saved = "Configuration saved"
 config_updated = "Configuration updated"
 config_file = "Config file:"
+language_set_to = "Language set to"
 language_set = "Language:"
 default_model = "Default Model:"
+workspace = "Workspace"
+workspace_path = "Workspace path:"
 configured_providers = "Configured Providers:"
 web_search = "Web Search:"
+reset_warning = "WARNING: This will delete ALL configuration and reset to defaults."
+reset_confirm = "Are you sure?"
+reset_success = "Configuration reset to defaults"
+reset_run_again = "Please run 'finchbot config' again to set up."
 
 select_provider_to_remove = "Select provider to remove:"
 confirm_remove = "Confirm remove {}?"
 warning_remove = "Warning: This will remove {} configuration."
+custom = "Custom"
+provider_name = "Provider name:"
+api_key = "API key:"
+api_key_for = "{} API key:"
+api_base_url = "API base URL:"
+use_custom_api_base = "Use custom API base?"
+default_hint = "Default: {}"
+configured_custom_provider = "Configured custom provider"
 
 [cli.commands]
 version_help = "Show version information"
@@ -425,8 +443,26 @@ r_rename = "Rename"
 n_new = "New"
 q_quit = "Quit"
 
+[sessions.rollback]
+confirm_rollback = "Rollback to before message {}?"
+keep_messages = "This will keep messages 0-{} ({} messages)"
+remove_messages = "remove messages {}-{} ({} messages)"
+cancelled = "Cancelled"
+
 [sessions.selected]
 title = "Selected"
 
 [sessions.using_last_active]
 title = "Using last active session"
+
+# Config manager UI
+[config.manager]
+setting = "Setting"
+value = "Value"
+navigate = "Navigate"
+edit = "Edit"
+reset_all = "Reset All"
+quit = "Quit"
+select = "Select"
+skip = "Skip"
+press_any_key_to_continue = "Press any key to continue..."

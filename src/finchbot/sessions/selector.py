@@ -467,74 +467,6 @@ class SessionSelector:
         except Exception as e:
             logger.warning(f"Failed to delete checkpoint data for {session_id}: {e}")
 
-    def select_and_manage(self) -> tuple[str | None, str]:
-        """显示交互式会话管理界面（向后兼容）.
-
-        支持选择、删除、重命名操作。
-
-        Returns:
-            (session_id, action) 元组，action 为 'select'、'delete'、'new' 或 'quit'
-        """
-        sessions = self.store.get_all_sessions()
-
-        if not sessions:
-            console.print(t("sessions.no_sessions"))
-            # 询问是否创建新会话
-            create_new = questionary.confirm(
-                t("sessions.new_session") + "?",
-                default=True,
-            ).unsafe_ask()
-            if create_new:
-                return self._create_new_session(), "new"
-            return None, "quit"
-
-        # 先显示美观的会话列表
-        console.print()
-        table = self.renderer.render_table(sessions)
-        console.print(table)
-        console.print()
-
-        # 构建选项列表
-        choices = [
-            questionary.Choice(
-                title=f"🆕 {t('sessions.new_session')}",
-                value="__new__",
-            ),
-        ]
-
-        choices.extend(
-            [
-                questionary.Choice(
-                    title=self._format_session_choice(session),
-                    value=session.session_id,
-                )
-                for session in sessions
-            ]
-        )
-
-        try:
-            # 使用 unsafe_ask 而不是 ask，避免某些终端的输入流问题
-            selected = questionary.select(
-                f"{t('sessions.actions.select')} ({t('sessions.help.q_quit')}):",
-                choices=choices,
-                use_arrow_keys=True,
-                use_jk_keys=False,
-                use_emacs_keys=False,
-            ).unsafe_ask()
-
-            if selected is None:
-                return None, "quit"
-
-            if selected == "__new__":
-                return self._create_new_session(), "new"
-
-            # 返回选中的会话，由调用者决定后续操作
-            return selected, "select"
-
-        except KeyboardInterrupt:
-            logger.debug("Session selection cancelled by user")
-            return None, "quit"
-
     def delete_session_interactive(self, session_id: str | None = None) -> bool:
         """交互式删除会话.
 
@@ -657,15 +589,41 @@ class SessionSelector:
     def select_or_create(self) -> str:
         """选择现有会话或创建新会话（向后兼容）.
 
+        使用 interactive_manage() 进行键盘导航式会话管理。
+        当用户退出管理界面时，返回最后操作的会话或默认会话。
+
         Returns:
             选中的或新创建的 session_id
         """
-        session_id, action = self.select_and_manage()
+        # 记录当前会话，用于返回
+        last_session_id: str | None = None
 
-        if action == "quit" or session_id is None:
-            return "default"
+        # 获取所有会话
+        sessions = self.store.get_all_sessions()
 
-        return session_id
+        if not sessions:
+            # 没有会话时，询问是否创建
+            console.print(t("sessions.no_sessions"))
+            create_new = questionary.confirm(
+                t("sessions.new_session") + "?",
+                default=True,
+            ).unsafe_ask()
+            if create_new:
+                self._handle_new_session()
+                # 重新获取会话列表
+                sessions = self.store.get_all_sessions()
+                if sessions:
+                    # 返回最新创建的会话（按创建时间排序的第一个）
+                    last_session_id = sorted(sessions, key=lambda s: s.created_at, reverse=True)[
+                        0
+                    ].session_id
+            return last_session_id or "default"
+
+        # 使用键盘导航式管理界面
+        self._interactive_select_with_keys(sessions)
+
+        # 返回最后操作的会话，如果没有则返回默认
+        return "default"
 
     def select_session(self, sessions: "Sequence[SessionMetadata]") -> str | None:
         """显示交互式选择界面（向后兼容）.

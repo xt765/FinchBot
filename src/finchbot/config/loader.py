@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from finchbot.config.schema import Config
+from finchbot.config.schema import Config, ProviderConfig
 
 
 def get_config_path() -> Path:
@@ -40,6 +40,36 @@ def _auto_detect_default_model() -> str | None:
     return None
 
 
+def _load_providers_from_env() -> dict[str, ProviderConfig]:
+    """从环境变量加载提供商配置.
+
+    Returns:
+        提供商名称到配置的映射。
+    """
+    from finchbot.config.utils import get_api_base, get_api_key
+
+    providers: dict[str, ProviderConfig] = {}
+
+    provider_configs = [
+        ("openai", ["OPENAI_API_KEY"], ["OPENAI_API_BASE", "OPENAI_BASE_URL"]),
+        ("anthropic", ["ANTHROPIC_API_KEY"], ["ANTHROPIC_API_BASE", "ANTHROPIC_BASE_URL"]),
+        ("gemini", ["GOOGLE_API_KEY", "GEMINI_API_KEY"], ["GOOGLE_API_BASE", "GEMINI_API_BASE"]),
+        ("deepseek", ["DEEPSEEK_API_KEY", "DS_API_KEY"], ["DEEPSEEK_API_BASE", "DS_BASE_URL"]),
+        ("groq", ["GROQ_API_KEY"], ["GROQ_API_BASE", "GROQ_BASE_URL"]),
+        ("moonshot", ["MOONSHOT_API_KEY"], ["MOONSHOT_API_BASE", "MOONSHOT_BASE_URL"]),
+        ("openrouter", ["OPENROUTER_API_KEY"], ["OPENROUTER_API_BASE", "OPENROUTER_BASE_URL"]),
+        ("dashscope", ["DASHSCOPE_API_KEY", "ALIBABA_API_KEY"], ["DASHSCOPE_API_BASE", "DASHSCOPE_BASE_URL"]),
+    ]
+
+    for provider, key_vars, base_vars in provider_configs:
+        api_key = get_api_key(provider, env_vars=key_vars)
+        if api_key:
+            api_base = get_api_base(provider, env_vars=base_vars)
+            providers[provider] = ProviderConfig(api_key=api_key, api_base=api_base)
+
+    return providers
+
+
 def load_config(config_path: Path | None = None) -> Config:
     """从文件加载配置或创建默认配置.
 
@@ -49,6 +79,8 @@ def load_config(config_path: Path | None = None) -> Config:
     Returns:
         加载的配置对象。
     """
+    from finchbot.i18n.detector import detect_system_language
+
     path = config_path or get_config_path()
 
     if path.exists():
@@ -61,13 +93,40 @@ def load_config(config_path: Path | None = None) -> Config:
             print(f"警告: 无法从 {path} 加载配置: {e}")
             print("使用默认配置。")
             config = Config()
+            # 配置文件损坏，检测系统语言
+            config.language = detect_system_language()
+            config.language_set_by_user = False
     else:
         config = Config()
-
-    # 方案 B：如果 default_model 是默认值且没有配置 provider，尝试自动检测
-    if config.default_model == "gpt-5" and not config.get_configured_providers():
+        # 新配置，检测系统语言和默认模型
+        config.language = detect_system_language()
+        config.language_set_by_user = False
         detected_model = _auto_detect_default_model()
         if detected_model:
+            config.default_model = detected_model
+        config.default_model_set_by_user = False
+
+    # 如果语言未被用户设置过，尝试检测系统语言
+    if not config.language_set_by_user:
+        detected_lang = detect_system_language()
+        if detected_lang != config.language:
+            config.language = detected_lang
+
+    # 从环境变量加载提供商配置并合并
+    env_providers = _load_providers_from_env()
+    for provider_name, provider_config in env_providers.items():
+        # 环境变量优先级高于配置文件
+        if provider_name not in config.providers.model_fields:
+            # 自定义 provider
+            config.providers.custom[provider_name] = provider_config
+        else:
+            # 预设 provider
+            setattr(config.providers, provider_name, provider_config)
+
+    # 如果默认模型未被用户设置过，尝试自动检测
+    if not config.default_model_set_by_user:
+        detected_model = _auto_detect_default_model()
+        if detected_model and detected_model != config.default_model:
             config.default_model = detected_model
 
     return config
