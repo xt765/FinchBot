@@ -14,6 +14,7 @@ from langchain_core.runnables import RunnableConfig
 from loguru import logger
 from rich.console import Console
 from rich.panel import Panel
+from rich.rule import Rule
 
 from finchbot.config import load_config
 from finchbot.i18n import t
@@ -23,6 +24,151 @@ console = Console()
 
 EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q", "q"}
 GOODBYE_MESSAGE = "\n[dim]Goodbye! 👋[/dim]"
+
+
+def _format_message(msg: Any, index: int, show_index: bool = True, max_content_len: int = 9999) -> None:
+    """格式化并显示单条消息。
+
+    Args:
+        msg: 消息对象
+        index: 消息索引
+        show_index: 是否显示索引
+        max_content_len: 内容最大显示长度（默认很大，基本不截断）
+    """
+    msg_type = getattr(msg, "type", None)
+    content = getattr(msg, "content", "") or ""
+    tool_calls = getattr(msg, "tool_calls", None) or []
+    name = getattr(msg, "name", None)
+
+    prefix = f"[{index}] " if show_index else ""
+
+    panel_width = None
+
+    if msg_type == "human" or (hasattr(msg, "role") and msg.role == "user"):
+        role_label = t("cli.history.role_you")
+        role_icon = "👤"
+        role_color = "cyan"
+        console.print(Panel(
+            content,
+            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+            border_style=role_color,
+            padding=(0, 1),
+            width=panel_width,
+        ))
+
+    elif msg_type == "ai" or (hasattr(msg, "role") and msg.role == "assistant"):
+        role_label = t("cli.history.role_bot")
+        role_icon = "🤖"
+        role_color = "green"
+        console.print(Panel(
+            content,
+            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+            border_style=role_color,
+            padding=(0, 1),
+            width=panel_width,
+        ))
+
+    elif tool_calls:
+        role_label = t("cli.history.role_tool")
+        role_icon = "🔧"
+        role_color = "yellow"
+        tool_names = [tc.get("name", "unknown") for tc in tool_calls]
+        tool_info = f" {', '.join(tool_names)}" if tool_names else ""
+        console.print(Panel(
+            tool_info.strip() or "tool",
+            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+            border_style=role_color,
+            padding=(0, 1),
+            width=panel_width,
+        ))
+
+    elif name:
+        role_label = t("cli.history.role_tool")
+        role_icon = "🔧"
+        role_color = "yellow"
+        console.print(Panel(
+            content,
+            title=f"[{role_color}]{prefix}{role_icon} {name}[/{role_color}]",
+            border_style=role_color,
+            padding=(0, 1),
+            width=panel_width,
+        ))
+
+    elif msg_type == "system" or (hasattr(msg, "role") and msg.role == "system"):
+        role_label = t("cli.history.role_system")
+        role_icon = "⚙️"
+        role_color = "dim"
+        console.print(Panel(
+            content,
+            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+            border_style=role_color,
+            padding=(0, 1),
+            width=panel_width,
+        ))
+
+    else:
+        role_label = "未知"
+        role_icon = "❓"
+        role_color = "red"
+        console.print(Panel(
+            content,
+            title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+            border_style=role_color,
+            padding=(0, 1),
+            width=panel_width,
+        ))
+
+
+def _display_messages_by_turn(messages: list[Any], show_index: bool = True) -> None:
+    """按轮次分组显示消息。
+
+    Args:
+        messages: 消息列表
+        show_index: 是否显示索引
+    """
+    if not messages:
+        return
+
+    console.print(Rule(style="dim"))
+    turn_num = 0
+    i = 0
+
+    while i < len(messages):
+        msg = messages[i]
+        msg_type = getattr(msg, "type", None)
+
+        if msg_type == "human" or (hasattr(msg, "role") and msg.role == "user"):
+            turn_num += 1
+            console.print()
+            console.print(f"[dim]─── 第 {turn_num} 轮对话 ───[/dim]")
+
+            _format_message(msg, i, show_index=show_index)
+
+            j = i + 1
+            while j < len(messages):
+                next_msg = messages[j]
+                next_type = getattr(next_msg, "type", None)
+                tool_calls = getattr(next_msg, "tool_calls", None) or []
+                name = getattr(next_msg, "name", None)
+
+                if (next_type == "human" or (hasattr(next_msg, "role") and next_msg.role == "user")):
+                    break
+                if next_type == "ai" or (hasattr(next_msg, "role") and next_msg.role == "assistant"):
+                    _format_message(next_msg, j, show_index=show_index, max_content_len=80)
+                    j += 1
+                    break
+                elif tool_calls or name:
+                    _format_message(next_msg, j, show_index=show_index, max_content_len=50)
+                    j += 1
+                else:
+                    break
+
+            i = j
+        else:
+            _format_message(msg, i, show_index=show_index)
+            i += 1
+
+    console.print()
 
 
 def calculate_turn_count(messages: list[Any]) -> int:
@@ -327,12 +473,8 @@ def _run_chat_session(
     messages = current_state.values.get("messages", []) if current_state else []
     if messages:
         console.print(f"\n[dim]{t('cli.history.title')}[/dim]")
-        for msg in messages:
-            role = t("cli.history.role_you") if msg.type == "human" else t("cli.history.role_bot")
-            content = msg.content
-            if len(content) > 80:
-                content = content[:80] + "..."
-            console.print(f"[cyan]{role}:[/cyan] {content}")
+        _display_messages_by_turn(messages, show_index=False)
+        console.print(f"[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]")
         console.print()
 
     if first_message:
@@ -342,14 +484,14 @@ def _run_chat_session(
                 {"messages": [{"role": "user", "content": first_message}]},
                 config=runnable_config,
             )
-            response = result["messages"][-1].content
+            all_messages = result.get("messages", [])
 
-            msg_count = len(result.get("messages", []))
+            msg_count = len(all_messages)
             session_store.update_activity(session_id, message_count=msg_count)
             _update_session_turn_count(session_store, session_id, agent)
 
-        console.print(f"\n[cyan]{t('cli.chat.finchbot_response')}[/cyan]")
-        console.print(Panel(response))
+        for i, msg in enumerate(all_messages):
+            _format_message(msg, i, show_index=False)
         console.print()
 
     prompt_session = PromptSession(
@@ -381,19 +523,8 @@ def _run_chat_session(
                     messages = current_state.values.get("messages", [])
 
                     console.print(f"\n[dim]{t('cli.history.title')}[/dim]")
-                    for i, msg in enumerate(messages):
-                        role = (
-                            t("cli.history.role_you")
-                            if msg.type == "human"
-                            else t("cli.history.role_bot")
-                        )
-                        content = msg.content
-                        if len(content) > 60:
-                            content = content[:60] + "..."
-                        console.print(f"[{i}] {role}: {content}")
-                    console.print(
-                        f"\n[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]"
-                    )
+                    _display_messages_by_turn(messages, show_index=True)
+                    console.print(f"[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]")
                     console.print(f"[dim]{t('cli.history.rollback_hint')}[/dim]\n")
                 except Exception as e:
                     console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
@@ -487,13 +618,13 @@ def _run_chat_session(
                     {"messages": [{"role": "user", "content": command}]},
                     config=config,
                 )
-                response = result["messages"][-1].content
+                all_messages = result.get("messages", [])
 
-                msg_count = len(result.get("messages", []))
+                msg_count = len(all_messages)
                 session_store.update_activity(session_id, message_count=msg_count)
 
-            console.print(f"\n[cyan]{t('cli.chat.finchbot_response')}[/cyan]")
-            console.print(Panel(response))
+            for i, msg in enumerate(all_messages):
+                _format_message(msg, i, show_index=False)
             console.print()
 
         except KeyboardInterrupt:

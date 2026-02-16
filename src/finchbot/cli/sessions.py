@@ -78,17 +78,20 @@ def show_session(
         for idx, msg in enumerate(unique_messages):
             role = msg.get("role", "unknown")
             content = msg.get("content", "")
+            tool_calls = msg.get("tool_calls", None)
 
             prefix = f"[{idx}] " if show_index else ""
 
             if role == "user":
-                console.print(f"{prefix}[blue]You:[/blue] {content}")
+                display_content = content[:200] + "..." if len(content) > 200 else content
+                console.print(f"{prefix}[cyan]👤 {t('cli.history.role_you')}: [cyan]{display_content}[/cyan]")
             elif role == "assistant":
-                display_content = content[:200]
-                suffix = "..." if len(content) > 200 else ""
-                console.print(
-                    f"{prefix}[cyan]FinchBot:[/cyan] {display_content}{suffix}"
-                )
+                display_content = content[:200] + "..." if len(content) > 200 else content
+                console.print(f"{prefix}[green]🤖 {t('cli.history.role_bot')}: [green]{display_content}[/green]")
+            elif tool_calls:
+                tool_names = [tc.get("name", "unknown") for tc in tool_calls]
+                tool_info = f" [{', '.join(tool_names)}]" if tool_names else ""
+                console.print(f"{prefix}[yellow]🔧 {t('cli.history.role_tool')}:[/yellow] {tool_info}")
             console.print()
 
         if show_index:

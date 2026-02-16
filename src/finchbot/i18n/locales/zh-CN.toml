@@ -123,8 +123,11 @@ check_logs = "查看日志获取详细信息。"
 title = "对话历史:"
 role_you = "你"
 role_bot = "FinchBot"
+role_tool = "工具"
+role_system = "系统"
 total_messages = "共 {} 条消息"
 rollback_hint = "使用 '/rollback <索引> [新会话名]' 回退"
+tool_invoked = "调用工具"
 
 [cli.rollback]
 invalid_index = "无效索引。范围: 0-{}"
