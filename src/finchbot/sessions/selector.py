@@ -197,6 +197,7 @@ class SessionSelector:
         table.add_column(t("sessions.columns.id"), width=6, justify="center")
         table.add_column(t("sessions.columns.title"), min_width=15, max_width=25, ratio=2)
         table.add_column(t("sessions.columns.messages"), width=8, justify="right")
+        table.add_column(t("sessions.columns.turns"), width=8, justify="right")
         table.add_column(t("sessions.columns.created"), width=12, justify="right")
         table.add_column(t("sessions.columns.last_active"), width=12, justify="right")
 
@@ -218,6 +219,9 @@ class SessionSelector:
             # 消息数
             msg_count = str(session.message_count) if session.message_count > 0 else "-"
 
+            # 会话轮次
+            turn_count = str(session.turn_count) if session.turn_count > 0 else "-"
+
             # 创建时间
             created_str = self.renderer._format_time(session.created_at)
 
@@ -230,6 +234,7 @@ class SessionSelector:
                 id_text = Text(session_id, style="cyan")
                 title_text = Text(title, style="cyan bold")
                 msg_text = Text(msg_count, style="cyan")
+                turn_text = Text(turn_count, style="cyan")
                 created_text = Text(created_str, style="cyan")
                 time_text = Text(time_str, style="cyan")
             else:
@@ -237,10 +242,11 @@ class SessionSelector:
                 id_text = Text(session_id, style="dim")
                 title_text = Text(title, style="white")
                 msg_text = Text(msg_count, style="green")
+                turn_text = Text(turn_count, style="yellow")
                 created_text = Text(created_str, style="dim")
                 time_text = Text(time_str, style="dim")
 
-            table.add_row(cursor_text, id_text, title_text, msg_text, created_text, time_text)
+            table.add_row(cursor_text, id_text, title_text, msg_text, turn_text, created_text, time_text)
 
         console.print(table)
 

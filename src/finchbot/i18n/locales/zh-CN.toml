@@ -453,6 +453,7 @@ cancelled = "已取消"
 id = "ID"
 title = "标题"
 messages = "消息数"
+turns = "会话轮次"
 created = "创建时间"
 last_active = "最后活跃"
 

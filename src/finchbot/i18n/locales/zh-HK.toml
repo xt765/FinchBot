@@ -454,6 +454,7 @@ cancelled = "已取消"
 id = "ID"
 title = "標題"
 messages = "訊息數"
+turns = "對話輪次"
 created = "建立時間"
 last_active = "最後活躍"
 

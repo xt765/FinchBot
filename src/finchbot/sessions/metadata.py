@@ -22,6 +22,7 @@ class SessionMetadata:
         created_at: 创建时间
         last_active: 最后活跃时间
         message_count: 消息数量
+        turn_count: 会话轮次（一问一答算一轮）
     """
 
     session_id: str
@@ -29,6 +30,7 @@ class SessionMetadata:
     created_at: datetime
     last_active: datetime
     message_count: int = 0
+    turn_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """转换为字典."""
@@ -38,6 +40,7 @@ class SessionMetadata:
             "created_at": self.created_at.isoformat(),
             "last_active": self.last_active.isoformat(),
             "message_count": self.message_count,
+            "turn_count": self.turn_count,
         }
 
     @classmethod
@@ -49,6 +52,7 @@ class SessionMetadata:
             created_at=datetime.fromisoformat(data["created_at"]),
             last_active=datetime.fromisoformat(data["last_active"]),
             message_count=data.get("message_count", 0),
+            turn_count=data.get("turn_count", 0),
         )
 
 
@@ -79,14 +83,20 @@ class SessionMetadataStore:
                     title TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    message_count INTEGER DEFAULT 0
+                    message_count INTEGER DEFAULT 0,
+                    turn_count INTEGER DEFAULT 0
                 )
             """)
+            # 数据库迁移：检查 turn_count 列是否存在，如不存在则添加
+            cursor = conn.execute("PRAGMA table_info(sessions)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if "turn_count" not in columns:
+                conn.execute("ALTER TABLE sessions ADD COLUMN turn_count INTEGER DEFAULT 0")
             conn.commit()
         logger.debug(f"Session metadata store initialized at {self.db_path}")
 
     def create_session(
-        self, session_id: str, title: str | None = None, message_count: int = 0
+        self, session_id: str, title: str | None = None, message_count: int = 0, turn_count: int = 0
     ) -> SessionMetadata:
         """创建新会话记录.
 
@@ -94,6 +104,7 @@ class SessionMetadataStore:
             session_id: 会话ID
             title: 会话标题，如未提供则使用 session_id
             message_count: 初始消息数量
+            turn_count: 初始会话轮次
 
         Returns:
             创建的会话元数据
@@ -105,14 +116,15 @@ class SessionMetadataStore:
             created_at=now,
             last_active=now,
             message_count=message_count,
+            turn_count=turn_count,
         )
 
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO sessions
-                (session_id, title, created_at, last_active, message_count)
-                VALUES (?, ?, ?, ?, ?)
+                (session_id, title, created_at, last_active, message_count, turn_count)
+                VALUES (?, ?, ?, ?, ?, ?)
             """,
                 (
                     metadata.session_id,
@@ -120,6 +132,7 @@ class SessionMetadataStore:
                     metadata.created_at.isoformat(),
                     metadata.last_active.isoformat(),
                     metadata.message_count,
+                    metadata.turn_count,
                 ),
             )
             conn.commit()
@@ -128,7 +141,11 @@ class SessionMetadataStore:
         return metadata
 
     def update_activity(
-        self, session_id: str, title: str | None = None, message_count: int | None = None
+        self,
+        session_id: str,
+        title: str | None = None,
+        message_count: int | None = None,
+        turn_count: int | None = None,
     ) -> None:
         """更新会话活跃时间.
 
@@ -136,11 +153,17 @@ class SessionMetadataStore:
             session_id: 会话ID
             title: 新的标题（可选）
             message_count: 新的消息数量（可选）
+            turn_count: 新的会话轮次（可选）
         """
         now = datetime.now().isoformat()
 
         with sqlite3.connect(str(self.db_path)) as conn:
-            if title is not None and message_count is not None:
+            if turn_count is not None:
+                conn.execute(
+                    "UPDATE sessions SET last_active = ?, turn_count = ? WHERE session_id = ?",
+                    (now, turn_count, session_id),
+                )
+            elif title is not None and message_count is not None:
                 conn.execute(
                     """
                     UPDATE sessions
@@ -204,6 +227,7 @@ class SessionMetadataStore:
             created_at=datetime.fromisoformat(row[2]),
             last_active=datetime.fromisoformat(row[3]),
             message_count=row[4],
+            turn_count=row[5] if len(row) > 5 else 0,
         )
 
     def get_all_sessions(self) -> list[SessionMetadata]:
@@ -228,6 +252,7 @@ class SessionMetadataStore:
                 created_at=datetime.fromisoformat(row[2]),
                 last_active=datetime.fromisoformat(row[3]),
                 message_count=row[4],
+                turn_count=row[5] if len(row) > 5 else 0,
             )
             for row in rows
         ]

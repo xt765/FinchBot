@@ -494,6 +494,7 @@ cancelled = "Cancelled"
 id = "ID"
 title = "Title"
 messages = "Messages"
+turns = "Turns"
 created = "Created"
 last_active = "Last Active"
 

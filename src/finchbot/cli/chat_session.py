@@ -25,6 +25,57 @@ EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q", "q"}
 GOODBYE_MESSAGE = "\n[dim]Goodbye! 👋[/dim]"
 
 
+def calculate_turn_count(messages: list[Any]) -> int:
+    """计算会话轮次。
+
+    一问一答算一轮，即统计有多少个有效的"human消息+ai消息"对。
+    如果最后一条消息是人类消息（没有AI回答），则不计入轮次。
+
+    Args:
+        messages: 消息列表
+
+    Returns:
+        会话轮次数量
+    """
+    if not messages:
+        return 0
+
+    turn_count = 0
+    prev_was_human = False
+
+    for msg in messages:
+        msg_type = getattr(msg, "type", None)
+        if msg_type == "human":
+            prev_was_human = True
+        elif msg_type == "ai" and prev_was_human:
+            turn_count += 1
+            prev_was_human = False
+
+    return turn_count
+
+
+def _update_session_turn_count(
+    session_store: SessionMetadataStore,
+    session_id: str,
+    agent: Any,
+) -> None:
+    """更新会话的轮次计数。
+
+    Args:
+        session_store: 会话元数据存储
+        session_id: 会话ID
+        agent: Agent 实例
+    """
+    try:
+        config = {"configurable": {"thread_id": session_id}}
+        current_state = agent.get_state(config)
+        messages = current_state.values.get("messages", [])
+        turn_count = calculate_turn_count(messages)
+        session_store.update_activity(session_id, turn_count=turn_count)
+    except Exception as e:
+        logger.warning(f"Failed to update turn count for session {session_id}: {e}")
+
+
 def _get_llm_config(
     model: str, config_obj: Any
 ) -> tuple[str | None, str | None, str | None]:
@@ -282,6 +333,7 @@ def _run_chat_session(
 
             msg_count = len(result.get("messages", []))
             session_store.update_activity(session_id, message_count=msg_count)
+            _update_session_turn_count(session_store, session_id, agent)
 
         console.print(f"\n[cyan]{t('cli.chat.finchbot_response')}[/cyan]")
         console.print(Panel(response))
@@ -305,6 +357,7 @@ def _run_chat_session(
                 continue
 
             if command.lower() in EXIT_COMMANDS:
+                _update_session_turn_count(session_store, session_id, agent)
                 console.print(GOODBYE_MESSAGE)
                 break
 
@@ -417,9 +470,11 @@ def _run_chat_session(
             console.print()
 
         except KeyboardInterrupt:
+            _update_session_turn_count(session_store, session_id, agent)
             console.print(GOODBYE_MESSAGE)
             break
         except EOFError:
+            _update_session_turn_count(session_store, session_id, agent)
             console.print(GOODBYE_MESSAGE)
             break
         except Exception as e:
