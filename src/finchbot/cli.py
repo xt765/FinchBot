@@ -482,7 +482,7 @@ def _run_chat_session(
                 continue
 
             if command.lower() in EXIT_COMMANDS:
-                console.print("\n[dim]Goodbye! 👋[/dim]")
+                console.print(GOODBYE_MESSAGE)
                 break
 
             # /history 命令 - 显示带索引的历史消息
@@ -630,10 +630,10 @@ def _run_chat_session(
             console.print()
 
         except KeyboardInterrupt:
-            console.print("\n[dim]Goodbye! 👋[/dim]")
+            console.print(GOODBYE_MESSAGE)
             break
         except EOFError:
-            console.print("\n[dim]Goodbye! 👋[/dim]")
+            console.print(GOODBYE_MESSAGE)
             break
         except Exception as e:
             logger.exception("Error in chat loop")
@@ -723,6 +723,9 @@ def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | N
 
 
 EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q", "q"}
+
+# 退出消息
+GOODBYE_MESSAGE = "\n[dim]Goodbye! 👋[/dim]"
 
 
 def _get_last_active_session(workspace: Path) -> str:
