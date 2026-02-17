@@ -96,11 +96,11 @@ class DataSyncManager:
         # 处理删除操作
         if operation == "delete":
             return self._try_delete_operation(memory_id, attempt)
-        
+
         # 处理添加和更新操作
         elif operation in ["add", "update"]:
             return self._try_add_update_operation(memory_id, operation, attempt)
-        
+
         # 未知操作类型
         else:
             logger.warning(f"Unknown operation: {operation}")
@@ -137,7 +137,9 @@ class DataSyncManager:
             logger.warning(f"Vector store not available for delete operation: {memory_id[:8]}...")
             return True
 
-    def _try_add_update_operation(self, memory_id: str, operation: str, attempt: int) -> bool | None:
+    def _try_add_update_operation(
+        self, memory_id: str, operation: str, attempt: int
+    ) -> bool | None:
         """尝试添加或更新操作.
 
         Args:
@@ -194,7 +196,9 @@ class DataSyncManager:
                         )
                         return None
                     self.sync_stats["failed_syncs"] += 1
-                    logger.warning(f"Failed to sync to vector store: {operation} {memory_id[:8]}...")
+                    logger.warning(
+                        f"Failed to sync to vector store: {operation} {memory_id[:8]}..."
+                    )
                     return False
             except Exception as e:
                 if attempt < self.max_retries:
@@ -208,7 +212,9 @@ class DataSyncManager:
                 return False
         else:
             # 向量存储不可用，返回False
-            logger.warning(f"Vector store not available for {operation} operation: {memory_id[:8]}...")
+            logger.warning(
+                f"Vector store not available for {operation} operation: {memory_id[:8]}..."
+            )
             return False
 
     def get_sync_status(self) -> dict[str, Any]:
@@ -249,7 +255,7 @@ class VectorStoreAdapter:
         self.embedding_model = embedding_model or "BAAI/bge-small-zh-v1.5"
         self.vectorstore = None
         self._initialized = False
-        
+
         # 尝试预初始化向量存储，避免首次操作时的延迟和失败
         try:
             self._ensure_initialized()

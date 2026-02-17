@@ -267,7 +267,7 @@ def test_performance_and_scalability():
 
         for i in range(batch_size):
             manager.remember(
-                content=f"性能测试记忆 {i+1}",
+                content=f"性能测试记忆 {i + 1}",
                 category="test",
                 importance=0.5 + (i % 5) * 0.1,
                 source="performance_test",
