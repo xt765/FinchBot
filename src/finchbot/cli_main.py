@@ -11,6 +11,7 @@ from pathlib import Path
 import typer
 
 from finchbot import __version__
+from finchbot.agent import get_default_workspace
 from finchbot.cli import (
     _get_last_active_session,
     _run_chat_session,
@@ -41,7 +42,9 @@ def main(
 @app.command()
 def version() -> None:
     """显示版本信息."""
-    console.print(f"[bold cyan]FinchBot[/bold cyan] {t('cli.version')}: [green]{__version__}[/green]")
+    console.print(
+        f"[bold cyan]FinchBot[/bold cyan] {t('cli.version')}: [green]{__version__}[/green]"
+    )
 
 
 @app.command(name="chat")
@@ -54,8 +57,7 @@ def repl(
 
     无 -s 参数时自动进入最近活跃的会话。
     """
-    config_obj = load_config()
-    ws_path = Path(workspace or config_obj.agents.defaults.workspace).expanduser()
+    ws_path = Path(workspace).expanduser() if workspace else get_default_workspace()
 
     if not session:
         session = _get_last_active_session(ws_path)
@@ -75,8 +77,7 @@ def sessions_callback(ctx: typer.Context) -> None:
     无子命令时默认进入交互式管理界面。
     """
     if ctx.invoked_subcommand is None:
-        config_obj = load_config()
-        ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
+        ws_path = get_default_workspace()
 
         from finchbot.sessions import SessionSelector
 

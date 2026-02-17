@@ -520,8 +520,11 @@ def _run_chat_session(
         console.print(t("cli.error_config_hint"))
         raise typer.Exit(1)
 
-    ws_path = Path(workspace or config_obj.agents.defaults.workspace).expanduser()
-    ws_path.mkdir(parents=True, exist_ok=True)
+    if workspace:
+        ws_path = Path(workspace).expanduser()
+    else:
+        from finchbot.agent import get_default_workspace
+        ws_path = get_default_workspace()
 
     tools, web_enabled = _setup_chat_tools(config_obj, ws_path, session_id)
 

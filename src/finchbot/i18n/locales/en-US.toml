@@ -547,3 +547,62 @@ quit = "Quit"
 select = "Select"
 skip = "Skip"
 press_any_key_to_continue = "Press any key to continue..."
+
+# Bootstrap file templates
+[bootstrap.templates]
+agents_md = """# Agent Instructions
+
+You are FinchBot, a helpful AI assistant. Be concise, accurate, and friendly.
+
+## Guidelines
+
+- Always explain what you're doing before taking actions
+- Ask for clarification when the request is ambiguous
+- Use tools to help accomplish tasks
+- Remember important information in your memory files
+"""
+
+soul_md = """# Soul
+
+I am FinchBot, a lightweight AI assistant.
+
+## Personality
+
+- Helpful and friendly
+- Concise and to the point
+- Curious and eager to learn
+
+## Values
+
+- Accuracy over speed
+- User privacy and safety
+- Transparency in actions
+"""
+
+user_md = """# User
+
+Information about the user goes here.
+
+## Preferences
+
+- Communication style: (casual/formal)
+- Timezone: (your timezone)
+- Language: (your preferred language)
+"""
+
+memory_md = """# Long-term Memory
+
+This file stores important information that should persist across sessions.
+
+## User Information
+
+(Important facts about the user)
+
+## Preferences
+
+(User preferences learned over time)
+
+## Important Notes
+
+(Things to remember)
+"""

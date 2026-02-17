@@ -22,6 +22,39 @@ from finchbot.i18n import t
 from finchbot.memory.enhanced import EnhancedMemoryStore
 
 
+def _create_workspace_templates(workspace: Path) -> None:
+    """创建默认工作区模板文件.
+
+    Args:
+        workspace: 工作目录路径。
+    """
+    from finchbot.config import load_config
+    from finchbot.i18n.loader import I18n
+
+    config = load_config()
+    i18n = I18n(config.language)
+
+    templates = {
+        "AGENTS.md": i18n.get("bootstrap.templates.agents_md"),
+        "SOUL.md": i18n.get("bootstrap.templates.soul_md"),
+        "USER.md": i18n.get("bootstrap.templates.user_md"),
+    }
+
+    for filename, content in templates.items():
+        file_path = workspace / filename
+        if not file_path.exists():
+            file_path.write_text(content, encoding="utf-8")
+
+    memory_dir = workspace / "memory"
+    memory_dir.mkdir(exist_ok=True)
+    memory_file = memory_dir / "MEMORY.md"
+    if not memory_file.exists():
+        memory_file.write_text(i18n.get("bootstrap.templates.memory_md"), encoding="utf-8")
+
+    skills_dir = workspace / "skills"
+    skills_dir.mkdir(exist_ok=True)
+
+
 def build_system_prompt(
     workspace: Path,
     memory: EnhancedMemoryStore | None = None,
@@ -93,6 +126,7 @@ def get_default_workspace() -> Path:
     """获取默认工作目录."""
     workspace = Path.home() / ".finchbot" / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
+    _create_workspace_templates(workspace)
     return workspace
 
 

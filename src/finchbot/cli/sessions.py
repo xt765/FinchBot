@@ -9,12 +9,10 @@ import json
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from pathlib import Path
 
 import questionary
 
 from finchbot.cli import console
-from finchbot.config import load_config
 from finchbot.i18n import t
 
 
@@ -30,8 +28,8 @@ def show_session(
         limit: 最大显示消息数
         show_index: 是否显示消息索引
     """
-    config_obj = load_config()
-    ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
+    from finchbot.agent import get_default_workspace
+    ws_path = get_default_workspace()
     db_path = ws_path / "checkpoints.db"
 
     if not db_path.exists():
@@ -117,8 +115,8 @@ def rollback_session(
         new_session: 新会话名称（可选）
         force: 强制执行不确认
     """
-    config_obj = load_config()
-    ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
+    from finchbot.agent import get_default_workspace
+    ws_path = get_default_workspace()
     db_path = ws_path / "checkpoints.db"
 
     if not db_path.exists():

@@ -263,10 +263,8 @@ class SessionSelector:
         """
         from finchbot.cli import _run_chat_session
 
-        config_obj = self._load_config()
-        ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
         console.print(f"[green]✓ {t('sessions.actions.enter_chat')}: {session_id}[/green]\n")
-        _run_chat_session(session_id, None, str(ws_path))
+        _run_chat_session(session_id, None, str(self.workspace))
 
     def _handle_new_session(self) -> None:
         """处理新建会话.
@@ -299,9 +297,7 @@ class SessionSelector:
         console.print(
             f"[green]✓ {t('sessions.actions.enter_chat')}: {session_id} ({title})[/green]\n"
         )
-        config_obj = self._load_config()
-        ws_path = Path(config_obj.agents.defaults.workspace).expanduser()
-        _run_chat_session(session_id, None, str(ws_path))
+        _run_chat_session(session_id, None, str(self.workspace))
         # 聊天结束后返回，由调用者处理列表刷新
 
     def _get_next_session_id(self) -> int:
