@@ -60,7 +60,9 @@ class SessionTitleTool(FinchTool):
             操作结果消息
         """
         try:
-            workspace = Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
+            workspace = (
+                Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
+            )
             session_store = SessionMetadataStore(workspace)
 
             if action == "get":
@@ -114,11 +116,6 @@ class SessionTitleTool(FinchTool):
             设置结果消息
         """
         title = title.strip()
-
-        if len(title) > 15:
-            title = title[:15]
-        if len(title) < 5:
-            return t("tools.session_title.error_too_short")
 
         session = session_store.get_session(self.session_id)
         if session is None:

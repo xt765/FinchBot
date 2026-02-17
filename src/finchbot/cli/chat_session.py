@@ -275,8 +275,7 @@ def _check_and_ensure_session_title(
     console.print("\n[yellow]⚠️  检测到会话标题尚未设置，正在自动设置...[/yellow]\n")
 
     try:
-        current_session = session_store.get_session(session_id)
-        session_title = current_session.title if current_session else None
+        session_title = session.title if session else None
         if session_title == session_id:
             session_title = None
 
@@ -287,19 +286,18 @@ def _check_and_ensure_session_title(
             memory=EnhancedMemoryStore(ws_path),
             use_persistent=True,
             session_title=session_title,
+            title_prompt=t("agent.session_title.set_prompt"),
         )
 
         config: RunnableConfig = {"configurable": {"thread_id": session_id}}
         all_messages = []
-        prompt = """请立即使用 session_title 工具为本次会话设置一个合适的标题。
-要求：
-- 5-15 个字符
-- 无标点符号
-- 简洁概括本次对话的主题
-使用 action=set 来设置标题。"""
 
+        current_state = agent_with_title.get_state(config)
+        existing_messages = list(current_state.values.get("messages", []))
+
+        prompt = t("agent.session_title.set_prompt")
         for chunk in agent_with_title.stream(
-            {"messages": [{"role": "user", "content": prompt}]},
+            {"messages": existing_messages + [{"role": "user", "content": prompt}]},
             config=config,
         ):
             if chunk.get("messages"):
@@ -524,6 +522,7 @@ def _run_chat_session(
         ws_path = Path(workspace).expanduser()
     else:
         from finchbot.agent import get_default_workspace
+
         ws_path = get_default_workspace()
 
     tools, web_enabled = _setup_chat_tools(config_obj, ws_path, session_id)
