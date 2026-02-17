@@ -505,7 +505,6 @@ def _run_chat_session(
         tools=tools,
         memory=EnhancedMemoryStore(ws_path),
         use_persistent=True,
-        session_title=session_title,
     )
 
     config = {"configurable": {"thread_id": session_id}}

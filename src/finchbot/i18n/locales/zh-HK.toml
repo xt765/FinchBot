@@ -293,14 +293,6 @@ current_none = "目前無標題（對話ID: {session_id}）。{hint}"
 get_hint = "對話 2-3 輪後可使用 action=set 產生標題"
 set_success = "✅ 標題已設定為: {title}"
 
-[agent.session_title]
-section = "## 對話標題"
-current = "目前對話標題: {title}"
-when_to_set = "### 何時設定/更新標題"
-first_set = "**首次設定**：當對話進行 2-3 輪後，若目前標題為空或與對話ID相同，應主動產生一個簡潔的標題"
-modify = "**更新標題**：當對話主題發生明顯變化時，應更新標題以反映新主題"
-requirements = "**標題要求**：5-15個字元，無標點，簡潔概括對話主題"
-
 [search.engines]
 tavily = "Tavily (品質最佳，專為 AI 優化)"
 brave = "Brave Search (免費額度大，隱私友善)"

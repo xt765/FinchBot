@@ -58,7 +58,6 @@ def _create_workspace_templates(workspace: Path) -> None:
 def build_system_prompt(
     workspace: Path,
     memory: EnhancedMemoryStore | None = None,
-    session_title: str | None = None,
 ) -> str:
     """构建系统提示.
 
@@ -67,7 +66,6 @@ def build_system_prompt(
     Args:
         workspace: 工作目录路径。
         memory: 可选的记忆存储。
-        session_title: 可选的当前会话标题。
 
     Returns:
         系统提示字符串。
@@ -106,18 +104,6 @@ You have access to tools that allow you to:
         memory_context = memory.get_memory_context()
         if memory_context:
             prompt += f"\n\n## {t('agent.memory')}\n{memory_context}"
-
-    if session_title is not None:
-        prompt += f"""
-
-{t("agent.session_title.section")}
-{t("agent.session_title.current").format(title=session_title)}
-
-{t("agent.session_title.when_to_set")}
-- {t("agent.session_title.first_set")}
-- {t("agent.session_title.modify")}
-- {t("agent.session_title.requirements")}
-"""
 
     return prompt
 
@@ -162,7 +148,6 @@ def create_finch_agent(
     tools: Sequence[BaseTool] | None = None,
     memory: EnhancedMemoryStore | None = None,
     use_persistent: bool = True,
-    session_title: str | None = None,
 ) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
     """创建 FinchBot Agent.
 
@@ -172,7 +157,6 @@ def create_finch_agent(
         tools: 可选的工具列表。
         memory: 可选的记忆存储。
         use_persistent: 是否使用持久化 checkpointer（默认 True）。
-        session_title: 可选的当前会话标题。
 
     Returns:
         (agent, checkpointer) 元组。
@@ -190,7 +174,7 @@ def create_finch_agent(
     else:
         checkpointer = get_memory_checkpointer()
 
-    system_prompt = build_system_prompt(workspace, memory, session_title)
+    system_prompt = build_system_prompt(workspace, memory)
 
     agent = create_agent(
         model=model,

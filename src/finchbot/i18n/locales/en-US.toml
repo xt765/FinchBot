@@ -300,14 +300,6 @@ current_none = "No title (Session ID: {session_id}). {hint}"
 get_hint = "After 2-3 turns, use action=set to generate a title"
 set_success = "✅ Title set to: {title}"
 
-[agent.session_title]
-section = "## Session Title"
-current = "Current session title: {title}"
-when_to_set = "### When to Set/Update Title"
-first_set = "**Initial Set**: After 2-3 turns of conversation, if the current title is empty or same as session ID, proactively generate a concise title"
-modify = "**Update Title**: When the conversation topic changes significantly, update the title to reflect the new topic"
-requirements = "**Title Requirements**: 5-15 characters, concise and summarize the conversation topic"
-
 [search.engines]
 tavily = "Tavily (Best quality, AI-optimized)"
 brave = "Brave Search (Free tier, privacy-friendly)"
