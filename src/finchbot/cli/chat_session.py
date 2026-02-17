@@ -738,9 +738,15 @@ def _get_last_active_session(workspace: Path) -> str:
     Returns:
         最近活跃的会话 ID，如果没有会话则返回 "default"
     """
-    store = SessionMetadataStore(workspace)
-    sessions = store.get_all_sessions()
+    import sqlite3
 
-    if sessions:
-        return sessions[0].session_id
+    db_path = workspace / "sessions.db"
+    if not db_path.exists():
+        return "default"
+
+    with sqlite3.connect(str(db_path)) as conn:
+        cursor = conn.execute("SELECT session_id FROM sessions ORDER BY last_active DESC LIMIT 1")
+        row = cursor.fetchone()
+        if row:
+            return row[0]
     return "default"
