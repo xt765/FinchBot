@@ -307,6 +307,20 @@ current_none = "No title (Session ID: {session_id}). {hint}"
 get_hint = "After 2-3 turns, use action=set to generate a title"
 set_success = "✅ Title set to: {title}"
 
+[session_title]
+role_user = "User"
+role_ai = "AI"
+prompt_system = """You are a session title generator. Based on the following conversation, generate a concise title.
+
+Requirements:
+1. Accurately summarize the conversation topic
+2. No punctuation marks
+3. Keep it to 5-20 characters
+
+Output only the title, no explanations."""
+
+prompt_user = "Generate a title for this conversation:\n\n{conversation}"
+
 [search.engines]
 tavily = "Tavily (Best quality, AI-optimized)"
 brave = "Brave Search (Free tier, privacy-friendly)"

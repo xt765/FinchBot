@@ -241,7 +241,7 @@ def _update_session_turn_count(
         if chat_model and turn_count >= 2:
             session = session_store.get_session(session_id)
             if session and (not session.title.strip() or session.title == session_id):
-                from finchbot.tools.session_title import generate_session_title_with_ai
+                from finchbot.sessions.title_generator import generate_session_title_with_ai
 
                 title = generate_session_title_with_ai(chat_model, messages)
                 if title:

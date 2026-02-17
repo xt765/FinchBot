@@ -1,6 +1,6 @@
 """会话标题工具.
 
-提供 Agent 获取和修改会话标题的能力，以及 AI 生成会话标题的函数。
+提供 Agent 获取和修改会话标题的能力。
 """
 
 from pathlib import Path
@@ -11,63 +11,6 @@ from pydantic import Field
 from finchbot.i18n import t
 from finchbot.sessions import SessionMetadataStore
 from finchbot.tools.base import FinchTool
-
-
-def generate_session_title_with_ai(
-    chat_model,
-    messages: list,
-) -> str | None:
-    """使用 AI 分析对话内容生成会话标题.
-
-    Args:
-        chat_model: 聊天模型实例
-        messages: 对话消息列表
-
-    Returns:
-        生成的标题，如果失败则返回 None
-    """
-    try:
-        from langchain_core.messages import HumanMessage, SystemMessage
-
-        conversation = []
-        for msg in messages[-4:]:
-            if hasattr(msg, "type") and hasattr(msg, "content"):
-                role = "用户" if msg.type == "human" else "AI"
-                content = msg.content[:100]
-                conversation.append(f"{role}: {content}")
-
-        conversation_text = "\n".join(conversation)
-
-        system_prompt = (
-            "你是一个会话标题生成助手。请根据以下对话内容，"
-            "生成一个简洁的标题（不超过十五个字符）。\n\n"
-            "要求：\n"
-            "1. 标题要准确概括对话主题\n"
-            "2. 不要包含标点符号\n"
-            "3. 长度控制在 5-15 个字符\n\n"
-            "请直接输出标题，不要添加任何解释。"
-        )
-
-        user_prompt = f"请为以下对话生成标题：\n\n{conversation_text}"
-
-        response = chat_model.invoke(
-            [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt),
-            ]
-        )
-
-        title = response.content.strip()
-
-        if 5 <= len(title) <= 15:
-            return title
-        return None
-
-    except Exception as e:
-        from loguru import logger
-
-        logger.warning(f"Failed to generate session title with AI: {e}")
-        return None
 
 
 class SessionTitleTool(FinchTool):

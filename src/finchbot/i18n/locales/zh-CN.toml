@@ -309,6 +309,20 @@ current_none = "当前无标题（会话ID: {session_id}）。{hint}"
 get_hint = "对话 2-3 轮后可使用 action=set 生成标题"
 set_success = "✅ 标题已设置为: {title}"
 
+[session_title]
+role_user = "用户"
+role_ai = "AI"
+prompt_system = """你是一个会话标题生成助手。请根据以下对话内容，生成一个简洁的标题。
+
+要求：
+1. 标题要准确概括对话主题
+2. 不要包含标点符号
+3. 长度控制在 5-20 个字符
+
+请直接输出标题，不要添加任何解释。"""
+
+prompt_user = "请为以下对话生成标题：\n\n{conversation}"
+
 [search.engines]
 tavily = "Tavily (质量最佳，专为 AI 优化)"
 brave = "Brave Search (免费额度大，隐私友好)"
