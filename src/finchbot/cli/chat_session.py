@@ -740,7 +740,7 @@ def _get_last_active_session(workspace: Path) -> str:
     """
     import sqlite3
 
-    db_path = workspace / "sessions.db"
+    db_path = workspace / "sessions_metadata.db"
     if not db_path.exists():
         return "default"
 
