@@ -200,6 +200,13 @@ current_time = "Current Time"
 runtime = "Runtime"
 workspace = "Workspace"
 memory = "Memory"
+tools_intro = "You have access to tools that allow you to:"
+tools_filesystem = "Read, write, and edit files"
+tools_shell = "Execute shell commands"
+tools_web = "Search the web and fetch web pages"
+tools_memory = "Manage memory and notes"
+workspace_memory = "Memory files:"
+workspace_skills = "Custom skills:"
 
 [agent.skills]
 active_skills = "Active Skills"

@@ -202,6 +202,13 @@ current_time = "当前时间"
 runtime = "运行环境"
 workspace = "工作目录"
 memory = "记忆"
+tools_intro = "你可以使用以下工具："
+tools_filesystem = "文件系统工具：读取、写入和编辑文件"
+tools_shell = "执行 shell 命令"
+tools_web = "搜索网页和获取网页内容"
+tools_memory = "管理记忆和笔记"
+workspace_memory = "记忆文件目录："
+workspace_skills = "自定义技能目录："
 
 [agent.skills]
 active_skills = "常驻技能"

@@ -77,11 +77,11 @@ def build_system_prompt(
 
 {t("agent.system_prompt")}
 
-You have access to tools that allow you to:
-- Read, write, and edit files
-- Execute shell commands
-- Search the web and fetch web pages
-- Manage memory and notes
+{t("agent.tools_intro")}
+- {t("agent.tools_filesystem")}
+- {t("agent.tools_shell")}
+- {t("agent.tools_web")}
+- {t("agent.tools_memory")}
 
 ## {t("agent.current_time")}
 {now}
@@ -91,8 +91,8 @@ You have access to tools that allow you to:
 
 ## {t("agent.workspace")}
 {workspace}
-- Memory files: {workspace}/memory/
-- Custom skills: {workspace}/skills/{{skill-name}}/SKILL.md
+- {t("agent.workspace_memory")}{workspace}/memory/
+- {t("agent.workspace_skills")}{workspace}/skills/{{skill-name}}/SKILL.md
 """
 
     context_builder = ContextBuilder(workspace)

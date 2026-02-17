@@ -200,6 +200,13 @@ current_time = "目前時間"
 runtime = "執行環境"
 workspace = "工作目錄"
 memory = "記憶"
+tools_intro = "你可以使用以下工具："
+tools_filesystem = "檔案系統工具：讀取、寫入和編輯檔案"
+tools_shell = "執行 shell 命令"
+tools_web = "搜尋網頁和獲取網頁內容"
+tools_memory = "管理記憶和筆記"
+workspace_memory = "記憶檔案目錄："
+workspace_skills = "自訂技能目錄："
 
 [tools.read_file]
 name = "read_file"
