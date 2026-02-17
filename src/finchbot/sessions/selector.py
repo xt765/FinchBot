@@ -283,9 +283,8 @@ class SessionSelector:
             console.print(f"\n[dim]{t('sessions.actions.cancelled')}[/dim]")
             return
 
-        # 获取下一个可用的数字 ID
-        next_id = self._get_next_session_id()
-        session_id = f"session_{next_id}"
+        # 获取下一个可用的会话 ID
+        session_id = self.store.get_next_session_id()
 
         # 用户输入的作为标题（如果为空则标题为空字符串）
         title = new_name.strip() if new_name.strip() else ""
@@ -299,32 +298,6 @@ class SessionSelector:
         )
         _run_chat_session(session_id, None, str(self.workspace))
         # 聊天结束后返回，由调用者处理列表刷新
-
-    def _get_next_session_id(self) -> int:
-        """获取下一个可用的会话 ID 序号.
-
-        Returns:
-            下一个可用的数字 ID（从 1 开始）
-        """
-        sessions = self.store.get_all_sessions()
-        if not sessions:
-            return 1
-
-        # 提取现有的数字 ID
-        existing_ids = set()
-        for session in sessions:
-            if session.session_id.startswith("session_"):
-                try:
-                    num = int(session.session_id.split("_")[1])
-                    existing_ids.add(num)
-                except (IndexError, ValueError):
-                    pass
-
-        # 找到第一个缺失的数字
-        next_id = 1
-        while next_id in existing_ids:
-            next_id += 1
-        return next_id
 
     def _confirm_and_delete(self, session_id: str) -> bool:
         """确认并删除会话.
@@ -623,13 +596,13 @@ class SessionSelector:
                     last_session_id = sorted(sessions, key=lambda s: s.created_at, reverse=True)[
                         0
                     ].session_id
-            return last_session_id or "default"
+            return last_session_id or self.store.get_next_session_id()
 
         # 使用键盘导航式管理界面
         self._interactive_select_with_keys(sessions)
 
-        # 返回最后操作的会话，如果没有则返回默认
-        return "default"
+        # 返回最后操作的会话，如果没有则生成新的会话 ID
+        return self.store.get_next_session_id()
 
     def select_session(self, sessions: "Sequence[SessionMetadata]") -> str | None:
         """显示交互式选择界面（向后兼容）.

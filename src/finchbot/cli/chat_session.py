@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -736,17 +737,24 @@ def _get_last_active_session(workspace: Path) -> str:
         workspace: 工作目录路径
 
     Returns:
-        最近活跃的会话 ID，如果没有会话则返回 "default"
+        最近活跃的会话 ID，如果没有会话则生成新的会话 ID
     """
-    import sqlite3
-
     db_path = workspace / "sessions_metadata.db"
     if not db_path.exists():
-        return "default"
+        from finchbot.sessions import SessionMetadataStore
+
+        store = SessionMetadataStore(workspace)
+        return store.get_next_session_id()
 
     with sqlite3.connect(str(db_path)) as conn:
-        cursor = conn.execute("SELECT session_id FROM sessions ORDER BY last_active DESC LIMIT 1")
+        cursor = conn.execute(
+            "SELECT session_id FROM sessions ORDER BY last_active DESC LIMIT 1"
+        )
         row = cursor.fetchone()
         if row:
             return row[0]
-    return "default"
+
+    from finchbot.sessions import SessionMetadataStore
+
+    store = SessionMetadataStore(workspace)
+    return store.get_next_session_id()

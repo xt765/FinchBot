@@ -295,3 +295,24 @@ class SessionMetadataStore:
                 "SELECT 1 FROM sessions WHERE session_id = ?", (session_id,)
             )
             return cursor.fetchone() is not None
+
+    def get_next_session_id(self) -> str:
+        """生成下一个可用的会话 ID，格式为 session_N。
+
+        Returns:
+            下一个可用的会话 ID
+        """
+        sessions = self.get_all_sessions()
+        existing_ids = set()
+        for session in sessions:
+            if session.session_id.startswith("session_"):
+                try:
+                    num = int(session.session_id.split("_")[1])
+                    existing_ids.add(num)
+                except (IndexError, ValueError):
+                    pass
+
+        next_id = 1
+        while next_id in existing_ids:
+            next_id += 1
+        return f"session_{next_id}"
