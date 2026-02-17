@@ -294,12 +294,14 @@ class VectorMemoryStore:
         self,
         content: str,
         metadata: dict[str, Any] | None = None,
+        id: str | None = None,
     ) -> bool:
         """添加记忆到向量存储.
 
         Args:
             content: 记忆内容。
             metadata: 元数据（分类、重要性等）。
+            id: 可选的记忆ID，如果不提供则自动生成。
 
         Returns:
             是否成功添加。
@@ -311,6 +313,7 @@ class VectorMemoryStore:
             self.vectorstore.add_texts(
                 texts=[content],
                 metadatas=[metadata or {}],
+                ids=[id] if id else None,
             )
             logger.debug(f"Added memory: {content[:50]}...")
             return True
@@ -360,6 +363,7 @@ class VectorMemoryStore:
                 if similarity >= similarity_threshold:
                     filtered_results.append(
                         {
+                            "id": doc.metadata.get("id"),
                             "content": doc.page_content,
                             "metadata": doc.metadata,
                             "similarity": similarity,
@@ -456,3 +460,40 @@ class VectorMemoryStore:
         if not self.vectorstore:
             raise ValueError("Vector store not initialized")
         return self.vectorstore.as_retriever(**kwargs)
+
+    def get_all_ids(self) -> list[str]:
+        """获取向量存储中所有记忆的 ID.
+
+        Returns:
+            ID 列表。
+        """
+        if not self.vectorstore:
+            return []
+        try:
+            return self.vectorstore.get()["ids"]
+        except Exception as e:
+            logger.error(f"Failed to get all IDs: {e}")
+            return []
+
+    def get_by_id(self, id: str) -> dict[str, Any] | None:
+        """通过 ID 获取单个记忆.
+
+        Args:
+            id: 记忆 ID。
+
+        Returns:
+            记忆字典，如果不存在返回 None。
+        """
+        if not self.vectorstore:
+            return None
+        try:
+            result = self.vectorstore.get(ids=[id])
+            if result["ids"] and len(result["ids"]) > 0:
+                return {
+                    "content": result["documents"][0],
+                    "metadata": result["metadatas"][0],
+                }
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get by ID {id[:8]}...: {e}")
+            return None

@@ -69,20 +69,22 @@ class RememberTool(FinchTool):
         """
         from pathlib import Path
 
-        from finchbot.memory import EnhancedMemoryStore
+        from finchbot.memory import MemoryManager
 
         workspace = (
             Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
         )
-        store = EnhancedMemoryStore(workspace)
+        manager = MemoryManager(workspace)
 
-        entry = store.remember(
+        memory = manager.remember(
             content=content,
             importance=importance,
             category=category,
         )
 
-        return f"✅ Remembered: {content[:50]}... (importance: {entry.importance:.2f}, category: {entry.category})"
+        if memory:
+            return f"✅ Remembered: {content[:50]}... (importance: {memory['importance']:.2f}, category: {memory['category']})"
+        return "❌ Failed to remember"
 
 
 class RecallTool(FinchTool):
@@ -159,17 +161,17 @@ class RecallTool(FinchTool):
         """
         from pathlib import Path
 
-        from finchbot.memory import EnhancedMemoryStore, RetrievalStrategy
+        from finchbot.memory import MemoryManager, RetrievalStrategy
 
         workspace = (
             Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
         )
-        store = EnhancedMemoryStore(workspace)
+        manager = MemoryManager(workspace)
 
         # 将字符串策略转换为枚举
         strategy_enum = RetrievalStrategy(strategy.lower())
 
-        entries = store.recall(
+        memories = manager.recall(
             query=query,
             top_k=top_k,
             category=category,
@@ -177,13 +179,13 @@ class RecallTool(FinchTool):
             similarity_threshold=similarity_threshold,
         )
 
-        if not entries:
+        if not memories:
             return f"No memories found for: {query}"
 
-        lines = [f"## Found {len(entries)} memories:\n"]
-        for i, entry in enumerate(entries, 1):
-            lines.append(f"{i}. [{entry.category}] {entry.content}")
-            lines.append(f"   Importance: {entry.importance:.2f} | Source: {entry.source}")
+        lines = [f"## Found {len(memories)} memories:\n"]
+        for i, memory in enumerate(memories, 1):
+            lines.append(f"{i}. [{memory['category']}] {memory['content']}")
+            lines.append(f"   Importance: {memory['importance']:.2f} | Source: {memory['source']}")
             lines.append("")
 
         return "\n".join(lines)
@@ -230,15 +232,19 @@ class ForgetTool(FinchTool):
         """
         from pathlib import Path
 
-        from finchbot.memory import EnhancedMemoryStore
+        from finchbot.memory import MemoryManager
 
         workspace = (
             Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
         )
-        store = EnhancedMemoryStore(workspace)
+        manager = MemoryManager(workspace)
 
-        removed = store.forget(pattern)
+        stats = manager.forget(pattern)
 
-        if removed > 0:
-            return f"✅ Removed {removed} memory entries matching: {pattern}"
+        total_found = stats.get("total_found", 0)
+        deleted = stats.get("deleted", 0)
+        archived = stats.get("archived", 0)
+
+        if total_found > 0:
+            return f"✅ Processed {total_found} memories (deleted: {deleted}, archived: {archived}) matching: {pattern}"
         return f"No memories found matching: {pattern}"

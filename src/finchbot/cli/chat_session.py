@@ -442,7 +442,6 @@ def _run_chat_session(
     from prompt_toolkit.patch_stdout import patch_stdout
 
     from finchbot.agent import create_finch_agent
-    from finchbot.memory import EnhancedMemoryStore
     from finchbot.providers import create_chat_model
 
     config_obj = load_config()
@@ -504,7 +503,6 @@ def _run_chat_session(
         model=chat_model,
         workspace=ws_path,
         tools=tools,
-        memory=EnhancedMemoryStore(ws_path),
         use_persistent=True,
     )
 
@@ -747,9 +745,7 @@ def _get_last_active_session(workspace: Path) -> str:
         return store.get_next_session_id()
 
     with sqlite3.connect(str(db_path)) as conn:
-        cursor = conn.execute(
-            "SELECT session_id FROM sessions ORDER BY last_active DESC LIMIT 1"
-        )
+        cursor = conn.execute("SELECT session_id FROM sessions ORDER BY last_active DESC LIMIT 1")
         row = cursor.fetchone()
         if row:
             return row[0]

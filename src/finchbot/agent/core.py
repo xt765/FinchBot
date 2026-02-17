@@ -19,7 +19,6 @@ from langgraph.graph.state import CompiledStateGraph  # type: ignore[attr-define
 
 from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
-from finchbot.memory.enhanced import EnhancedMemoryStore
 
 
 def _create_workspace_templates(workspace: Path) -> None:
@@ -30,20 +29,28 @@ def _create_workspace_templates(workspace: Path) -> None:
     """
     from finchbot.config import load_config
     from finchbot.i18n.loader import I18n
+    from finchbot.tools.tools_generator import ToolsGenerator
 
     config = load_config()
     i18n = I18n(config.language)
 
     templates = {
-        "AGENTS.md": i18n.get("bootstrap.templates.agents_md"),
-        "SOUL.md": i18n.get("bootstrap.templates.soul_md"),
-        "USER.md": i18n.get("bootstrap.templates.user_md"),
+        "AGENT_CONFIG.md": (
+            i18n.get("bootstrap.templates.agents_md")
+            + "\n\n---\n\n"
+            + i18n.get("bootstrap.templates.soul_md")
+        ),
     }
 
     for filename, content in templates.items():
         file_path = workspace / filename
         if not file_path.exists():
             file_path.write_text(content, encoding="utf-8")
+
+    tools_generator = ToolsGenerator(workspace)
+    tools_file = workspace / "TOOLS.md"
+    if not tools_file.exists():
+        tools_generator.generate_tools_md()
 
     memory_dir = workspace / "memory"
     memory_dir.mkdir(exist_ok=True)
@@ -57,7 +64,6 @@ def _create_workspace_templates(workspace: Path) -> None:
 
 def build_system_prompt(
     workspace: Path,
-    memory: EnhancedMemoryStore | None = None,
 ) -> str:
     """构建系统提示.
 
@@ -65,7 +71,6 @@ def build_system_prompt(
 
     Args:
         workspace: 工作目录路径。
-        memory: 可选的记忆存储。
 
     Returns:
         系统提示字符串。
@@ -99,11 +104,6 @@ def build_system_prompt(
     bootstrap_and_skills = context_builder.build_system_prompt()
     if bootstrap_and_skills:
         prompt += f"\n\n{bootstrap_and_skills}"
-
-    if memory:
-        memory_context = memory.get_memory_context()
-        if memory_context:
-            prompt += f"\n\n## {t('agent.memory')}\n{memory_context}"
 
     return prompt
 
@@ -146,7 +146,6 @@ def create_finch_agent(
     model: BaseChatModel,
     workspace: Path,
     tools: Sequence[BaseTool] | None = None,
-    memory: EnhancedMemoryStore | None = None,
     use_persistent: bool = True,
 ) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
     """创建 FinchBot Agent.
@@ -155,7 +154,6 @@ def create_finch_agent(
         model: 语言模型实例。
         workspace: 工作目录路径。
         tools: 可选的工具列表。
-        memory: 可选的记忆存储。
         use_persistent: 是否使用持久化 checkpointer（默认 True）。
 
     Returns:
@@ -166,7 +164,6 @@ def create_finch_agent(
 
     if use_persistent:
         db_path = workspace / "checkpoints.db"
-        # 直接创建 SqliteSaver 实例
         import sqlite3
 
         conn = sqlite3.connect(str(db_path), check_same_thread=False)
@@ -174,7 +171,7 @@ def create_finch_agent(
     else:
         checkpointer = get_memory_checkpointer()
 
-    system_prompt = build_system_prompt(workspace, memory)
+    system_prompt = build_system_prompt(workspace)
 
     agent = create_agent(
         model=model,

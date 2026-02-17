@@ -8,11 +8,8 @@ from pathlib import Path
 from finchbot.agent.skills import SkillsLoader
 
 BOOTSTRAP_FILES = [
-    "AGENTS.md",
-    "SOUL.md",
-    "USER.md",
+    "AGENT_CONFIG.md",
     "TOOLS.md",
-    "IDENTITY.md",
 ]
 
 
@@ -82,4 +79,3 @@ Skills with available="false" need dependencies installed first.
                     pass
 
         return "\n\n".join(parts) if parts else ""
-
