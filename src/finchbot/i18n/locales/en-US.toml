@@ -307,8 +307,6 @@ when_to_set = "### When to Set/Update Title"
 first_set = "**Initial Set**: After 2-3 turns of conversation, if the current title is empty or same as session ID, proactively generate a concise title"
 modify = "**Update Title**: When the conversation topic changes significantly, update the title to reflect the new topic"
 requirements = "**Title Requirements**: 5-15 characters, concise and summarize the conversation topic"
-urgent_set = "### Set Title Now"
-set_prompt = "Please immediately use session_title tool (action=set) to set a suitable title for this session. Requirements: 5-15 characters, no punctuation, concisely summarize the conversation topic."
 
 [search.engines]
 tavily = "Tavily (Best quality, AI-optimized)"

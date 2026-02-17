@@ -220,13 +220,15 @@ def _update_session_turn_count(
     session_store: SessionMetadataStore,
     session_id: str,
     agent: Any,
+    chat_model: Any = None,
 ) -> None:
-    """更新会话的轮次计数。
+    """更新会话的轮次计数和标题。
 
     Args:
         session_store: 会话元数据存储
         session_id: 会话ID
         agent: Agent 实例
+        chat_model: 可选的聊天模型，用于生成标题
     """
     try:
         config = {"configurable": {"thread_id": session_id}}
@@ -234,83 +236,20 @@ def _update_session_turn_count(
         messages = current_state.values.get("messages", [])
         turn_count = calculate_turn_count(messages)
         session_store.update_activity(session_id, turn_count=turn_count)
+
+        if chat_model and turn_count >= 2:
+            session = session_store.get_session(session_id)
+            if session and (not session.title.strip() or session.title == session_id):
+                from finchbot.tools.session_title import generate_session_title_with_ai
+
+                title = generate_session_title_with_ai(chat_model, messages)
+                if title:
+                    session_store.update_activity(
+                        session_id, title=title, message_count=session.message_count
+                    )
+                    console.print(f"[dim]💡 {t('cli.chat.session_title').format(title)}[/dim]")
     except Exception as e:
         logger.warning(f"Failed to update turn count for session {session_id}: {e}")
-
-
-def _check_and_ensure_session_title(
-    session_store: SessionMetadataStore,
-    session_id: str,
-    agent: Any,
-    chat_model: Any,
-    ws_path: Path,
-    tools: list,
-) -> None:
-    """检查并确保会话标题已设置。
-
-    如果对话已进行 2 轮以上但标题未设置，则强制 Agent 设置标题。
-
-    Args:
-        session_store: 会话元数据存储
-        session_id: 会话ID
-        agent: Agent 实例
-        chat_model: 聊天模型
-        ws_path: 工作目录路径
-        tools: 工具列表
-    """
-    from finchbot.agent import create_finch_agent
-    from finchbot.memory import EnhancedMemoryStore
-
-    session = session_store.get_session(session_id)
-    if not session:
-        return
-
-    needs_title = session.turn_count >= 2 and (
-        not session.title.strip() or session.title == session_id
-    )
-
-    if not needs_title:
-        return
-
-    console.print("\n[yellow]⚠️  检测到会话标题尚未设置，正在自动设置...[/yellow]\n")
-
-    try:
-        session_title = session.title if session else None
-        if session_title == session_id:
-            session_title = None
-
-        agent_with_title, _ = create_finch_agent(
-            model=chat_model,
-            workspace=ws_path,
-            tools=tools,
-            memory=EnhancedMemoryStore(ws_path),
-            use_persistent=True,
-            session_title=session_title,
-            title_prompt=t("agent.session_title.set_prompt"),
-        )
-
-        config: RunnableConfig = {"configurable": {"thread_id": session_id}}
-        all_messages = []
-
-        current_state = agent_with_title.get_state(config)
-        existing_messages = list(current_state.values.get("messages", []))
-
-        prompt = t("agent.session_title.set_prompt")
-        for chunk in agent_with_title.stream(
-            {"messages": existing_messages + [{"role": "user", "content": prompt}]},
-            config=config,
-        ):
-            if chunk.get("messages"):
-                new_msgs = chunk["messages"]
-                for msg in new_msgs:
-                    if msg not in all_messages:
-                        all_messages.append(msg)
-                        _format_message(msg, len(all_messages) - 1, show_index=False)
-
-        console.print()
-
-    except Exception as e:
-        logger.warning(f"Failed to auto-set session title: {e}")
 
 
 def _get_llm_config(model: str, config_obj: Any) -> tuple[str | None, str | None, str | None]:
@@ -614,7 +553,7 @@ def _run_chat_session(
 
             msg_count = len(all_messages)
             session_store.update_activity(session_id, message_count=msg_count)
-            _update_session_turn_count(session_store, session_id, agent)
+            _update_session_turn_count(session_store, session_id, agent, chat_model)
 
         console.print()
 
@@ -636,10 +575,7 @@ def _run_chat_session(
                 continue
 
             if command.lower() in EXIT_COMMANDS:
-                _update_session_turn_count(session_store, session_id, agent)
-                _check_and_ensure_session_title(
-                    session_store, session_id, agent, chat_model, ws_path, tools
-                )
+                _update_session_turn_count(session_store, session_id, agent, chat_model)
                 console.print(GOODBYE_MESSAGE)
                 break
 
@@ -776,22 +712,16 @@ def _run_chat_session(
 
                 msg_count = len(all_messages)
                 session_store.update_activity(session_id, message_count=msg_count)
-                _update_session_turn_count(session_store, session_id, agent)
+                _update_session_turn_count(session_store, session_id, agent, chat_model)
 
             console.print()
 
         except KeyboardInterrupt:
-            _update_session_turn_count(session_store, session_id, agent)
-            _check_and_ensure_session_title(
-                session_store, session_id, agent, chat_model, ws_path, tools
-            )
+            _update_session_turn_count(session_store, session_id, agent, chat_model)
             console.print(GOODBYE_MESSAGE)
             break
         except EOFError:
-            _update_session_turn_count(session_store, session_id, agent)
-            _check_and_ensure_session_title(
-                session_store, session_id, agent, chat_model, ws_path, tools
-            )
+            _update_session_turn_count(session_store, session_id, agent, chat_model)
             console.print(GOODBYE_MESSAGE)
             break
         except Exception as e:
