@@ -1,7 +1,7 @@
 """FinchBot Agent 核心.
 
 使用 LangChain 官方推荐的 create_agent 构建。
-支持对话持久化存储。
+支持对话持久化存储和动态工具注册。
 """
 
 import platform
@@ -16,9 +16,61 @@ from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph.state import CompiledStateGraph  # type: ignore[attr-defined]
+from loguru import logger
 
 from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
+
+
+def _register_default_tools() -> None:
+    """注册默认工具到全局工具注册表.
+
+    自动发现并注册所有 FinchBot 内置工具。
+    """
+    from finchbot.tools import (
+        EditFileTool,
+        ExecTool,
+        ForgetTool,
+        ListDirTool,
+        ReadFileTool,
+        RecallTool,
+        RememberTool,
+        SessionTitleTool,
+        WebExtractTool,
+        WebSearchTool,
+        WriteFileTool,
+        get_global_registry,
+    )
+
+    registry = get_global_registry()
+    tools = [
+        ReadFileTool(),
+        WriteFileTool(),
+        EditFileTool(),
+        ListDirTool(),
+        ExecTool(),
+        WebSearchTool(),
+        WebExtractTool(),
+        RememberTool(),
+        RecallTool(),
+        ForgetTool(),
+        SessionTitleTool(),
+    ]
+
+    registered_count = 0
+    for tool in tools:
+        try:
+            registry.register(tool)
+            registered_count += 1
+            logger.debug(f"工具已注册: {tool.name}")
+        except Exception as e:
+            logger.error(f"注册工具失败 {tool.name}: {e}")
+
+    logger.info(f"默认工具注册完成: {registered_count}/{len(tools)} 个工具")
+
+
+# 模块加载时自动注册默认工具
+_register_default_tools()
 
 
 def _create_workspace_templates(workspace: Path) -> None:
@@ -29,17 +81,15 @@ def _create_workspace_templates(workspace: Path) -> None:
     """
     from finchbot.config import load_config
     from finchbot.i18n.loader import I18n
-    from finchbot.tools.tools_generator import ToolsGenerator
 
     config = load_config()
     i18n = I18n(config.language)
 
     templates = {
-        "AGENT_CONFIG.md": (
-            i18n.get("bootstrap.templates.agents_md")
-            + "\n\n---\n\n"
-            + i18n.get("bootstrap.templates.soul_md")
-        ),
+        "SYSTEM.md": i18n.get("bootstrap.templates.system_md"),
+        "MEMORY_GUIDE.md": i18n.get("bootstrap.templates.memory_guide_md"),
+        "AGENT_CONFIG.md": i18n.get("bootstrap.templates.agents_md"),
+        "SOUL.md": i18n.get("bootstrap.templates.soul_md"),
     }
 
     for filename, content in templates.items():
@@ -47,65 +97,69 @@ def _create_workspace_templates(workspace: Path) -> None:
         if not file_path.exists():
             file_path.write_text(content, encoding="utf-8")
 
-    tools_generator = ToolsGenerator(workspace)
-    tools_file = workspace / "TOOLS.md"
-    if not tools_file.exists():
-        tools_generator.generate_tools_md()
-
-    memory_dir = workspace / "memory"
-    memory_dir.mkdir(exist_ok=True)
-    memory_file = memory_dir / "MEMORY.md"
-    if not memory_file.exists():
-        memory_file.write_text(i18n.get("bootstrap.templates.memory_md"), encoding="utf-8")
-
     skills_dir = workspace / "skills"
     skills_dir.mkdir(exist_ok=True)
 
 
 def build_system_prompt(
     workspace: Path,
+    use_cache: bool = True,
 ) -> str:
     """构建系统提示.
 
-    支持 Bootstrap 文件和技能系统。
+    支持 Bootstrap 文件和技能系统，集成 ToolRegistry 动态工具发现。
 
     Args:
         workspace: 工作目录路径。
+        use_cache: 是否使用缓存。
 
     Returns:
         系统提示字符串。
     """
+    from finchbot.tools.tools_generator import ToolsGenerator
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M (%A)")
     runtime = f"{platform.system()} {platform.machine()}, Python {platform.python_version()}"
 
-    prompt = f"""# {t("agent.title")}
+    prompt_parts = []
 
-{t("agent.system_prompt")}
+    # 加载 SYSTEM.md
+    system_md = workspace / "SYSTEM.md"
+    if system_md.exists():
+        try:
+            content = system_md.read_text(encoding="utf-8")
+            if content.strip():
+                prompt_parts.append(content)
+        except Exception as e:
+            logger.warning(f"读取 SYSTEM.md 失败: {e}")
 
-{t("agent.tools_intro")}
-- {t("agent.tools_filesystem")}
-- {t("agent.tools_shell")}
-- {t("agent.tools_web")}
-- {t("agent.tools_memory")}
+    # 加载 MEMORY_GUIDE.md
+    memory_guide_md = workspace / "MEMORY_GUIDE.md"
+    if memory_guide_md.exists():
+        try:
+            content = memory_guide_md.read_text(encoding="utf-8")
+            if content.strip():
+                prompt_parts.append(content)
+        except Exception as e:
+            logger.warning(f"读取 MEMORY_GUIDE.md 失败: {e}")
 
-## {t("agent.current_time")}
-{now}
+    # 添加运行时信息
+    prompt_parts.append(f"## {t('agent.current_time')}\n{now}")
+    prompt_parts.append(f"## {t('agent.runtime')}\n{runtime}")
+    prompt_parts.append(f"## {t('agent.workspace')}\n{workspace}")
 
-## {t("agent.runtime")}
-{runtime}
-
-## {t("agent.workspace")}
-{workspace}
-- {t("agent.workspace_memory")}{workspace}/memory/
-- {t("agent.workspace_skills")}{workspace}/skills/{{skill-name}}/SKILL.md
-"""
-
+    # 构建上下文（Bootstrap 文件和技能）
     context_builder = ContextBuilder(workspace)
-    bootstrap_and_skills = context_builder.build_system_prompt()
+    bootstrap_and_skills = context_builder.build_system_prompt(use_cache=use_cache)
     if bootstrap_and_skills:
-        prompt += f"\n\n{bootstrap_and_skills}"
+        prompt_parts.append(bootstrap_and_skills)
 
-    return prompt
+    # 生成工具文档（从 ToolRegistry 动态发现）
+    tools_generator = ToolsGenerator()
+    tools_content = tools_generator.generate_tools_content()
+    prompt_parts.append(tools_content)
+
+    return "\n\n".join(prompt_parts)
 
 
 def get_default_workspace() -> Path:

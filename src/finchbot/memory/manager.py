@@ -15,6 +15,7 @@ from finchbot.memory.sqlite_store import SQLiteStore
 from finchbot.memory.types import RetrievalStrategy
 from finchbot.memory.vector_sync import DataSyncManager, VectorStoreAdapter
 
+DEFAULT_SYNC_INTERVAL = 60
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_TOP_K = 5
 DEFAULT_SIMILARITY_THRESHOLD = 0.5
@@ -665,91 +666,6 @@ class MemoryManager:
         """
         return self.sqlite_store.get_categories()
 
-    def check_consistency(self) -> dict[str, Any]:
-        """检查SQLite和向量存储之间的一致性.
-
-        Returns:
-            一致性检查结果，包含：
-            - sqlite_count: SQLite中的总记录数
-            - vector_count: 向量存储中的记录数
-            - active_count: 活跃记忆数
-            - missing_in_vector: 在SQLite中但不在向量存储中的记录
-            - extra_in_vector: 在向量存储中但不在SQLite中的记录
-            - archived_in_vector: 已归档但仍在向量存储中的记录
-        """
-        # 获取SQLite中的所有记忆
-        sqlite_memories = self.sqlite_store.search_memories(
-            include_archived=True,
-            limit=1000,
-        )
-
-        # 获取向量存储中的所有ID
-        vector_ids = self.vector_adapter.get_all_ids()
-
-        # 构建ID集合以便快速查找
-        sqlite_ids = {memory["id"] for memory in sqlite_memories}
-        vector_id_set = set(vector_ids)
-
-        # 找出不一致的记录
-        missing_in_vector = []
-        extra_in_vector = []
-        archived_in_vector = []
-
-        # 检查SQLite中的记录是否在向量存储中
-        for memory in sqlite_memories:
-            memory_id = memory["id"]
-            is_archived = memory.get("is_archived", False)
-
-            if memory_id not in vector_id_set:
-                missing_in_vector.append(
-                    {
-                        "id": memory_id,
-                        "content": memory["content"],
-                        "is_archived": is_archived,
-                    }
-                )
-            elif is_archived:
-                # 记录已归档但仍在向量存储中
-                archived_in_vector.append(
-                    {
-                        "id": memory_id,
-                        "content": memory["content"],
-                    }
-                )
-
-        # 检查向量存储中的记录是否在SQLite中
-        for vector_id in vector_ids:
-            if vector_id not in sqlite_ids:
-                extra_in_vector.append(vector_id)
-
-        # 统计活跃记忆
-        active_memories = [m for m in sqlite_memories if not m.get("is_archived", False)]
-
-        result = {
-            "sqlite_count": len(sqlite_memories),
-            "vector_count": len(vector_ids),
-            "active_count": len(active_memories),
-            "missing_in_vector": missing_in_vector,
-            "extra_in_vector": extra_in_vector,
-            "archived_in_vector": archived_in_vector,
-            "is_consistent": len(missing_in_vector) == 0 and len(extra_in_vector) == 0,
-        }
-
-        # 记录检查结果
-        if result["is_consistent"]:
-            logger.info(
-                f"Consistency check passed: SQLite={result['sqlite_count']}, Vector={result['vector_count']}, Active={result['active_count']}"
-            )
-        else:
-            logger.warning(
-                f"Consistency check failed: "
-                f"SQLite={result['sqlite_count']}, Vector={result['vector_count']}, "
-                f"Missing={len(result['missing_in_vector'])}, Extra={len(result['extra_in_vector'])}, "
-                f"Archived in vector={len(result['archived_in_vector'])}"
-            )
-
-        return result
-
     def close(self) -> None:
         """关闭记忆管理器."""
         self.sqlite_store.close()
@@ -772,8 +688,6 @@ class MemoryManager:
 
     def wait_until_ready(self, timeout: float = 10.0) -> bool:
         """等待系统就绪.
-
-        TODO: 未使用 - 可能用于异步初始化场景。保留以备未来需要。
 
         优化版：等待向量存储可用，但SQLite始终可用。
 

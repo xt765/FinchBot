@@ -18,25 +18,12 @@ from finchbot.cli import (
     _run_interactive_config,
     console,
 )
-from finchbot.config import load_config
-from finchbot.i18n import init_language_from_config, set_language, t
+from finchbot.i18n import t
 
 app = typer.Typer(
     name="finchbot",
     help="FinchBot (雀翎) - Lightweight AI Agent Framework",
 )
-
-
-@app.callback()
-def main(
-    lang: str = typer.Option(None, "--lang", "-l", help="Set language / 设置语言"),
-) -> None:
-    """全局回调."""
-    if lang:
-        set_language(lang)
-    else:
-        config_obj = load_config()
-        init_language_from_config(config_obj.language)
 
 
 @app.command()
@@ -66,7 +53,7 @@ def repl(
     _run_chat_session(session, model, workspace)
 
 
-sessions_app = typer.Typer(help="Manage sessions / 管理会话")
+sessions_app = typer.Typer(help=t("cli.commands.sessions_help"))
 app.add_typer(sessions_app, name="sessions")
 
 
@@ -85,36 +72,7 @@ def sessions_callback(ctx: typer.Context) -> None:
         selector.interactive_manage()
 
 
-@sessions_app.command("show")
-def sessions_show(
-    session_id: str = typer.Argument("default", help="Session ID to show"),
-    limit: int = typer.Option(10, "--limit", "-l", help="Max messages to show"),
-    show_index: bool = typer.Option(False, "--index", "-i", help="Show message index for rollback"),
-) -> None:
-    """显示会话历史."""
-    from finchbot.cli.sessions import show_session
-
-    show_session(session_id, limit, show_index)
-
-
-@sessions_app.command("rollback")
-def sessions_rollback(
-    session_id: str = typer.Argument(..., help="Session ID to rollback"),
-    message_index: int = typer.Argument(
-        ..., help="Rollback to before this message index (0-based)"
-    ),
-    new_session: str = typer.Option(
-        None, "--new-session", "-n", help="Create new session with rolled back messages"
-    ),
-    force: bool = typer.Option(False, "--force", "-f", help="Force rollback without confirmation"),
-) -> None:
-    """回退到指定消息之前，可选创建新会话."""
-    from finchbot.cli.sessions import rollback_session
-
-    rollback_session(session_id, message_index, new_session, force)
-
-
-config_app = typer.Typer(help="Manage configuration / 管理配置")
+config_app = typer.Typer(help=t("cli.commands.config_help"))
 app.add_typer(config_app, name="config")
 
 
@@ -125,7 +83,7 @@ def config_callback(ctx: typer.Context) -> None:
         _run_interactive_config()
 
 
-models_app = typer.Typer(help="Manage models / 管理模型")
+models_app = typer.Typer(help=t("cli.commands.models_help"))
 app.add_typer(models_app, name="models")
 
 

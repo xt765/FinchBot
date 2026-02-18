@@ -45,7 +45,7 @@ class DataSyncManager:
 
         logger.info("DataSyncManager initialized (simplified version)")
 
-    def sync_memory(self, memory_id: str, operation: str) -> bool:
+    def sync_memory(self, memory_id: str, operation: str) -> bool | None:
         """同步单个记忆.
 
         优化版：添加智能重试机制，提高成功率。
@@ -58,14 +58,97 @@ class DataSyncManager:
             是否成功同步。
         """
         self.sync_stats["total_syncs"] += 1
-        result = False
 
         # 重试机制
         for attempt in range(self.max_retries + 1):
             try:
-                result = self._try_sync_operation(memory_id, operation, attempt)
-                if result is not None:
-                    return result
+                if operation == "delete":
+                    # 从向量存储删除
+                    if self.vector_store:
+                        success = self.vector_store.delete(memory_id)
+                        if success:
+                            self.sync_stats["successful_syncs"] += 1
+                            logger.debug(f"Deleted from vector store: {memory_id[:8]}...")
+                        else:
+                            if attempt < self.max_retries:
+                                logger.debug(
+                                    f"Delete failed, retrying ({attempt + 1}/{self.max_retries}): {memory_id[:8]}..."
+                                )
+                                continue
+                            self.sync_stats["failed_syncs"] += 1
+                            logger.warning(
+                                f"Failed to delete from vector store: {memory_id[:8]}..."
+                            )
+                        return success
+                    return True
+
+                # 获取记忆详情
+                memory = self.sqlite_store.get_memory(memory_id)
+                if not memory:
+                    logger.warning(f"Memory not found for sync: {memory_id[:8]}...")
+                    self.sync_stats["failed_syncs"] += 1
+                    return False
+
+                # 同步到向量存储
+                if self.vector_store:
+                    try:
+                        if operation == "add":
+                            success = self.vector_store.add(
+                                id=memory_id,
+                                content=memory["content"],
+                                metadata={
+                                    "id": memory_id,
+                                    "category": memory["category"],
+                                    "importance": memory["importance"],
+                                    "source": memory["source"],
+                                    "created_at": memory["created_at"],
+                                },
+                            )
+                        elif operation == "update":
+                            success = self.vector_store.update(
+                                id=memory_id,
+                                content=memory["content"],
+                                metadata={
+                                    "id": memory_id,
+                                    "category": memory["category"],
+                                    "importance": memory["importance"],
+                                    "source": memory["source"],
+                                    "updated_at": memory["updated_at"],
+                                },
+                            )
+                        else:
+                            logger.warning(f"Unknown operation: {operation}")
+                            self.sync_stats["failed_syncs"] += 1
+                            return False
+
+                        if success:
+                            self.sync_stats["successful_syncs"] += 1
+                            logger.debug(f"Synced to vector store: {operation} {memory_id[:8]}...")
+                        else:
+                            if attempt < self.max_retries:
+                                logger.debug(
+                                    f"Sync failed, retrying ({attempt + 1}/{self.max_retries}): {memory_id[:8]}..."
+                                )
+                                continue
+                            self.sync_stats["failed_syncs"] += 1
+                            logger.warning(
+                                f"Failed to sync to vector store: {operation} {memory_id[:8]}..."
+                            )
+
+                        return success
+                    except Exception as e:
+                        if attempt < self.max_retries:
+                            logger.debug(
+                                f"Vector store error, retrying ({attempt + 1}/{self.max_retries}): {e}"
+                            )
+                            continue
+                        # 向量存储错误时，仍视为成功（SQLite已保存）
+                        logger.warning(f"Vector store error, but memory saved to SQLite: {e}")
+                        return True
+
+                # 如果没有向量存储，也视为成功（离线模式）
+                return True
+
             except Exception as e:
                 if attempt < self.max_retries:
                     logger.debug(f"Sync error, retrying ({attempt + 1}/{self.max_retries}): {e}")
@@ -78,144 +161,6 @@ class DataSyncManager:
                 return False
             finally:
                 self.sync_stats["last_sync_time"] = datetime.now().isoformat()
-
-        # 如果所有重试都失败，返回False
-        return False
-
-    def _try_sync_operation(self, memory_id: str, operation: str, attempt: int) -> bool | None:
-        """尝试执行同步操作.
-
-        Args:
-            memory_id: 记忆ID。
-            operation: 操作类型。
-            attempt: 当前重试次数。
-
-        Returns:
-            True/False 表示成功/失败，None 表示需要重试。
-        """
-        # 处理删除操作
-        if operation == "delete":
-            return self._try_delete_operation(memory_id, attempt)
-
-        # 处理添加和更新操作
-        elif operation in ["add", "update"]:
-            return self._try_add_update_operation(memory_id, operation, attempt)
-
-        # 未知操作类型
-        else:
-            logger.warning(f"Unknown operation: {operation}")
-            self.sync_stats["failed_syncs"] += 1
-            return False
-
-    def _try_delete_operation(self, memory_id: str, attempt: int) -> bool | None:
-        """尝试删除操作.
-
-        Args:
-            memory_id: 记忆ID。
-            attempt: 当前重试次数。
-
-        Returns:
-            True/False 表示成功/失败，None 表示需要重试。
-        """
-        if self.vector_store and self.vector_store.is_available():
-            success = self.vector_store.delete(memory_id)
-            if success:
-                self.sync_stats["successful_syncs"] += 1
-                logger.debug(f"Deleted from vector store: {memory_id[:8]}...")
-                return True
-            else:
-                if attempt < self.max_retries:
-                    logger.debug(
-                        f"Delete failed, retrying ({attempt + 1}/{self.max_retries}): {memory_id[:8]}..."
-                    )
-                    return None
-                self.sync_stats["failed_syncs"] += 1
-                logger.warning(f"Failed to delete from vector store: {memory_id[:8]}...")
-                return False
-        else:
-            # 向量存储不可用，记录警告但返回True以避免阻塞用户操作
-            logger.warning(f"Vector store not available for delete operation: {memory_id[:8]}...")
-            return True
-
-    def _try_add_update_operation(
-        self, memory_id: str, operation: str, attempt: int
-    ) -> bool | None:
-        """尝试添加或更新操作.
-
-        Args:
-            memory_id: 记忆ID。
-            operation: 操作类型 ('add' 或 'update')。
-            attempt: 当前重试次数。
-
-        Returns:
-            True/False 表示成功/失败，None 表示需要重试。
-        """
-        # 获取记忆详情
-        memory = self.sqlite_store.get_memory(memory_id)
-        if not memory:
-            logger.warning(f"Memory not found for sync: {memory_id[:8]}...")
-            self.sync_stats["failed_syncs"] += 1
-            return False
-
-        # 同步到向量存储
-        if self.vector_store and self.vector_store.is_available():
-            try:
-                if operation == "add":
-                    success = self.vector_store.add(
-                        id=memory_id,
-                        content=memory["content"],
-                        metadata={
-                            "id": memory_id,
-                            "category": memory["category"],
-                            "importance": memory["importance"],
-                            "source": memory["source"],
-                            "created_at": memory["created_at"],
-                        },
-                    )
-                else:  # operation == "update"
-                    success = self.vector_store.update(
-                        id=memory_id,
-                        content=memory["content"],
-                        metadata={
-                            "id": memory_id,
-                            "category": memory["category"],
-                            "importance": memory["importance"],
-                            "source": memory["source"],
-                            "updated_at": memory["updated_at"],
-                        },
-                    )
-
-                if success:
-                    self.sync_stats["successful_syncs"] += 1
-                    logger.debug(f"Synced to vector store: {operation} {memory_id[:8]}...")
-                    return True
-                else:
-                    if attempt < self.max_retries:
-                        logger.debug(
-                            f"Sync failed, retrying ({attempt + 1}/{self.max_retries}): {memory_id[:8]}..."
-                        )
-                        return None
-                    self.sync_stats["failed_syncs"] += 1
-                    logger.warning(
-                        f"Failed to sync to vector store: {operation} {memory_id[:8]}..."
-                    )
-                    return False
-            except Exception as e:
-                if attempt < self.max_retries:
-                    logger.debug(
-                        f"Vector store error, retrying ({attempt + 1}/{self.max_retries}): {e}"
-                    )
-                    return None
-                # 向量存储错误时，记录错误但返回False，让调用者知道同步失败
-                logger.error(f"Vector store error during sync: {e}")
-                self.sync_stats["failed_syncs"] += 1
-                return False
-        else:
-            # 向量存储不可用，返回False
-            logger.warning(
-                f"Vector store not available for {operation} operation: {memory_id[:8]}..."
-            )
-            return False
 
     def get_sync_status(self) -> dict[str, Any]:
         """获取同步状态.
@@ -255,12 +200,6 @@ class VectorStoreAdapter:
         self.embedding_model = embedding_model or "BAAI/bge-small-zh-v1.5"
         self.vectorstore = None
         self._initialized = False
-
-        # 尝试预初始化向量存储，避免首次操作时的延迟和失败
-        try:
-            self._ensure_initialized()
-        except Exception as e:
-            logger.debug(f"Vector store pre-initialization failed (will retry on first use): {e}")
 
     def _ensure_initialized(self) -> None:
         """确保向量存储已初始化."""
@@ -359,8 +298,6 @@ class VectorStoreAdapter:
 
     def get(self, id: str) -> dict[str, Any] | None:
         """从向量存储获取记忆.
-
-        TODO: 未使用 - 可能未被使用，因为通常通过 search() 方法检索。保留以供未来需要。
 
         Args:
             id: 记忆ID。

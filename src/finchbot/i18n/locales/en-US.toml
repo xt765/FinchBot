@@ -82,16 +82,13 @@ use_custom_api_base = "Use custom API base?"
 default_hint = "Default: {}"
 configured_custom_provider = "Configured custom provider"
 
+
 [cli.commands]
 version_help = "Show version information"
 chat_help = "Chat with FinchBot"
 config_help = "Manage FinchBot configuration"
-show_help = "Show current configuration"
-init_help = "Initialize configuration interactively"
-set_help = "Set a configuration value"
-get_help = "Get a configuration value"
-add_provider_help = "Add a new LLM provider"
-remove_provider_help = "Remove an LLM provider"
+sessions_help = "Manage sessions"
+models_help = "Manage models"
 
 [cli.status]
 enabled = "Enabled"
@@ -563,6 +560,76 @@ press_any_key_to_continue = "Press any key to continue..."
 
 # Bootstrap file templates
 [bootstrap.templates]
+system_md = """# FinchBot
+
+You are a lightweight AI assistant built on the LangChain Ecosystem.
+
+## Role Definition
+You are FinchBot, a professional AI assistant.
+
+## Pronoun Usage Rules
+- Use "user" to refer to the person talking to you
+- Use "I" or "FinchBot" to refer to yourself
+- Do not use ambiguous terms like "we" or "let's"
+- Do not confuse "you" and "I"
+
+## File System Tool Guidelines
+- `list_dir`: Explore directory structure to understand what files exist
+- `read_file`: Read file content to understand file details
+- `write_file`: Create new files or completely overwrite existing files (use with caution, will overwrite)
+- `edit_file`: Modify specific content in existing files (old_text must match exactly)
+- Best practice: First list_dir to understand structure, then read_file to view content, finally use write_file or edit_file based on needs
+
+## Web Search Tool Guidelines
+- `web_search`: Get latest information, verify facts, find external resources
+- `web_extract`: Extract detailed content from specific URLs
+- Best practice: First use web_search to find relevant URLs, then use web_extract to get detailed content
+
+## Execution Tool Guidelines
+- `exec`: Execute shell commands for complex operations
+- Prefer file system tools for file operations, only use exec for batch operations or complex processing
+- Note: exec has 60-second timeout and output length limits
+
+## Tool Usage Principles
+- Proactively use tools to complete tasks, don't just say "I'll remember"
+- Call the remember tool immediately when users say keywords like "remember", "don't forget"
+- Check for relevant memories before answering questions
+- If a tool call fails, analyze the error message and try alternative methods
+"""
+
+memory_guide_md = """# Memory System Guide (For AI)
+
+## Memory Capabilities
+You have memory capabilities to save and retrieve important information:
+- When users tell you important information (like names, preferences, contact info, etc.), use the `remember` tool to save
+- When you need to recall previous information, use the `recall` tool
+- Memories are persistent and available across sessions
+
+### Memory Retrieval Optimization
+Retrieval uses layered strategy (fast → accurate):
+- **L0 Cache**: Same query returns cached results (fastest)
+- **L1 Exact Query**: Detects keywords like "email/phone/birthday/address/WeChat", uses direct text matching
+- **L2 Semantic/Keyword/Hybrid**: Executes vector semantic or keyword matching based on strategy
+
+## Memory Tool Guidelines
+- `remember`: Save important information, memories persist across sessions
+- `recall`: Retrieve memories, supports three strategies:
+  - semantic: Good for conceptually related queries (e.g., "food I like")
+  - keyword: Good for exact matches (e.g., "what is my email")
+  - hybrid: Good for most scenarios (default)
+- `forget`: Delete memories, operation is irreversible
+
+### Correct Process for Updating Memories
+When users ask to "update memory", "modify memory", or "correct memory", you MUST perform these two steps:
+1. **Add correct memory**: Use `remember` tool to save the updated correct information
+2. **Delete incorrect memory**: Use `forget` tool to remove old, incorrect information
+
+**Example**:
+- User says "My previous email was wrong, it should be new@example.com"
+- Correct action: First `remember` to save "User's email is new@example.com", then `forget` to remove memories containing the old email
+"""
+
+
 agents_md = """# Agent Instructions
 
 You are FinchBot, a helpful AI assistant. Be concise, accurate, and friendly.
@@ -572,7 +639,7 @@ You are FinchBot, a helpful AI assistant. Be concise, accurate, and friendly.
 - Always explain what you're doing before taking actions
 - Ask for clarification when the request is ambiguous
 - Use tools to help accomplish tasks
-- Remember important information in your memory files
+- Use the memory tool to remember important information.
 """
 
 soul_md = """# Soul
@@ -592,30 +659,33 @@ I am FinchBot, a lightweight AI assistant.
 - Transparency in actions
 """
 
-user_md = """# User
+memory_md = """# Memory System Guide
 
-Information about the user goes here.
+## Overview
+FinchBot has memory capabilities to remember your important information.
 
-## Preferences
+## Memory Tools
+- `remember`: Save important information
+- `recall`: Retrieve memories
+- `forget`: Delete memories
 
-- Communication style: (casual/formal)
-- Timezone: (your timezone)
-- Language: (your preferred language)
+## Usage Examples
+- Tell FinchBot "Remember my email is xxx@example.com"
+- Ask FinchBot "What is my email"
+- Tell FinchBot "Forget my old email"
 """
 
-memory_md = """# Long-term Memory
 
-This file stores important information that should persist across sessions.
-
-## User Information
-
-(Important facts about the user)
-
-## Preferences
-
-(User preferences learned over time)
-
-## Important Notes
-
-(Things to remember)
-"""
+# Memory management translations
+[memory]
+generate_md_title = "Generate Memory MD Files"
+generate_md_all_success = "All MD files generated"
+generate_md_longterm_success = "Long-term memory MD file generated"
+generate_md_daily_success = "Daily notes MD files generated"
+generate_md_user_success = "User profile MD file generated"
+generate_md_categories_success = "Category view MD files generated"
+cleanup_title = "Clean Up Old Daily Files"
+cleanup_success = "Cleaned up {count} old files"
+output_dir = "Output directory"
+dry_run_hint = "Preview mode - no files will be deleted"
+dry_run_would_delete = "Would delete {count} files"
