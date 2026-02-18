@@ -411,6 +411,8 @@ class VectorMemoryStore:
     def get_memory_context(self, query: str | None = None, k: int = 10) -> str:
         """获取记忆上下文.
 
+        TODO: 未使用 - 可用于生成对话上下文，考虑在记忆工具中集成。
+
         Args:
             query: 可选的查询文本（用于语义检索）。
             k: 最大返回数量。
@@ -450,6 +452,8 @@ class VectorMemoryStore:
 
     def as_retriever(self, **kwargs):
         """返回检索器.
+
+        TODO: 未使用 - 为LangChain集成预留，有扩展价值，保留以备未来集成需求。
 
         Args:
             **kwargs: 传递给 as_retriever 的参数。

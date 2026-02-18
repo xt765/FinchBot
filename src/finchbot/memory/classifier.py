@@ -420,6 +420,8 @@ class Classifier:
     def save_to_workspace(self, workspace_path: str) -> bool:
         """保存分类配置到工作空间.
 
+        TODO: 未使用 - 仅在测试中被调用，支持分类配置的持久化。保留作为高级功能。
+
         Args:
             workspace_path: 工作空间路径。
 
@@ -464,6 +466,8 @@ class Classifier:
     def enable_semantic_classification(self) -> bool:
         """启用语义分类.
 
+        TODO: 未使用 - 仅在测试中被调用，动态启用/禁用语义分类功能。保留作为高级功能。
+
         Returns:
             是否成功启用。
         """
@@ -484,7 +488,10 @@ class Classifier:
             return False
 
     def disable_semantic_classification(self) -> None:
-        """禁用语义分类."""
+        """禁用语义分类.
+
+        TODO: 未使用 - 仅在测试中被调用，动态启用/禁用语义分类功能。保留作为高级功能。
+        """
         self._embeddings = None
         self._category_embeddings = None
         logger.info("Semantic classification disabled")
@@ -499,6 +506,8 @@ class Classifier:
 
     def get_classification_stats(self) -> dict[str, Any]:
         """获取分类统计信息.
+
+        TODO: 未使用 - 仅在测试中被调用，提供分类系统的监控数据。保留用于调试或监控。
 
         Returns:
             统计字典。

@@ -15,7 +15,6 @@ from finchbot.memory.sqlite_store import SQLiteStore
 from finchbot.memory.types import RetrievalStrategy
 from finchbot.memory.vector_sync import DataSyncManager, VectorStoreAdapter
 
-DEFAULT_SYNC_INTERVAL = 60
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_TOP_K = 5
 DEFAULT_SIMILARITY_THRESHOLD = 0.5
@@ -773,6 +772,8 @@ class MemoryManager:
 
     def wait_until_ready(self, timeout: float = 10.0) -> bool:
         """等待系统就绪.
+
+        TODO: 未使用 - 可能用于异步初始化场景。保留以备未来需要。
 
         优化版：等待向量存储可用，但SQLite始终可用。
 

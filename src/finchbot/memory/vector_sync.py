@@ -360,6 +360,8 @@ class VectorStoreAdapter:
     def get(self, id: str) -> dict[str, Any] | None:
         """从向量存储获取记忆.
 
+        TODO: 未使用 - 可能未被使用，因为通常通过 search() 方法检索。保留以供未来需要。
+
         Args:
             id: 记忆ID。
 
