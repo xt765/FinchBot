@@ -16,7 +16,7 @@ from rich.text import Text
 from finchbot.cli.providers import PRESET_PROVIDERS
 from finchbot.cli.ui import _keyboard_select
 from finchbot.config import get_config_path, load_config, save_config
-from finchbot.config.schema import Config, ProviderConfig
+from finchbot.config.schema import Config, ProviderConfig, WebSearchConfig
 from finchbot.i18n import set_language, t
 
 console = Console()
@@ -114,6 +114,12 @@ class ConfigManager:
                 ),
                 "editable": False,
             },
+            {
+                "key": "search_engines",
+                "name": t("cli.config.search_engines"),
+                "value": self._get_search_engines_status(),
+                "editable": True,
+            },
         ]
 
         for provider_name in self.config.get_configured_providers():
@@ -127,6 +133,33 @@ class ConfigManager:
                 })
 
         return items
+
+    def _get_search_engines_status(self) -> str:
+        """获取搜索引擎配置状态."""
+        import os
+
+        web_config = self.config.tools.web.search
+
+        # 检查配置文件和环境变量
+        has_tavily = bool(
+            web_config.api_key
+            or os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__API_KEY")
+            or os.getenv("TAVILY_API_KEY")
+        )
+        has_brave = bool(
+            web_config.brave_api_key
+            or os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__BRAVE_API_KEY")
+            or os.getenv("BRAVE_API_KEY")
+        )
+
+        engines = []
+        if has_tavily:
+            engines.append("Tavily")
+        if has_brave:
+            engines.append("Brave")
+        if engines:
+            return ", ".join(engines)
+        return t("cli.config.web_search_not_configured")
 
     def _render_config_list(self, items: list[dict], selected_idx: int) -> None:
         """渲染配置项列表."""
@@ -174,6 +207,8 @@ class ConfigManager:
                 self.config.agents.defaults.workspace = new_path
         elif key == "providers":
             self._configure_providers_submenu()
+        elif key == "search_engines":
+            self._configure_search_engines()
         elif key.startswith("custom."):
             provider_name = key.replace("custom.", "")
             self._edit_custom_provider(provider_name)
@@ -216,6 +251,196 @@ class ConfigManager:
             ).unsafe_ask()
             if new_key:
                 prov.api_key = new_key
+
+    def _configure_search_engines(self) -> None:
+        """配置搜索引擎 API Key（键盘导航菜单）."""
+        import os
+
+        web_config = self.config.tools.web.search
+
+        # 从环境变量读取
+        env_tavily = os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__API_KEY") or os.getenv("TAVILY_API_KEY")
+        env_brave = os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__BRAVE_API_KEY") or os.getenv("BRAVE_API_KEY")
+
+        while True:
+            # 获取当前状态
+            config_tavily = web_config.api_key
+            if config_tavily:
+                tavily_status = f"*** ({t('cli.config.from_config')})"
+            elif env_tavily:
+                tavily_status = f"*** ({t('cli.config.from_env')})"
+            else:
+                tavily_status = t("cli.config.not_set")
+
+            config_brave = web_config.brave_api_key
+            if config_brave:
+                brave_status = f"*** ({t('cli.config.from_config')})"
+            elif env_brave:
+                brave_status = f"*** ({t('cli.config.from_env')})"
+            else:
+                brave_status = t("cli.config.not_set")
+
+            # 构建菜单项
+            items = [
+                {
+                    "name": f"Tavily Search       [{tavily_status}]",
+                    "value": "tavily",
+                },
+                {
+                    "name": f"Brave Search        [{brave_status}]",
+                    "value": "brave",
+                },
+            ]
+
+            title = f"\n[bold cyan]{t('cli.config.search_engines_title')}[/bold cyan]\n"
+            help_text = (
+                f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+                f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
+                f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.quit')}[/dim]"
+            )
+
+            result = _keyboard_select(items, title, help_text)
+
+            if result is None:
+                break
+            elif result == "tavily":
+                self._configure_tavily_api_key(web_config, config_tavily, env_tavily)
+            elif result == "brave":
+                self._configure_brave_api_key(web_config, config_brave, env_brave)
+
+    def _configure_tavily_api_key(
+        self,
+        web_config: WebSearchConfig,
+        config_value: str,
+        env_value: str | None,
+    ) -> None:
+        """配置 Tavily API Key."""
+        console.print("\n[bold cyan]Tavily Search[/bold cyan]")
+
+        if config_value:
+            status = f"*** ({t('cli.config.from_config')})"
+        elif env_value:
+            status = f"*** ({t('cli.config.from_env')})"
+        else:
+            status = t("cli.config.not_set")
+
+        console.print(f"[dim]{t('cli.config.current_tavily')}: {status}[/dim]")
+
+        if env_value and not config_value:
+            console.print(f"[dim cyan]{t('cli.config.tavily_env_hint')}[/dim cyan]")
+
+        # 未配置时直接进入输入框；已配置时显示菜单选择设置或清除
+        if not config_value:
+            # 直接输入新密钥
+            new_key = questionary.text(
+                t("cli.config.tavily_key_prompt"),
+                default="",
+                is_password=True,
+            ).unsafe_ask()
+            if new_key:
+                web_config.api_key = new_key
+                console.print(f"[green]✓ Tavily API Key {t('cli.config.updated')}[/green]")
+                console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
+                readchar.readkey()
+        else:
+            # 已配置，显示菜单选择设置或清除
+            items = [
+                {"name": t("cli.config.set_api_key"), "value": "set"},
+                {"name": t("cli.config.clear_api_key"), "value": "clear"},
+            ]
+
+            title = f"\n[dim]{t('cli.config.select_action')}:[/dim]\n"
+            help_text = (
+                f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+                f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
+                f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.back')}[/dim]"
+            )
+
+            action = _keyboard_select(items, title, help_text)
+
+            if action == "set":
+                new_key = questionary.text(
+                    t("cli.config.tavily_key_prompt"),
+                    default="",
+                    is_password=True,
+                ).unsafe_ask()
+                if new_key:
+                    web_config.api_key = new_key
+                    console.print(f"[green]✓ Tavily API Key {t('cli.config.updated')}[/green]")
+                    console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
+                    readchar.readkey()
+            elif action == "clear":
+                web_config.api_key = ""
+                console.print(f"[yellow]✓ Tavily API Key {t('cli.config.cleared')}[/yellow]")
+                console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
+                readchar.readkey()
+
+    def _configure_brave_api_key(
+        self,
+        web_config: WebSearchConfig,
+        config_value: str,
+        env_value: str | None,
+    ) -> None:
+        """配置 Brave API Key."""
+        console.print("\n[bold cyan]Brave Search[/bold cyan]")
+
+        if config_value:
+            status = f"*** ({t('cli.config.from_config')})"
+        elif env_value:
+            status = f"*** ({t('cli.config.from_env')})"
+        else:
+            status = t("cli.config.not_set")
+
+        console.print(f"[dim]{t('cli.config.current_brave')}: {status}[/dim]")
+
+        if env_value and not config_value:
+            console.print(f"[dim cyan]{t('cli.config.brave_env_hint')}[/dim cyan]")
+
+        # 未配置时直接进入输入框；已配置时显示菜单选择设置或清除
+        if not config_value:
+            # 直接输入新密钥
+            new_key = questionary.text(
+                t("cli.config.brave_key_prompt"),
+                default="",
+                is_password=True,
+            ).unsafe_ask()
+            if new_key:
+                web_config.brave_api_key = new_key
+                console.print(f"[green]✓ Brave API Key {t('cli.config.updated')}[/green]")
+                console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
+                readchar.readkey()
+        else:
+            # 已配置，显示菜单选择设置或清除
+            items = [
+                {"name": t("cli.config.set_api_key"), "value": "set"},
+                {"name": t("cli.config.clear_api_key"), "value": "clear"},
+            ]
+
+            title = f"\n[dim]{t('cli.config.select_action')}:[/dim]\n"
+            help_text = (
+                f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
+                f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
+                f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.back')}[/dim]"
+            )
+
+            action = _keyboard_select(items, title, help_text)
+
+            if action == "set":
+                new_key = questionary.text(
+                    t("cli.config.brave_key_prompt"),
+                    default="",
+                    is_password=True,
+                ).unsafe_ask()
+                if new_key:
+                    web_config.brave_api_key = new_key
+                    console.print(f"[green]✓ Brave API Key {t('cli.config.updated')}[/green]")
+                    console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
+                    readchar.readkey()
+            elif action == "clear":
+                web_config.brave_api_key = ""
+                console.print(f"[yellow]✓ Brave API Key {t('cli.config.cleared')}[/yellow]")
+                console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
+                readchar.readkey()
 
     def _confirm_reset(self) -> bool:
         """确认重置配置."""
