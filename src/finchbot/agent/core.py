@@ -21,12 +21,21 @@ from loguru import logger
 from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
 
+_default_tools_registered: bool = False
+
 
 def _register_default_tools() -> None:
     """注册默认工具到全局工具注册表.
 
     自动发现并注册所有 FinchBot 内置工具。
+    使用懒加载模式，只在首次调用时注册。
     """
+    global _default_tools_registered
+
+    # 如果已经注册过，直接返回
+    if _default_tools_registered:
+        return
+
     from finchbot.tools import (
         EditFileTool,
         ExecTool,
@@ -43,6 +52,13 @@ def _register_default_tools() -> None:
     )
 
     registry = get_global_registry()
+
+    # 检查是否已经有工具注册，避免重复注册
+    if len(registry) > 0:
+        logger.debug(f"工具注册表已有 {len(registry)} 个工具，跳过默认工具注册")
+        _default_tools_registered = True
+        return
+
     tools = [
         ReadFileTool(),
         WriteFileTool(),
@@ -60,17 +76,18 @@ def _register_default_tools() -> None:
     registered_count = 0
     for tool in tools:
         try:
+            # 检查工具是否已存在，避免重复注册
+            if registry.has(tool.name):
+                logger.debug(f"工具 '{tool.name}' 已存在，跳过注册")
+                continue
             registry.register(tool)
             registered_count += 1
             logger.debug(f"工具已注册: {tool.name}")
         except Exception as e:
             logger.error(f"注册工具失败 {tool.name}: {e}")
 
+    _default_tools_registered = True
     logger.info(f"默认工具注册完成: {registered_count}/{len(tools)} 个工具")
-
-
-# 模块加载时自动注册默认工具
-_register_default_tools()
 
 
 def _create_workspace_templates(workspace: Path) -> None:
@@ -153,6 +170,9 @@ def build_system_prompt(
     bootstrap_and_skills = context_builder.build_system_prompt(use_cache=use_cache)
     if bootstrap_and_skills:
         prompt_parts.append(bootstrap_and_skills)
+
+    # 确保默认工具已注册（懒加载，只在首次调用时注册）
+    _register_default_tools()
 
     # 生成工具文档（从 ToolRegistry 动态发现）
     tools_generator = ToolsGenerator()
