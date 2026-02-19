@@ -1,45 +1,198 @@
-# API 参考文档
+# API 详细参考
 
-## 核心模块
+本文档提供 FinchBot 核心类和方法的详细 API 参考。
 
-### 1. Agent (`finchbot.agent`)
+## 1. Agent 模块 (`finchbot.agent`)
 
-FinchBot 的智能体核心，基于 LangGraph 构建。
+### 1.1 `create_finch_agent`
 
-- **`create_finch_agent(model, workspace, ...)`**: 创建并配置 Agent 实例。
-- **`ContextBuilder`**: 动态构建系统提示词，管理 System Prompt、Memory Guide 和 Skills。
+创建并配置一个 FinchBot 智能体实例。
 
-### 2. Memory (`finchbot.memory`)
+```python
+def create_finch_agent(
+    model: BaseChatModel,
+    workspace: Path,
+    tools: list[BaseTool] | None = None,
+    system_prompt: str | None = None,
+    use_persistent: bool = True,
+) -> tuple[CompiledStateGraph, SqliteSaver]:
+```
 
-分层记忆系统，负责管理短期和长期记忆。
+**参数**:
+- `model`: 基础聊天模型实例 (如 `ChatOpenAI`, `ChatAnthropic`)。
+- `workspace`: 工作目录路径 (`Path` 对象)，用于文件操作、记忆存储等。
+- `tools`: 可用工具列表 (可选，默认为空)。如果提供了工具，Agent 会自动绑定它们。
+- `system_prompt`: 自定义系统提示词 (可选)。如果不提供，将使用默认的 `ContextBuilder` 动态生成。
+- `use_persistent`: 是否启用持久化存储 (Checkpointing)。默认为 `True`，启用后会保存对话历史。
 
-- **`MemoryManager`**: 记忆系统的统一入口。
-    - `remember(content, ...)`: 保存新记忆。
-    - `recall(query, ...)`: 检索相关记忆。
-    - `forget(pattern)`: 删除或归档记忆。
-- **`SQLiteStore`**: 基于 SQLite 的结构化存储。
-- **`VectorMemoryStore`**: 基于 ChromaDB/FastEmbed 的向量存储。
+**返回**:
+- `(agent, checkpointer)` 元组:
+    - `agent`: 编译后的 LangGraph 状态图，可调用 `.invoke()` 或 `.stream()`。
+    - `checkpointer`: 持久化存储对象 (`SqliteSaver` 实例)。
 
-### 3. Tools (`finchbot.tools`)
+**示例**:
+```python
+from pathlib import Path
+from langchain_openai import ChatOpenAI
+from finchbot.agent import create_finch_agent
 
-工具生态系统。
+model = ChatOpenAI(model="gpt-4")
+workspace = Path("./workspace")
+agent, checkpointer = create_finch_agent(model, workspace)
 
-- **`ToolRegistry`**: 工具注册表，管理所有可用工具。
-- **`BaseTool`**: 所有工具的基类。
-- **内置工具**:
-    - `ReadFileTool`: 读取文件内容。
-    - `WriteFileTool`: 写入文件。
-    - `WebSearchTool`: 网络搜索 (DuckDuckGo/Tavily)。
-    - `ExecTool`: 安全执行 Shell 命令。
+response = agent.invoke({"messages": [("user", "Hello!")]}, config={"configurable": {"thread_id": "1"}})
+```
 
-## 辅助模块
+---
 
-### Configuration (`finchbot.config`)
+### 1.2 `ContextBuilder`
 
-- **`Config`**: Pydantic 模型，定义配置结构。
-- **`load_config()`**: 加载并合并配置（文件 + 环境变量）。
+动态系统提示词构建器。
 
-### I18n (`finchbot.i18n`)
+```python
+class ContextBuilder:
+    def __init__(self, workspace: Path): ...
+    
+    def build(self) -> str: ...
+```
 
-- **`t(key, **kwargs)`**: 获取翻译文本。
-- **`I18n`**: 国际化加载器。
+**方法**:
+- `build()`: 生成完整的系统提示词字符串。它会组合：
+    - `SYSTEM.md`: 基础角色设定。
+    - `MEMORY_GUIDE.md`: 记忆使用准则。
+    - `SKILL.md`: 动态加载的技能描述。
+    - `TOOLS.md`: 自动生成的工具文档。
+    - 运行时信息 (OS, Time, Python Version)。
+
+---
+
+## 2. Memory 模块 (`finchbot.memory`)
+
+### 2.1 `MemoryManager`
+
+记忆系统的统一入口。
+
+```python
+class MemoryManager:
+    def __init__(self, workspace: Path, embedding_model: str = "BAAI/bge-small-zh-v1.5"): ...
+```
+
+#### `remember`
+
+保存一条新记忆。
+
+```python
+def remember(
+    self,
+    content: str,
+    category: str | None = None,
+    importance: float | None = None,
+    tags: list[str] | None = None,
+) -> str:
+```
+
+**参数**:
+- `content`: 记忆的文本内容。
+- `category`: 分类 (可选，如 "personal", "work")。如果未提供，可能会自动推断。
+- `importance`: 重要性评分 (0.0-1.0，可选)。如果未提供，可能会自动计算。
+- `tags`: 标签列表 (可选)。
+
+**返回**:
+- `memory_id`: 新创建的记忆 ID (UUID)。
+
+#### `recall`
+
+检索相关记忆。
+
+```python
+def recall(
+    self,
+    query: str,
+    k: int = 5,
+    category: str | None = None,
+    min_importance: float = 0.0,
+) -> list[dict]:
+```
+
+**参数**:
+- `query`: 查询文本 (自然语言)。
+- `k`: 返回结果数量 (默认 5)。
+- `category`: 按分类过滤 (可选)。
+- `min_importance`: 最低重要性阈值 (默认 0.0)。
+
+**返回**:
+- 记忆字典列表，每个包含 `id`, `content`, `metadata`, `similarity` 等字段。
+
+#### `forget`
+
+删除或归档记忆。
+
+```python
+def forget(self, pattern: str) -> int:
+```
+
+**参数**:
+- `pattern`: 用于匹配记忆内容的字符串或正则表达式。
+
+**返回**:
+- 删除/归档的记忆数量。
+
+---
+
+## 3. Tools 模块 (`finchbot.tools`)
+
+所有工具均继承自 `finchbot.tools.base.FinchTool`。
+
+### 3.1 `FinchTool` (基类)
+
+```python
+class FinchTool(BaseTool):
+    name: str
+    description: str
+    parameters: dict
+    
+    def _run(self, *args, **kwargs) -> Any: ...
+    async def _arun(self, *args, **kwargs) -> Any: ...
+```
+
+### 3.2 内置工具
+
+| 工具类名 | 工具名称 (`name`) | 描述 | 关键参数 |
+| :--- | :--- | :--- | :--- |
+| `ReadFileTool` | `read_file` | 读取文件内容 | `file_path`: 文件路径 |
+| `WriteFileTool` | `write_file` | 写入文件内容 | `file_path`: 路径, `content`: 内容 |
+| `ListDirTool` | `list_dir` | 列出目录内容 | `dir_path`: 目录路径 |
+| `ExecTool` | `exec_command` | 执行 Shell 命令 | `command`: 命令字符串 |
+| `WebSearchTool` | `web_search` | 网络搜索 (Tavily) | `query`: 查询词 |
+| `RememberTool` | `remember` | 写入记忆 | `content`: 内容 |
+| `RecallTool` | `recall` | 检索记忆 | `query`: 查询词 |
+| `ForgetTool` | `forget` | 删除记忆 | `pattern`: 匹配模式 |
+
+---
+
+## 4. Config 模块 (`finchbot.config`)
+
+### 4.1 `Config` (根配置)
+
+Pydantic 模型，定义整个应用的配置结构。
+
+```python
+class Config(BaseModel):
+    language: str = "zh-CN"
+    default_model: str = "gpt-4o"
+    agents: AgentsConfig
+    providers: ProvidersConfig
+    tools: ToolsConfig
+```
+
+### 4.2 `load_config`
+
+加载配置。
+
+```python
+def load_config() -> Config: ...
+```
+
+**说明**:
+- 自动合并默认配置、`~/.finchbot/config.json` 和环境变量。
+- 环境变量优先级最高 (前缀 `FINCHBOT_`)。

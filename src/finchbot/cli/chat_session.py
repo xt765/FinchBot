@@ -631,10 +631,24 @@ def _run_chat_session(
                     rolled_back = messages[:msg_index]
 
                     if new_sess:
+                        # 创建新会话并初始化状态
                         new_config: RunnableConfig = {"configurable": {"thread_id": new_sess}}
+                        
+                        # 确保新会话 ID 在 metadata 存储中存在
+                        if not session_store.session_exists(new_sess):
+                            session_store.create_session(new_sess, title=f"Fork from {session_id}")
+                        
+                        # 更新 Agent 状态到新会话
                         agent.update_state(new_config, {"messages": rolled_back})
+                        
+                        # 切换当前会话 ID
                         session_id = new_sess
                         msg_count = len(rolled_back)
+                        
+                        # 更新新会话的显示信息
+                        session_display = f"{session_id} (Forked)"
+                        console.print(f"[dim]{t('cli.chat.session').format(session_display)}[/dim]")
+                        
                         console.print(
                             f"[green]{t('cli.rollback.create_success').format(new_sess, msg_count)}[/green]"
                         )
