@@ -5,6 +5,7 @@
 """
 
 import platform
+import threading
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
@@ -22,6 +23,7 @@ from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
 
 _default_tools_registered: bool = False
+_tools_registration_lock = threading.Lock()
 
 
 def _register_default_tools() -> None:
@@ -29,65 +31,71 @@ def _register_default_tools() -> None:
 
     自动发现并注册所有 FinchBot 内置工具。
     使用懒加载模式，只在首次调用时注册。
+
+    使用线程锁确保并发安全。
     """
     global _default_tools_registered
 
-    # 如果已经注册过，直接返回
+    # 双重检查锁定模式 (Double-checked locking)
     if _default_tools_registered:
         return
 
-    from finchbot.tools import (
-        EditFileTool,
-        ExecTool,
-        ForgetTool,
-        ListDirTool,
-        ReadFileTool,
-        RecallTool,
-        RememberTool,
-        SessionTitleTool,
-        WebExtractTool,
-        WebSearchTool,
-        WriteFileTool,
-        get_global_registry,
-    )
+    with _tools_registration_lock:
+        if _default_tools_registered:
+            return
 
-    registry = get_global_registry()
+        from finchbot.tools import (
+            EditFileTool,
+            ExecTool,
+            ForgetTool,
+            ListDirTool,
+            ReadFileTool,
+            RecallTool,
+            RememberTool,
+            SessionTitleTool,
+            WebExtractTool,
+            WebSearchTool,
+            WriteFileTool,
+            get_global_registry,
+        )
 
-    # 检查是否已经有工具注册，避免重复注册
-    if len(registry) > 0:
-        logger.debug(f"工具注册表已有 {len(registry)} 个工具，跳过默认工具注册")
+        registry = get_global_registry()
+
+        # 检查是否已经有工具注册，避免重复注册
+        if len(registry) > 0:
+            logger.debug(f"工具注册表已有 {len(registry)} 个工具，跳过默认工具注册")
+            _default_tools_registered = True
+            return
+
+        tools = [
+            ReadFileTool(),
+            WriteFileTool(),
+            EditFileTool(),
+            ListDirTool(),
+            ExecTool(),
+            WebSearchTool(),
+            WebExtractTool(),
+            RememberTool(),
+            RecallTool(),
+            ForgetTool(),
+            SessionTitleTool(),
+        ]
+
+        registered_count = 0
+        for tool in tools:
+            try:
+                # 检查工具是否已存在，避免重复注册
+                if registry.has(tool.name):
+                    logger.debug(f"工具 '{tool.name}' 已存在，跳过注册")
+                    continue
+                registry.register(tool)
+                registered_count += 1
+                logger.debug(f"工具已注册: {tool.name}")
+            except Exception as e:
+                logger.error(f"注册工具失败 {tool.name}: {e}")
+
         _default_tools_registered = True
-        return
-
-    tools = [
-        ReadFileTool(),
-        WriteFileTool(),
-        EditFileTool(),
-        ListDirTool(),
-        ExecTool(),
-        WebSearchTool(),
-        WebExtractTool(),
-        RememberTool(),
-        RecallTool(),
-        ForgetTool(),
-        SessionTitleTool(),
-    ]
-
-    registered_count = 0
-    for tool in tools:
-        try:
-            # 检查工具是否已存在，避免重复注册
-            if registry.has(tool.name):
-                logger.debug(f"工具 '{tool.name}' 已存在，跳过注册")
-                continue
-            registry.register(tool)
-            registered_count += 1
-            logger.debug(f"工具已注册: {tool.name}")
-        except Exception as e:
-            logger.error(f"注册工具失败 {tool.name}: {e}")
-
-    _default_tools_registered = True
-    logger.info(f"默认工具注册完成: {registered_count}/{len(tools)} 个工具")
+        logger.info(f"默认工具注册完成: {registered_count}/{len(tools)} 个工具")
 
 
 def _create_workspace_templates(workspace: Path) -> None:
@@ -195,8 +203,14 @@ def build_system_prompt(
     _register_default_tools()
 
     # 生成工具文档（从 ToolRegistry 动态发现）
-    tools_generator = ToolsGenerator()
+    tools_generator = ToolsGenerator(workspace)
     tools_content = tools_generator.generate_tools_content()
+
+    # 将工具文档写入工作区文件，供 Agent 查看
+    tools_file = tools_generator.write_to_file("TOOLS.md")
+    if tools_file:
+        logger.debug(f"工具文档已生成: {tools_file}")
+
     prompt_parts.append(tools_content)
 
     return "\n\n".join(prompt_parts)

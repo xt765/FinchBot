@@ -250,7 +250,9 @@ class SessionSelector:
                 created_text = Text(created_str, style="dim")
                 time_text = Text(time_str, style="dim")
 
-            table.add_row(cursor_text, id_text, title_text, msg_text, turn_text, created_text, time_text)
+            table.add_row(
+                cursor_text, id_text, title_text, msg_text, turn_text, created_text, time_text
+            )
 
         console.print(table)
 

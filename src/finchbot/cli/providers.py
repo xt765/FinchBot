@@ -82,9 +82,7 @@ def _get_tavily_key(config_obj: Config) -> str | None:
     return os.getenv("TAVILY_API_KEY") or config_obj.tools.web.search.api_key
 
 
-def _get_provider_config(
-    provider: str, config_obj: Config
-) -> tuple[str | None, str | None]:
+def _get_provider_config(provider: str, config_obj: Config) -> tuple[str | None, str | None]:
     """获取 provider 的 API key 和 base.
 
     优先级：环境变量 > 配置文件预设 > 配置文件自定义
@@ -115,9 +113,7 @@ def _get_provider_config(
     return api_key, api_base
 
 
-def _get_llm_config(
-    model: str, config_obj: Config
-) -> tuple[str | None, str | None, str | None]:
+def _get_llm_config(model: str, config_obj: Config) -> tuple[str | None, str | None, str | None]:
     """获取 LLM 配置.
 
     优先级：显式传入 > 环境变量 > 配置文件 > 自动检测。

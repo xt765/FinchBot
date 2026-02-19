@@ -157,6 +157,8 @@ error_showing = "顯示歷史出錯: {}"
 
 [agent]
 title = "FinchBot (雀翎)"
+available_tools = "可用工具"
+no_tools_available = "目前沒有可用的工具。"
 current_time = "目前時間"
 runtime = "執行環境"
 workspace = "工作目錄"
@@ -168,6 +170,14 @@ tools_web = "搜尋網頁和獲取網頁內容"
 tools_memory = "管理記憶和筆記"
 workspace_memory = "記憶檔案目錄："
 workspace_skills = "自訂技能目錄："
+
+[tools.categories]
+file_ops = "檔案操作"
+sys_cmd = "系統命令"
+net_tools = "網絡工具"
+mem_mgmt = "記憶管理"
+session_mgmt = "會話管理"
+others = "其他工具"
 
 [tools.read_file]
 name = "read_file"

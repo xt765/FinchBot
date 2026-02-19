@@ -25,14 +25,19 @@ def get_model_cache_dir() -> Path:
 def _detect_best_mirror() -> tuple[str, str]:
     """检测最佳下载镜像.
 
-    优先检测国内镜像（hf-mirror.com），如果可访问则使用国内镜像。
-    否则使用官方源（huggingface.co）。
+    通过 TCP 连接测试（HTTP HEAD 可能被防火墙拦截），
+    优先检测国内镜像（hf-mirror.com），如果可访问且延迟低则使用国内镜像。
+    否则回退到官方源（huggingface.co）。
+
+    超时机制：
+    每个镜像源的连接测试超时时间为 2 秒。这确保了在网络不佳的情况下，检测过程不会阻塞太久。
 
     Returns:
         (镜像URL, 镜像名称) 元组
     """
     # 检测国内镜像
     try:
+        # 尝试连接 hf-mirror.com 的 HTTPS 端口 (443)
         socket.create_connection(("hf-mirror.com", 443), timeout=2)
         return ("https://hf-mirror.com", "国内镜像")
     except OSError:

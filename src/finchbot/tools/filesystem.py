@@ -56,247 +56,216 @@ def _resolve_path(path: str, allowed_dirs: list[Path] | Path | None = None) -> P
 class ReadFileTool(FinchTool):
     """读取文件工具.
 
-    读取指定路径的文件内容。
-
-    Attributes:
-        allowed_dirs: 允许访问的目录限制列表。
+    允许 Agent 读取指定目录下的文件内容。
+    具有路径安全检查机制，防止越权访问。
     """
 
-    name: str = Field(default="read_file", description="Tool name")
-    description: str = Field(default="", description="Tool description")
-    allowed_dirs: list[Path] | Path | None = Field(default=None, exclude=True)
+    name: str = "read_file"
+    description: str = t("tools.read_file.description")
+    parameters: dict = {
+        "type": "object",
+        "properties": {
+            "file_path": {
+                "type": "string",
+                "description": t("tools.read_file.param_file_path"),
+            }
+        },
+        "required": ["file_path"],
+    }
 
-    def model_post_init(self, __context: Any) -> None:
-        """初始化后设置描述."""
-        self.description = t("tools.read_file.description")
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        """返回参数定义."""
-        return {
-            "type": "object",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "File path to read",
-                }
-            },
-            "required": ["path"],
-        }
-
-    def _run(self, path: str) -> str:
-        """执行文件读取.
+    def _run(self, file_path: str) -> str:
+        """执行读取文件操作.
 
         Args:
-            path: 文件路径。
+            file_path: 目标文件路径（绝对路径或相对路径）。
 
         Returns:
-            文件内容或错误信息。
+            str: 文件内容字符串。如果读取失败（如文件不存在、权限不足、路径越权），则返回以 "Error:" 开头的错误信息。
         """
-        try:
-            file_path = _resolve_path(path, self.allowed_dirs)
-            if not file_path.exists():
-                return f"{t('tools.read_file.error_not_found')}: {path}"
-            if not file_path.is_file():
-                return f"{t('tools.read_file.error_not_file')}: {path}"
+        # 1. 路径安全检查
+        safe_path = self.validate_path(file_path)
+        if not safe_path:
+            return f"Error: {t('tools.common.access_denied')}: {file_path}"
 
-            content_bytes = file_path.read_bytes()
-            content = decode_output(content_bytes)
+        # 2. 检查文件是否存在
+        if not safe_path.exists():
+            return f"Error: {t('tools.read_file.file_not_found')}: {file_path}"
+
+        # 3. 读取文件内容
+        try:
+            content = safe_path.read_text(encoding="utf-8")
             return content
-        except PermissionError as e:
-            return f"Error: {e}"
         except Exception as e:
-            return f"Error reading file: {str(e)}"
+            return f"Error: {t('tools.read_file.read_error')}: {str(e)}"
 
 
 class WriteFileTool(FinchTool):
     """写入文件工具.
 
-    将内容写入指定路径的文件，自动创建父目录。
-
-    Attributes:
-        allowed_dirs: 允许访问的目录限制列表。
+    允许 Agent 创建或覆盖指定目录下的文件。
+    具有路径安全检查机制。
     """
 
-    name: str = Field(default="write_file", description="Tool name")
-    description: str = Field(default="", description="Tool description")
-    allowed_dirs: list[Path] | Path | None = Field(default=None, exclude=True)
-
-    def model_post_init(self, __context: Any) -> None:
-        """初始化后设置描述."""
-        self.description = t("tools.write_file.description")
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        """返回参数定义."""
-        return {
-            "type": "object",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "File path to write",
-                },
-                "content": {
-                    "type": "string",
-                    "description": "Content to write",
-                },
+    name: str = "write_file"
+    description: str = t("tools.write_file.description")
+    parameters: dict = {
+        "type": "object",
+        "properties": {
+            "file_path": {
+                "type": "string",
+                "description": t("tools.write_file.param_file_path"),
             },
-            "required": ["path", "content"],
-        }
+            "content": {
+                "type": "string",
+                "description": t("tools.write_file.param_content"),
+            },
+        },
+        "required": ["file_path", "content"],
+    }
 
-    def _run(self, path: str, content: str) -> str:
-        """执行文件写入.
+    def _run(self, file_path: str, content: str) -> str:
+        """执行写入文件操作.
+
+        如果文件已存在，将被覆盖。如果父目录不存在，将自动创建。
 
         Args:
-            path: 文件路径。
-            content: 要写入的内容。
+            file_path: 目标文件路径。
+            content: 要写入的文本内容。
 
         Returns:
-            操作结果信息。
+            str: 成功消息或以 "Error:" 开头的错误信息。
         """
+        # 1. 路径安全检查
+        safe_path = self.validate_path(file_path)
+        if not safe_path:
+            return f"Error: {t('tools.common.access_denied')}: {file_path}"
+
         try:
-            file_path = _resolve_path(path, self.allowed_dirs)
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content, encoding="utf-8")
-            return f"Successfully wrote {len(content)} bytes to {path}"
-        except PermissionError as e:
-            return f"Error: {e}"
+            # 2. 自动创建父目录
+            safe_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # 3. 写入内容
+            safe_path.write_text(content, encoding="utf-8")
+            return f"Success: {t('tools.write_file.success')}: {file_path}"
         except Exception as e:
-            return f"Error writing file: {str(e)}"
-
-
-class EditFileTool(FinchTool):
-    """编辑文件工具.
-
-    通过替换文本编辑文件内容。
-
-    Attributes:
-        allowed_dirs: 允许访问的目录限制列表。
-    """
-
-    name: str = Field(default="edit_file", description="Tool name")
-    description: str = Field(default="", description="Tool description")
-    allowed_dirs: list[Path] | Path | None = Field(default=None, exclude=True)
-
-    def model_post_init(self, __context: Any) -> None:
-        """初始化后设置描述."""
-        self.description = t("tools.edit_file.description")
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        """返回参数定义."""
-        return {
-            "type": "object",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "File path to edit",
-                },
-                "old_text": {
-                    "type": "string",
-                    "description": "Text to find and replace",
-                },
-                "new_text": {
-                    "type": "string",
-                    "description": "Replacement text",
-                },
-            },
-            "required": ["path", "old_text", "new_text"],
-        }
-
-    def _run(self, path: str, old_text: str, new_text: str) -> str:
-        """执行文件编辑.
-
-        Args:
-            path: 文件路径。
-            old_text: 要替换的文本。
-            new_text: 替换后的文本。
-
-        Returns:
-            操作结果信息。
-        """
-        try:
-            file_path = _resolve_path(path, self.allowed_dirs)
-            if not file_path.exists():
-                return f"{t('tools.read_file.error_not_found')}: {path}"
-
-            content_bytes = file_path.read_bytes()
-            content = decode_output(content_bytes)
-
-            if old_text not in content:
-                return "Error: old_text not found, please ensure exact match."
-
-            count = content.count(old_text)
-            if count > 1:
-                return f"Warning: old_text appears {count} times, please provide more context."
-
-            new_content = content.replace(old_text, new_text, 1)
-            file_path.write_text(new_content, encoding="utf-8")
-
-            return f"Successfully edited {path}"
-        except PermissionError as e:
-            return f"Error: {e}"
-        except Exception as e:
-            return f"Error editing file: {str(e)}"
+            return f"Error: {t('tools.write_file.write_error')}: {str(e)}"
 
 
 class ListDirTool(FinchTool):
     """列出目录工具.
 
-    列出指定目录的内容。
-
-    Attributes:
-        allowed_dirs: 允许访问的目录限制列表。
+    列出指定目录下的文件和子目录。
     """
 
-    name: str = Field(default="list_dir", description="Tool name")
-    description: str = Field(default="", description="Tool description")
-    allowed_dirs: list[Path] | Path | None = Field(default=None, exclude=True)
+    name: str = "list_dir"
+    description: str = t("tools.list_dir.description")
+    parameters: dict = {
+        "type": "object",
+        "properties": {
+            "dir_path": {
+                "type": "string",
+                "description": t("tools.list_dir.param_dir_path"),
+            }
+        },
+        "required": ["dir_path"],
+    }
 
-    def model_post_init(self, __context: Any) -> None:
-        """初始化后设置描述."""
-        self.description = t("tools.list_dir.description")
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        """返回参数定义."""
-        return {
-            "type": "object",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "Directory path to list",
-                }
-            },
-            "required": ["path"],
-        }
-
-    def _run(self, path: str) -> str:
-        """执行目录列表.
+    def _run(self, dir_path: str = ".") -> str:
+        """执行列出目录操作.
 
         Args:
-            path: 目录路径。
+            dir_path: 目标目录路径，默认为当前目录。
 
         Returns:
-            目录内容列表或错误信息。
+            str: 包含文件和目录列表的格式化字符串，或错误信息。
         """
+        # 1. 路径安全检查
+        safe_path = self.validate_path(dir_path)
+        if not safe_path:
+            return f"Error: {t('tools.common.access_denied')}: {dir_path}"
+
+        # 2. 检查是否为目录
+        if not safe_path.is_dir():
+            return f"Error: {t('tools.list_dir.not_a_directory')}: {dir_path}"
+
         try:
-            dir_path = _resolve_path(path, self.allowed_dirs)
-            if not dir_path.exists():
-                return f"Error: Directory not found: {path}"
-            if not dir_path.is_dir():
-                return f"Error: Not a directory: {path}"
+            # 3. 获取目录内容并排序
+            entries = sorted(safe_path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+            result = []
+            for entry in entries:
+                type_mark = "<DIR>" if entry.is_dir() else "<FILE>"
+                result.append(f"{type_mark} {entry.name}")
 
-            items = []
-            for item in sorted(dir_path.iterdir()):
-                prefix = "📁 " if item.is_dir() else "📄 "
-                items.append(f"{prefix}{item.name}")
-
-            if not items:
-                return f"Directory {path} is empty"
-
-            return "\n".join(items)
-        except PermissionError as e:
-            return f"Error: {e}"
+            return "\n".join(result) if result else "(Empty directory)"
         except Exception as e:
-            return f"Error listing directory: {str(e)}"
+            return f"Error: {t('tools.list_dir.list_error')}: {str(e)}"
+
+
+class EditFileTool(FinchTool):
+    """编辑文件工具.
+
+    允许 Agent 通过替换文本的方式编辑文件内容。
+    适用于小规模的文本修改。
+    """
+
+    name: str = "edit_file"
+    description: str = t("tools.edit_file.description")
+    parameters: dict = {
+        "type": "object",
+        "properties": {
+            "file_path": {
+                "type": "string",
+                "description": t("tools.read_file.param_file_path"),
+            },
+            "old_str": {
+                "type": "string",
+                "description": "The exact string to be replaced.",
+            },
+            "new_str": {
+                "type": "string",
+                "description": "The new string to replace with.",
+            },
+        },
+        "required": ["file_path", "old_str", "new_str"],
+    }
+
+    def _run(self, file_path: str, old_str: str, new_str: str) -> str:
+        """执行编辑文件操作.
+
+        Args:
+            file_path: 目标文件路径。
+            old_str: 要查找并替换的旧字符串（必须精确匹配）。
+            new_str: 替换成的新字符串。
+
+        Returns:
+            str: 成功消息或错误信息。
+        """
+        # 1. 路径安全检查
+        safe_path = self.validate_path(file_path)
+        if not safe_path:
+            return f"Error: {t('tools.common.access_denied')}: {file_path}"
+
+        # 2. 检查文件是否存在
+        if not safe_path.exists():
+            return f"Error: {t('tools.read_file.file_not_found')}: {file_path}"
+
+        try:
+            # 3. 读取内容
+            content = safe_path.read_text(encoding="utf-8")
+
+            # 4. 检查旧字符串是否存在
+            if old_str not in content:
+                return "Error: old_str not found in file. Please ensure exact match including whitespace."
+
+            # 5. 检查是否有多处匹配（为了安全，目前只替换第一处，或者应该替换全部？通常 edit 工具替换第一处）
+            count = content.count(old_str)
+            if count > 1:
+                return f"Warning: old_str found {count} times. Only the first occurrence was replaced."
+
+            # 6. 执行替换
+            new_content = content.replace(old_str, new_str, 1)
+            safe_path.write_text(new_content, encoding="utf-8")
+            
+            return f"Success: File edited successfully: {file_path}"
+        except Exception as e:
+            return f"Error: Failed to edit file: {str(e)}"

@@ -165,6 +165,8 @@ error_showing = "显示历史出错: {}"
 
 [agent]
 title = "FinchBot (雀翎)"
+available_tools = "可用工具"
+no_tools_available = "当前没有可用的工具。"
 current_time = "当前时间"
 runtime = "运行环境"
 workspace = "工作目录"
@@ -183,6 +185,14 @@ available_skills = "可用技能"
 skills_intro = "以下技能扩展了你的能力。要使用技能，请使用 read_file 工具读取其 SKILL.md 文件。"
 skills_unavailable_hint = "available=\"false\" 的技能需要先安装依赖 - 你可以尝试使用 apt/brew 安装。"
 skills_read_hint = "使用 read_file 工具加载技能详情。"
+
+[tools.categories]
+file_ops = "文件操作"
+sys_cmd = "系统命令"
+net_tools = "网络工具"
+mem_mgmt = "记忆管理"
+session_mgmt = "会话管理"
+others = "其他工具"
 
 [tools.read_file]
 name = "read_file"

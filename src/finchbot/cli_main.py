@@ -26,6 +26,27 @@ app = typer.Typer(
 )
 
 
+@app.callback()
+def main(
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="显示调试日志 / Show debug logs"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="静默模式 / Quiet mode"),
+) -> None:
+    """FinchBot - 智能 Agent 框架."""
+    from finchbot.utils.logger import setup_logger
+
+    if quiet:
+        console_level = "ERROR"
+    elif verbose:
+        console_level = "DEBUG"
+    else:
+        console_level = "INFO"
+
+    # 初始化日志系统
+    # 默认将日志保存到 workspace/logs 下，但这里尚未获取 workspace，暂时存放到当前目录 logs
+    # 实际项目中可能需要更复杂的逻辑来确定 log_dir
+    setup_logger(console_level=console_level)
+
+
 @app.command()
 def version() -> None:
     """显示版本信息."""

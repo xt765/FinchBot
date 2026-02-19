@@ -22,10 +22,10 @@ MODEL_CACHE_DIR = PROJECT_ROOT / ".models" / "fastembed"
 class EmbeddingService:
     """向量嵌入服务."""
 
-    def __init__(self, cache_dir: Optional[Path] = None, verbose: bool = True):
+    def __init__(self, cache_dir: Path | None = None, verbose: bool = True):
         self.cache_dir = cache_dir or MODEL_CACHE_DIR
         self.verbose = verbose
-        self._embeddings_cache: Optional["FastEmbedEmbeddings"] = None
+        self._embeddings_cache: FastEmbedEmbeddings | None = None
         self._ensure_cache_dir()
 
     def _ensure_cache_dir(self) -> None:
@@ -68,7 +68,7 @@ class EmbeddingService:
         self,
         model_exists: bool,
         has_internet: bool,
-        mirror_url: Optional[str] = None,
+        mirror_url: str | None = None,
     ) -> None:
         """打印模型状态提示."""
         from rich.console import Console
@@ -159,7 +159,9 @@ class EmbeddingService:
                     "请连接网络后运行: finchbot download-models"
                 )
             elif "download" in error_msg.lower() or "connection" in error_msg.lower():
-                logger.error(f"模型下载失败: {e}\n请检查网络连接或手动下载: finchbot download-models")
+                logger.error(
+                    f"模型下载失败: {e}\n请检查网络连接或手动下载: finchbot download-models"
+                )
             else:
                 logger.warning(f"FastEmbed embeddings failed: {e}")
             return None

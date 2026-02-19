@@ -1,4 +1,4 @@
-""" FinchBot CLI 模块
+"""FinchBot CLI 模块
 
 提供命令行界面的核心功能，包括：
 - 提供商配置与管理

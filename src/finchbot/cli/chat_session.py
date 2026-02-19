@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from loguru import logger
 from rich.console import Console
@@ -28,19 +29,27 @@ GOODBYE_MESSAGE = "\n[dim]Goodbye! 👋[/dim]"
 
 
 def _format_message(
-    msg: Any, index: int, show_index: bool = True, max_content_len: int = 9999
+    msg: BaseMessage | Any,
+    index: int,
+    show_index: bool = True,
+    max_content_len: int = 9999,
 ) -> None:
     """格式化并显示单条消息。
 
+    支持 HumanMessage, AIMessage, SystemMessage, ToolMessage 等多种类型。
+    使用 Rich Panel 进行美化输出。
+
     Args:
-        msg: 消息对象
-        index: 消息索引
-        show_index: 是否显示索引
-        max_content_len: 内容最大显示长度（默认很大，基本不截断）
+        msg: 消息对象 (BaseMessage 实例)。
+        index: 消息在历史记录中的索引。
+        show_index: 是否显示索引（用于回滚操作参考）。
+        max_content_len: 内容最大显示长度（超过截断），默认不截断。
     """
     msg_type = getattr(msg, "type", None)
     content = getattr(msg, "content", "") or ""
+    # tool_calls 是 AIMessage 的属性
     tool_calls = getattr(msg, "tool_calls", None) or []
+    # name 是 ToolMessage 的属性
     name = getattr(msg, "name", None)
 
     prefix = f"[{index}] " if show_index else ""
@@ -53,7 +62,7 @@ def _format_message(
         role_color = "cyan"
         console.print(
             Panel(
-                content,
+                str(content),  # 确保 content 是字符串
                 title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
                 border_style=role_color,
                 padding=(0, 1),
@@ -67,7 +76,7 @@ def _format_message(
         role_color = "green"
         console.print(
             Panel(
-                content,
+                str(content),
                 title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
                 border_style=role_color,
                 padding=(0, 1),
@@ -83,7 +92,7 @@ def _format_message(
         tool_info = f" {', '.join(tool_names)}" if tool_names else ""
         console.print(
             Panel(
-                tool_info.strip() or "tool",
+                tool_info.strip() or "tool call",
                 title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
                 border_style=role_color,
                 padding=(0, 1),
@@ -97,7 +106,7 @@ def _format_message(
         role_color = "yellow"
         console.print(
             Panel(
-                content,
+                str(content),
                 title=f"[{role_color}]{prefix}{role_icon} {name}[/{role_color}]",
                 border_style=role_color,
                 padding=(0, 1),
@@ -111,7 +120,7 @@ def _format_message(
         role_color = "dim"
         console.print(
             Panel(
-                content,
+                str(content),
                 title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
                 border_style=role_color,
                 padding=(0, 1),
@@ -125,7 +134,7 @@ def _format_message(
         role_color = "red"
         console.print(
             Panel(
-                content,
+                str(content),
                 title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
                 border_style=role_color,
                 padding=(0, 1),
@@ -134,12 +143,16 @@ def _format_message(
         )
 
 
-def _display_messages_by_turn(messages: list[Any], show_index: bool = True) -> None:
+def _display_messages_by_turn(
+    messages: list[BaseMessage | Any], show_index: bool = True
+) -> None:
     """按轮次分组显示消息。
 
+    将连续的消息（User -> AI -> Tools -> AI）视为一轮对话进行展示。
+    
     Args:
-        messages: 消息列表
-        show_index: 是否显示索引
+        messages: 消息对象列表 (BaseMessage)。
+        show_index: 是否显示索引。
     """
     if not messages:
         return
@@ -166,7 +179,9 @@ def _display_messages_by_turn(messages: list[Any], show_index: bool = True) -> N
                 tool_calls = getattr(next_msg, "tool_calls", None) or []
                 name = getattr(next_msg, "name", None)
 
-                if next_type == "human" or (hasattr(next_msg, "role") and next_msg.role == "user"):
+                if next_type == "human" or (
+                    hasattr(next_msg, "role") and next_msg.role == "user"
+                ):
                     break
                 if next_type == "ai" or (
                     hasattr(next_msg, "role") and next_msg.role == "assistant"
@@ -188,7 +203,7 @@ def _display_messages_by_turn(messages: list[Any], show_index: bool = True) -> N
     console.print()
 
 
-def calculate_turn_count(messages: list[Any]) -> int:
+def calculate_turn_count(messages: list[BaseMessage | Any]) -> int:
     """计算会话轮次。
 
     一问一答算一轮，即统计有多少个有效的"human消息+ai消息"对。

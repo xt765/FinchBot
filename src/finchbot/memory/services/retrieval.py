@@ -3,7 +3,7 @@
 提供基于 Weighted RRF 的混合检索功能。
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -18,7 +18,7 @@ class RetrievalService:
     def __init__(
         self,
         sqlite_store: SQLiteStore,
-        vector_store: Optional[VectorMemoryStore] = None,
+        vector_store: VectorMemoryStore | None = None,
     ):
         """初始化检索服务.
 
@@ -34,7 +34,7 @@ class RetrievalService:
         query: str,
         query_type: QueryType = QueryType.COMPLEX,
         top_k: int = 5,
-        category: Optional[str] = None,
+        category: str | None = None,
         similarity_threshold: float = 0.5,
         include_archived: bool = False,
     ) -> list[dict[str, Any]]:
@@ -67,14 +67,16 @@ class RetrievalService:
         # 优化：纯语义检索
         if vector_weight >= 0.99 and keyword_weight <= 0.01:
             if not self.vector_store:
-                logger.warning("Vector store not available for semantic search, falling back to keyword")
+                logger.warning(
+                    "Vector store not available for semantic search, falling back to keyword"
+                )
                 return self.sqlite_store.search_memories(
                     query=query,
                     category=category,
                     include_archived=include_archived,
                     limit=top_k,
                 )
-            
+
             vector_results = self.vector_store.recall(
                 query=query,
                 k=top_k,
@@ -112,7 +114,7 @@ class RetrievalService:
         keyword_weight: float,
         vector_weight: float,
         top_k: int,
-        category: Optional[str],
+        category: str | None,
         similarity_threshold: float,
         include_archived: bool,
         k: int = 60,
@@ -144,7 +146,7 @@ class RetrievalService:
 
         # 3. RRF 计算
         scores: dict[str, float] = {}
-        
+
         # 关键词结果打分
         for rank, item in enumerate(keyword_results):
             memory_id = item["id"]
@@ -159,7 +161,7 @@ class RetrievalService:
 
         # 4. 排序并获取最终结果
         sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[:top_k]
-        
+
         final_results = []
         for memory_id in sorted_ids:
             memory = self.sqlite_store.get_memory(memory_id)
@@ -184,15 +186,15 @@ class RetrievalService:
             memory_id = res.get("id")
             if not memory_id:
                 continue
-            
+
             memory = self.sqlite_store.get_memory(memory_id)
             if not memory:
                 continue
-                
+
             if not include_archived and memory.get("is_archived"):
                 continue
-                
+
             memory["similarity"] = res.get("similarity")
             memories.append(memory)
-            
+
         return memories

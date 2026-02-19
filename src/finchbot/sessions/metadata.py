@@ -213,9 +213,7 @@ class SessionMetadataStore:
             会话元数据，如不存在则返回 None
         """
         with sqlite3.connect(str(self.db_path)) as conn:
-            cursor = conn.execute(
-                "SELECT * FROM sessions WHERE session_id = ?", (session_id,)
-            )
+            cursor = conn.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,))
             row = cursor.fetchone()
 
         if row is None:
@@ -298,9 +296,7 @@ class SessionMetadataStore:
             是否成功删除
         """
         with sqlite3.connect(str(self.db_path)) as conn:
-            cursor = conn.execute(
-                "DELETE FROM sessions WHERE session_id = ?", (session_id,)
-            )
+            cursor = conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
             conn.commit()
             deleted = cursor.rowcount > 0
 
@@ -318,9 +314,7 @@ class SessionMetadataStore:
             是否存在
         """
         with sqlite3.connect(str(self.db_path)) as conn:
-            cursor = conn.execute(
-                "SELECT 1 FROM sessions WHERE session_id = ?", (session_id,)
-            )
+            cursor = conn.execute("SELECT 1 FROM sessions WHERE session_id = ?", (session_id,))
             return cursor.fetchone() is not None
 
     def get_next_session_id(self) -> str:

@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
 from pydantic import Field
 
 from finchbot.i18n import t
@@ -86,28 +87,32 @@ class ExecTool(FinchTool):
             命令输出或错误信息。
         """
         cwd = working_dir or self.working_dir or os.getcwd()
+        logger.debug(f"Executing command: '{command}' in '{cwd}'")
+
         guard_error = self._guard_command(command, cwd)
         if guard_error:
+            logger.warning(f"Command blocked by security guard: {guard_error}")
             return guard_error
 
         try:
+            # 使用 shell=True 允许管道和重定向，但在 Windows 上可能有风险
+            # 通过 _guard_command 进行简单的安全检查
             proc = subprocess.Popen(
                 command,
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=cwd,
-                text=False,
+                # text=False 以便手动处理编码
             )
 
             try:
-                stdout, stderr = proc.communicate(timeout=self.timeout)
+                stdout_bytes, stderr_bytes = proc.communicate(timeout=self.timeout)
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
+                logger.error(f"Command timed out after {self.timeout}s: {command}")
                 return f"错误: 命令在 {self.timeout} 秒后超时"
-
-            output_parts = []
 
             def decode_output(data: bytes) -> str:
                 """智能解码输出，自动尝试多种编码."""
@@ -119,16 +124,27 @@ class ExecTool(FinchTool):
                         continue
                 return data.decode("utf-8", errors="replace")
 
-            if stdout:
-                output_parts.append(decode_output(stdout))
+            output_parts = []
 
-            if stderr:
-                stderr_text = decode_output(stderr)
+            # 处理标准输出
+            if stdout_bytes:
+                out_text = decode_output(stdout_bytes)
+                output_parts.append(out_text)
+
+            # 处理标准错误
+            stderr_text = ""
+            if stderr_bytes:
+                stderr_text = decode_output(stderr_bytes)
                 if stderr_text.strip():
                     output_parts.append(f"STDERR:\n{stderr_text}")
 
             if proc.returncode != 0:
                 output_parts.append(f"\n退出码: {proc.returncode}")
+                logger.warning(
+                    f"Command failed (code {proc.returncode}): {command}\nStderr: {stderr_text[:200]}"
+                )
+            else:
+                logger.debug(f"Command finished successfully: {command}")
 
             result = "\n".join(output_parts) if output_parts else "(无输出)"
 
@@ -139,6 +155,7 @@ class ExecTool(FinchTool):
             return result
 
         except Exception as e:
+            logger.exception(f"Command execution error: {command}")
             return f"执行命令时出错: {str(e)}"
 
     def _guard_command(self, command: str, cwd: str) -> str | None:

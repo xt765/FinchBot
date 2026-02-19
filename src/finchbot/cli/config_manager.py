@@ -125,12 +125,14 @@ class ConfigManager:
         for provider_name in self.config.get_configured_providers():
             if provider_name.startswith("custom:"):
                 name = provider_name.replace("custom:", "")
-                items.append({
-                    "key": f"custom.{name}",
-                    "name": f"  └─ {t('cli.config.custom')}: {name}",
-                    "value": "***",
-                    "editable": True,
-                })
+                items.append(
+                    {
+                        "key": f"custom.{name}",
+                        "name": f"  └─ {t('cli.config.custom')}: {name}",
+                        "value": "***",
+                        "editable": True,
+                    }
+                )
 
         return items
 
@@ -221,8 +223,7 @@ class ConfigManager:
     def _configure_providers_submenu(self) -> None:
         """配置提供商子菜单（键盘导航）."""
         providers = [
-            {"name": info["name"], "value": name}
-            for name, info in PRESET_PROVIDERS.items()
+            {"name": info["name"], "value": name} for name, info in PRESET_PROVIDERS.items()
         ]
         providers.append({"name": t("cli.config.add_custom_provider"), "value": "custom"})
 
@@ -259,8 +260,12 @@ class ConfigManager:
         web_config = self.config.tools.web.search
 
         # 从环境变量读取
-        env_tavily = os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__API_KEY") or os.getenv("TAVILY_API_KEY")
-        env_brave = os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__BRAVE_API_KEY") or os.getenv("BRAVE_API_KEY")
+        env_tavily = os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__API_KEY") or os.getenv(
+            "TAVILY_API_KEY"
+        )
+        env_brave = os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__BRAVE_API_KEY") or os.getenv(
+            "BRAVE_API_KEY"
+        )
 
         while True:
             # 获取当前状态

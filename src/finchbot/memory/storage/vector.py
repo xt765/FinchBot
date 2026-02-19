@@ -13,7 +13,6 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from langchain_chroma import Chroma
-    from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 
     from finchbot.memory.services.embedding import EmbeddingService
 
@@ -34,7 +33,7 @@ class VectorMemoryStore:
         embeddings: Embedding 模型。
     """
 
-    def __init__(self, workspace: Path, embedding_service: "EmbeddingService") -> None:
+    def __init__(self, workspace: Path, embedding_service: EmbeddingService) -> None:
         """初始化向量记忆存储.
 
         Args:
@@ -57,7 +56,11 @@ class VectorMemoryStore:
         self._init_vectorstore()
 
     def _init_vectorstore(self) -> None:
-        """初始化向量存储."""
+        """初始化向量存储.
+        
+        使用 ChromaDB 作为后端，FastEmbed 作为 Embedding 模型。
+        显式设置距离度量为 L2 (欧几里得距离)，以确保相似度计算公式 (1 - distance/2) 的正确性。
+        """
         if not self.embeddings:
             return
 
@@ -67,8 +70,9 @@ class VectorMemoryStore:
             self.vectorstore = Chroma(
                 persist_directory=str(self.vector_dir),
                 embedding_function=self.embeddings,
+                collection_metadata={"hnsw:space": "l2"},  # 显式指定 L2 距离
             )
-            logger.debug("Vector store initialized")
+            logger.debug("Vector store initialized with L2 distance metric")
         except ImportError:
             logger.warning(
                 "langchain-chroma not available. Install with: pip install langchain-chroma"
@@ -86,13 +90,15 @@ class VectorMemoryStore:
     ) -> bool:
         """添加记忆到向量存储.
 
+        将文本内容转换为向量并存储到 ChromaDB 中，同时存储相关的元数据。
+
         Args:
-            content: 记忆内容。
-            metadata: 元数据（分类、重要性等）。
-            id: 可选的记忆ID，如果不提供则自动生成。
+            content: 记忆的文本内容。
+            metadata: 关联的元数据字典（如分类、重要性、时间戳等）。
+            id: 可选的唯一记忆ID。如果不提供，ChromaDB 会自动生成 UUID。
 
         Returns:
-            是否成功添加。
+            bool: 添加成功返回 True，失败返回 False。
         """
         if not self.vectorstore:
             return False
@@ -113,31 +119,43 @@ class VectorMemoryStore:
         self,
         query: str,
         k: int = 5,
-        filter: dict[str, Any] | None = None,
+        where_filter: dict[str, Any] | None = None,
         similarity_threshold: float = 0.5,
     ) -> list[dict[str, Any]]:
         """语义检索记忆.
 
-        支持相似度阈值过滤，只返回相似度高于阈值的结果。
+        根据查询文本的语义相似度检索最相关的记忆。
+        支持元数据过滤和相似度阈值过滤。
+
+        相似度计算说明：
+        ChromaDB 默认返回 L2 距离 (distance)，范围通常在 [0, 2] 之间（对于归一化向量）。
+        我们将其转换为相似度 (similarity) = 1.0 - (distance / 2.0)。
+        - distance = 0 -> similarity = 1.0 (完全相同)
+        - distance = 2 -> similarity = 0.0 (完全相反)
 
         Args:
             query: 查询文本。
-            k: 返回数量。
-            filter: 元数据过滤条件。
-            similarity_threshold: 相似度阈值 (0.0-1.0)，默认 0.5。
+            k: 最大返回结果数量。
+            where_filter: 元数据过滤条件（ChromaDB where 语法）。例如 {"category": "personal"}。
+            similarity_threshold: 相似度阈值 (0.0-1.0)。只返回相似度大于等于此值的记忆。
 
         Returns:
-            匹配的记忆列表，包含相似度分数。
+            list[dict[str, Any]]: 匹配的记忆列表。每个元素包含：
+                - id: 记忆ID
+                - content: 记忆内容
+                - metadata: 元数据
+                - similarity: 相似度分数
         """
         if not self.vectorstore:
             return []
 
         try:
             # 使用 similarity_search_with_score 获取相似度分数
+            # 获取更多候选结果 (k*2) 以便在过滤后仍能尽量满足 k 个结果
             results_with_scores = self.vectorstore.similarity_search_with_score(
                 query,
-                k=k * 2,  # 获取更多候选结果用于过滤
-                filter=filter,
+                k=k * 2,
+                filter=where_filter,
             )
 
             # 过滤低于阈值的结果
@@ -158,8 +176,11 @@ class VectorMemoryStore:
                         }
                     )
 
+            # 按相似度降序排序（虽然通常已经是排序的）
+            filtered_results.sort(key=lambda x: x["similarity"], reverse=True)
+
             logger.debug(
-                f"Vector recall: found {len(results_with_scores)} candidates, "
+                f"Vector recall: query='{query}', found {len(results_with_scores)} candidates, "
                 f"{len(filtered_results)} above threshold {similarity_threshold}"
             )
 
@@ -171,16 +192,18 @@ class VectorMemoryStore:
     def delete(
         self,
         ids: list[str] | None = None,
-        filter: dict[str, Any] | None = None,
+        where_filter: dict[str, Any] | None = None,
     ) -> bool:
         """删除记忆.
 
+        从向量存储中删除指定的记忆。可以通过 ID 列表或元数据过滤条件进行删除。
+
         Args:
-            ids: 要删除的 ID 列表。
-            filter: 元数据过滤条件。
+            ids: 要删除的记忆 ID 列表。
+            where_filter: 元数据过滤条件（ChromaDB where 语法）。
 
         Returns:
-            是否成功删除。
+            bool: 删除成功返回 True，失败返回 False。
         """
         if not self.vectorstore:
             return False
@@ -188,9 +211,9 @@ class VectorMemoryStore:
         try:
             if ids:
                 self.vectorstore.delete(ids=ids)
-            elif filter:
+            elif where_filter:
                 # ChromaDB 使用 where 参数而不是 filter
-                self.vectorstore.delete(where=filter)
+                self.vectorstore.delete(where=where_filter)
             return True
         except Exception as e:
             logger.error(f"Failed to delete: {e}")

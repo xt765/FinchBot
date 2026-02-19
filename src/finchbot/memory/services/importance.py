@@ -3,8 +3,6 @@
 提供记忆内容的重要性计算功能。
 """
 
-from typing import Optional
-
 
 class ImportanceScorer:
     """重要性评分器."""

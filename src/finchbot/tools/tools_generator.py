@@ -6,6 +6,7 @@
 
 from pathlib import Path
 
+from finchbot.i18n import t
 from finchbot.tools.registry import get_global_registry
 
 
@@ -29,12 +30,12 @@ class ToolsGenerator:
         Returns:
             TOOLS.md 内容字符串。
         """
-        lines = ["# 可用工具\n"]
+        lines = [f"# {t('agent.available_tools')}\n"]
 
         # 获取所有已注册工具
         tool_names = self.registry.tool_names
         if not tool_names:
-            lines.append("当前没有可用的工具。")
+            lines.append(t("agent.no_tools_available"))
             return "\n".join(lines)
 
         # 按类别分组工具
@@ -70,6 +71,27 @@ class ToolsGenerator:
         content = "\n".join(lines)
         return content
 
+    def write_to_file(self, filename: str = "TOOLS.md") -> Path | None:
+        """将工具文档写入文件.
+
+        Args:
+            filename: 文件名，默认为 TOOLS.md。
+
+        Returns:
+            写入的文件路径，如果 workspace 未设置则返回 None。
+        """
+        if not self.workspace:
+            return None
+
+        content = self.generate_tools_content()
+        file_path = self.workspace / filename
+
+        try:
+            file_path.write_text(content, encoding="utf-8")
+            return file_path
+        except Exception:
+            return None
+
     def _categorize_tools(self) -> dict[str, list]:
         """将工具按类别分组.
 
@@ -77,12 +99,12 @@ class ToolsGenerator:
             按类别分组的工具字典。
         """
         tools_by_category = {
-            "文件操作": [],
-            "系统命令": [],
-            "网络工具": [],
-            "记忆管理": [],
-            "会话管理": [],
-            "其他工具": [],
+            t("tools.categories.file_ops"): [],
+            t("tools.categories.sys_cmd"): [],
+            t("tools.categories.net_tools"): [],
+            t("tools.categories.mem_mgmt"): [],
+            t("tools.categories.session_mgmt"): [],
+            t("tools.categories.others"): [],
         }
 
         # 获取所有工具实例
@@ -115,34 +137,34 @@ class ToolsGenerator:
         if any(keyword in tool_name for keyword in file_keywords) or any(
             keyword in tool_desc for keyword in file_keywords
         ):
-            return "文件操作"
+            return t("tools.categories.file_ops")
 
         # 系统命令工具
         sys_keywords = ["exec", "shell", "command", "run", "execute"]
         if any(keyword in tool_name for keyword in sys_keywords) or any(
             keyword in tool_desc for keyword in sys_keywords
         ):
-            return "系统命令"
+            return t("tools.categories.sys_cmd")
 
         # 网络工具
         web_keywords = ["web", "search", "fetch", "extract", "http", "url"]
         if any(keyword in tool_name for keyword in web_keywords) or any(
             keyword in tool_desc for keyword in web_keywords
         ):
-            return "网络工具"
+            return t("tools.categories.net_tools")
 
         # 记忆管理工具
         memory_keywords = ["memory", "remember", "recall", "forget", "store"]
         if any(keyword in tool_name for keyword in memory_keywords) or any(
             keyword in tool_desc for keyword in memory_keywords
         ):
-            return "记忆管理"
+            return t("tools.categories.mem_mgmt")
 
         # 会话管理工具
         session_keywords = ["session", "title", "chat", "conversation"]
         if any(keyword in tool_name for keyword in session_keywords) or any(
             keyword in tool_desc for keyword in session_keywords
         ):
-            return "会话管理"
+            return t("tools.categories.session_mgmt")
 
-        return "其他工具"
+        return t("tools.categories.others")

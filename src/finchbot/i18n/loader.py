@@ -139,12 +139,12 @@ class I18n:
             data = self._load_language(lang)
             value = self._get_nested(data, key)
             if value is not None and isinstance(value, str):
-                    if kwargs:
-                        try:
-                            return value.format(**kwargs)
-                        except KeyError:
-                            return value
-                    return value
+                if kwargs:
+                    try:
+                        return value.format(**kwargs)
+                    except KeyError:
+                        return value
+                return value
 
         return default if default is not None else key
 

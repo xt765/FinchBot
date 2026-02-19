@@ -66,28 +66,20 @@ class SearchEngineManager:
             configs: 引擎配置参数。
         """
         tavily_config = {
-            k.replace("tavily_", ""): v
-            for k, v in configs.items()
-            if k.startswith("tavily_")
+            k.replace("tavily_", ""): v for k, v in configs.items() if k.startswith("tavily_")
         }
         if "api_key" not in tavily_config and "TAVILY_API_KEY" in configs:
             tavily_config["api_key"] = configs["TAVILY_API_KEY"]
         self._engines[SearchEngineType.TAVILY] = TavilySearchEngine(**tavily_config)
 
         brave_config = {
-            k.replace("brave_", ""): v
-            for k, v in configs.items()
-            if k.startswith("brave_")
+            k.replace("brave_", ""): v for k, v in configs.items() if k.startswith("brave_")
         }
         if "api_key" not in brave_config and "BRAVE_API_KEY" in configs:
             brave_config["api_key"] = configs["BRAVE_API_KEY"]
         self._engines[SearchEngineType.BRAVE] = BraveSearchEngine(**brave_config)
 
-        ddg_config = {
-            k.replace("ddg_", ""): v
-            for k, v in configs.items()
-            if k.startswith("ddg_")
-        }
+        ddg_config = {k.replace("ddg_", ""): v for k, v in configs.items() if k.startswith("ddg_")}
         self._engines[SearchEngineType.DUCKDUCKGO] = DuckDuckGoSearchEngine(**ddg_config)
 
     def get_engine(self, engine_type: SearchEngineType) -> BaseSearchEngine | None:
