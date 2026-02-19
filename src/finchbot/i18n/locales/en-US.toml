@@ -242,7 +242,7 @@ hint = "Must call this tool first when users ask about their own information. Ch
 param_query = "Search query, can be keywords or natural language description"
 param_category = "Filter by category (optional), such as personal, work, preference, etc. If not specified, searches all categories."
 param_top_k = "Maximum number of results to return, default 5. Increase to get more relevant memories, decrease to get most relevant results."
-param_query_type = "Query type: keyword_only, semantic_only, factual (keyword-heavy), conceptual (semantic-heavy), complex (balanced), ambiguous (semantic-leaning)"
+param_query_type = "Query type: keyword_only (1.0/0.0), semantic_only (0.0/1.0), factual (0.8/0.2), conceptual (0.2/0.8), complex (0.5/0.5), ambiguous (0.3/0.7)"
 param_similarity_threshold = "Similarity threshold 0.0-1.0, default 0.5. Used to filter semantically unrelated results. Increase (e.g., 0.7) when getting irrelevant results, decrease (e.g., 0.3) when getting too few results"
 not_found = "No matching memories found"
 
@@ -358,96 +358,108 @@ gemini-1_5-pro = "Gemini 1.5 Pro (Legacy)"
 # Used for hybrid classification: keyword matching + semantic embedding fallback
 
 [memory.categories.personal]
+name = "Personal Info"
 keywords = [
-    "I am",
-    "my",
-    "name",
-    "age",
-    "birthday",
-    "address",
-    "I'm",
-    "years old",
-    "born",
-    "live",
-    "hometown",
+  "I am",
+  "my",
+  "name",
+  "age",
+  "birthday",
+  "address",
+  "I'm",
+  "years old",
+  "born",
+  "live",
+  "hometown",
 ]
 description = "Personal information, including name, age, birthday, address, and identity-related content"
 
 [memory.categories.preference]
+name = "User Preferences"
 keywords = [
-    "like",
-    "hate",
-    "prefer",
-    "habit",
-    "favorite",
-    "hobby",
-    "interest",
-    "dislike",
-    "love",
-    "enjoy",
+  "like",
+  "hate",
+  "prefer",
+  "habit",
+  "favorite",
+  "hobby",
+  "interest",
+  "dislike",
+  "love",
+  "enjoy",
 ]
 description = "User preferences, including likes, dislikes, habits, and hobbies"
 
 [memory.categories.work]
+name = "Work"
 keywords = [
-    "work",
-    "project",
-    "task",
-    "meeting",
-    "deadline",
-    "company",
-    "colleague",
-    "boss",
-    "client",
-    "report",
-    "weekly",
+  "work",
+  "project",
+  "task",
+  "meeting",
+  "deadline",
+  "company",
+  "colleague",
+  "boss",
+  "client",
+  "report",
+  "weekly",
 ]
 description = "Work-related, including projects, tasks, meetings, and deadlines"
 
 [memory.categories.contact]
+name = "Contact Info"
 keywords = [
-    "email",
-    "phone",
-    "wechat",
-    "contact",
-    "mobile",
-    "mail",
-    "address",
-    "number",
+  "email",
+  "phone",
+  "wechat",
+  "contact",
+  "mobile",
+  "mail",
+  "address",
+  "number",
 ]
 description = "Contact information, including phone, email, and messaging apps"
 
 [memory.categories.goal]
+name = "Goals & Plans"
 keywords = [
-    "goal",
-    "plan",
-    "want",
-    "hope",
-    "dream",
-    "intend",
-    "prepare",
-    "wish",
-    "aspire",
-    "pursue",
+  "goal",
+  "plan",
+  "want",
+  "hope",
+  "dream",
+  "intend",
+  "prepare",
+  "wish",
+  "aspire",
+  "pursue",
 ]
 description = "Goals and plans, including objectives, wishes, and aspirations"
 
 [memory.categories.schedule]
+name = "Schedule"
 keywords = [
-    "time",
-    "date",
-    "schedule",
-    "remind",
-    "arrange",
-    "tomorrow",
-    "next week",
-    "weekend",
-    "today",
-    "morning",
-    "afternoon",
-    "evening",
+  "time",
+  "date",
+  "schedule",
+  "remind",
+  "arrange",
+  "tomorrow",
+  "next week",
+  "weekend",
+  "today",
+  "morning",
+  "afternoon",
+  "evening",
 ]
 description = "Schedule and time, including dates, reminders, and appointments"
+
+[memory.categories.general]
+name = "General"
+keywords = []
+description = "General category for uncategorized content"
+
 
 # Session management translations
 [sessions]

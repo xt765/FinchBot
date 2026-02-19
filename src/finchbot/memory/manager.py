@@ -10,7 +10,7 @@ from typing import Any
 
 from loguru import logger
 
-from finchbot.memory.classifier import Classifier
+from finchbot.memory.services.classification import ClassificationService
 from finchbot.memory.services.embedding import EmbeddingService
 from finchbot.memory.services.importance import ImportanceScorer
 from finchbot.memory.services.retrieval import RetrievalService
@@ -73,33 +73,24 @@ class MemoryManager:
             self.workspace, self.embedding_service
         )
 
-        # 3. 初始化检索服务
+        # 3. 初始化分类服务 (依赖 SQLite 和 Embedding)
+        self.classification_service = ClassificationService(
+            self.sqlite_store, self.embedding_service
+        )
+
+        # 4. 初始化检索服务
         self.retrieval_service = retrieval_service or RetrievalService(
             self.sqlite_store, self.vector_store
         )
 
-        # 4. 初始化同步管理器
+        # 5. 初始化同步管理器
         self.sync_manager = DataSyncManager(
             sqlite_store=self.sqlite_store,
             vector_store=self.vector_store,
             max_retries=DEFAULT_MAX_RETRIES,
         )
 
-        # 分类器懒加载
-        self._classifier: Classifier | None = None
-
         logger.info(f"MemoryManager initialized at {self.workspace}")
-
-    @property
-    def classifier(self) -> Classifier:
-        """分类器（懒加载）.
-
-        Returns:
-            分类器实例。
-        """
-        if self._classifier is None:
-            self._classifier = Classifier(str(self.workspace))
-        return self._classifier
 
     def remember(
         self,
@@ -340,7 +331,7 @@ class MemoryManager:
     def _classify_content(self, content: str) -> str:
         """自动分类内容."""
         try:
-            return self.classifier.classify(content, use_semantic=False)
+            return self.classification_service.classify(content, use_semantic=False)
         except Exception as e:
             logger.warning(f"Classification failed: {e}, using 'general'")
             return "general"

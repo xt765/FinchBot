@@ -235,7 +235,7 @@ hint = "當用戶詢問關於他自己的信息時，必須先調用此工具檢
 param_query = "搜索查詢內容"
 param_category = "按分類過濾（可選）"
 param_top_k = "最大返回數量"
-param_query_type = "查詢類型: keyword_only(純關鍵詞), semantic_only(純語義), factual(事實型，偏重關鍵詞), conceptual(概念型，偏重語義), complex(複雜型，均衡), ambiguous(歧義型，偏向語義)"
+param_query_type = "查詢類型: keyword_only (1.0/0.0), semantic_only (0.0/1.0), factual (0.8/0.2), conceptual (0.2/0.8), complex (0.5/0.5), ambiguous (0.3/0.7)"
 param_similarity_threshold = "相似度閾值 (0.0-1.0)，用於過濾語義不相關的結果，默認 0.5。當返回不相關結果時可提高閾值（如 0.7），當返回結果過少時可降低閾值（如 0.3）"
 not_found = "未找到匹配的記憶"
 
@@ -337,6 +337,7 @@ gemini-1_5-pro = "Gemini 1.5 Pro (舊版)"
 # 用於混合分類方案：關鍵字快速匹配 + 向量語義確認
 
 [memory.categories.personal]
+name = "個人資訊"
 keywords = [
   "我是",
   "我的",
@@ -355,22 +356,27 @@ keywords = [
 description = "個人資訊，包括姓名、年齡、生日、住址等身分相關內容"
 
 [memory.categories.preference]
+name = "使用者偏好"
 keywords = ["喜歡", "討厭", "偏好", "習慣", "最愛", "愛好", "興趣", "不喜歡", "愛"]
 description = "使用者偏好，包括喜歡、討厭、習慣、愛好等"
 
 [memory.categories.work]
+name = "工作相關"
 keywords = ["工作", "專案", "任務", "會議", "截止", "公司", "同事", "老闆", "客戶", "報告", "週報"]
 description = "工作相關，包括專案、任務、會議、截止日期等"
 
 [memory.categories.contact]
+name = "聯絡方式"
 keywords = ["信箱", "電話", "微信", "聯絡方式", "手機", "郵件", "QQ", "地址", "號碼"]
 description = "聯絡方式，包括電話、信箱、微信等"
 
 [memory.categories.goal]
+name = "目標計劃"
 keywords = ["目標", "計劃", "想要", "希望", "夢想", "打算", "準備", "願望", "理想", "追求"]
 description = "目標和計劃，包括想做的事、願望、理想等"
 
 [memory.categories.schedule]
+name = "日程安排"
 keywords = [
   "時間",
   "日期",
@@ -387,6 +393,11 @@ keywords = [
   "晚上",
 ]
 description = "日程安排，包括時間、日期、提醒等"
+
+[memory.categories.general]
+name = "通用"
+keywords = []
+description = "通用分類，用於未明確分類的內容"
 
 # 會話管理相關翻譯
 [sessions]
