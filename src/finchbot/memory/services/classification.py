@@ -4,9 +4,13 @@
 1. 关键词快速匹配
 2. 向量语义分类
 3. 自动从 SQLite 加载和缓存分类配置
+
+优化版：延迟加载 embedding 缓存，减少初始化时间。
 """
 
 import json
+import threading
+import time
 from typing import Any
 
 from loguru import logger
@@ -17,7 +21,13 @@ from finchbot.memory.storage.sqlite import SQLiteStore
 
 
 class ClassificationService:
-    """分类服务."""
+    """分类服务 - 优化版.
+
+    特性：
+    1. 延迟加载 embedding 缓存（后台线程）
+    2. 优先使用关键词匹配（无需 embedding）
+    3. 缓存刷新异步执行
+    """
 
     def __init__(
         self,
@@ -36,10 +46,69 @@ class ClassificationService:
         # 缓存
         self._categories: dict[str, dict[str, Any]] = {}
         self._category_embeddings: dict[str, list[float]] = {}
+        self._cache_loading = False
+        self._cache_loaded = False
 
-        # 初始化：确保有默认分类，并加载缓存
+        # 初始化：确保有默认分类（快速，不依赖 embedding）
         self._ensure_default_categories()
-        self.refresh_cache()
+        self._load_categories_sync()
+
+        # 后台异步刷新 embedding 缓存
+        self._start_cache_refresh()
+
+    def _load_categories_sync(self) -> None:
+        """同步加载分类列表（不含 embedding）."""
+        try:
+            categories_list = self.sqlite_store.get_categories()
+            self._categories = {c["id"]: c for c in categories_list}
+            logger.debug(f"Categories loaded: {len(self._categories)}")
+        except Exception as e:
+            logger.error(f"Failed to load categories: {e}")
+
+    def _start_cache_refresh(self) -> None:
+        """启动后台缓存刷新线程."""
+        thread = threading.Thread(target=self._refresh_cache_async, daemon=True)
+        thread.start()
+
+    def _refresh_cache_async(self) -> None:
+        """异步刷新 embedding 缓存."""
+        if self._cache_loading:
+            return
+
+        self._cache_loading = True
+        try:
+            # 等待 embedding 服务就绪
+            embeddings = None
+            wait_start = time.time()
+            while time.time() - wait_start < 10.0:
+                embeddings = self.embedding_service.get_embeddings()
+                if embeddings:
+                    break
+                time.sleep(0.2)
+
+            if not embeddings:
+                logger.debug("Embedding service not available, skipping semantic cache")
+                return
+
+            # 重新计算分类 embedding
+            new_embeddings = {}
+            for category_id, info in self._categories.items():
+                description = info.get("description")
+                if description:
+                    try:
+                        embedding = embeddings.embed_query(description)
+                        new_embeddings[category_id] = embedding
+                    except Exception as e:
+                        logger.warning(f"Failed to embed category {category_id}: {e}")
+
+            self._category_embeddings = new_embeddings
+            self._cache_loaded = True
+            logger.info(f"Classification cache refreshed: {len(new_embeddings)} embeddings")
+
+        except Exception as e:
+            logger.error(f"Failed to refresh classification cache: {e}")
+        finally:
+            self._cache_loading = False
 
     def classify(self, text: str, use_semantic: bool = True) -> str:
         """分类文本.
@@ -51,7 +120,7 @@ class ClassificationService:
         Returns:
             分类标签。
         """
-        # 1. 关键词快速匹配 (L1)
+        # 1. 关键词快速匹配 (L1) - 无需 embedding，总是可用
         text_lower = text.lower()
 
         for category_id, info in self._categories.items():
@@ -61,42 +130,19 @@ class ClassificationService:
                     logger.debug(f"Keyword match: '{keyword}' -> {category_id}")
                     return category_id
 
-        # 2. 向量语义分类 (L2)
-        if use_semantic and self._category_embeddings:
+        # 2. 向量语义分类 (L2) - 需要缓存加载完成
+        if use_semantic and self._cache_loaded and self._category_embeddings:
             return self._classify_by_embedding(text)
 
         # 3. 默认分类
         return "general"
 
     def refresh_cache(self) -> None:
-        """刷新分类缓存."""
-        try:
-            # 1. 从 DB 加载所有分类
-            categories_list = self.sqlite_store.get_categories()
-            self._categories = {c["id"]: c for c in categories_list}
-
-            # 2. 重新计算/缓存 Embedding
-            # 注意：这里是一个潜在的耗时操作，但在分类数量不多时是可以接受的
-            # 只有当分类描述发生变化时才需要重新计算，这里简化为全量刷新
-            self._category_embeddings = {}
-
-            embeddings = self.embedding_service.get_embeddings()
-            if not embeddings:
-                return
-
-            for category_id, info in self._categories.items():
-                description = info.get("description")
-                if description:
-                    try:
-                        embedding = embeddings.embed_query(description)
-                        self._category_embeddings[category_id] = embedding
-                    except Exception as e:
-                        logger.warning(f"Failed to embed category {category_id}: {e}")
-
-            logger.info(f"Classification cache refreshed: {len(self._categories)} categories")
-
-        except Exception as e:
-            logger.error(f"Failed to refresh classification cache: {e}")
+        """刷新分类缓存（同步接口，供外部调用）."""
+        # 重新加载分类列表
+        self._load_categories_sync()
+        # 异步刷新 embedding
+        self._start_cache_refresh()
 
     def _classify_by_embedding(self, text: str) -> str:
         """通过向量相似度分类."""

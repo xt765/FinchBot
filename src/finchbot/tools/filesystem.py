@@ -4,9 +4,7 @@
 """
 
 from pathlib import Path
-from typing import Any
-
-from pydantic import Field
+from typing import Any, ClassVar
 
 from finchbot.i18n import t
 from finchbot.tools.base import FinchTool
@@ -62,7 +60,7 @@ class ReadFileTool(FinchTool):
 
     name: str = "read_file"
     description: str = t("tools.read_file.description")
-    parameters: dict = {
+    parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
             "file_path": {
@@ -108,7 +106,7 @@ class WriteFileTool(FinchTool):
 
     name: str = "write_file"
     description: str = t("tools.write_file.description")
-    parameters: dict = {
+    parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
             "file_path": {
@@ -143,7 +141,7 @@ class WriteFileTool(FinchTool):
         try:
             # 2. 自动创建父目录
             safe_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # 3. 写入内容
             safe_path.write_text(content, encoding="utf-8")
             return f"Success: {t('tools.write_file.success')}: {file_path}"
@@ -159,7 +157,7 @@ class ListDirTool(FinchTool):
 
     name: str = "list_dir"
     description: str = t("tools.list_dir.description")
-    parameters: dict = {
+    parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
             "dir_path": {
@@ -210,7 +208,7 @@ class EditFileTool(FinchTool):
 
     name: str = "edit_file"
     description: str = t("tools.edit_file.description")
-    parameters: dict = {
+    parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
             "file_path": {
@@ -260,12 +258,14 @@ class EditFileTool(FinchTool):
             # 5. 检查是否有多处匹配（为了安全，目前只替换第一处，或者应该替换全部？通常 edit 工具替换第一处）
             count = content.count(old_str)
             if count > 1:
-                return f"Warning: old_str found {count} times. Only the first occurrence was replaced."
+                return (
+                    f"Warning: old_str found {count} times. Only the first occurrence was replaced."
+                )
 
             # 6. 执行替换
             new_content = content.replace(old_str, new_str, 1)
             safe_path.write_text(new_content, encoding="utf-8")
-            
+
             return f"Success: File edited successfully: {file_path}"
         except Exception as e:
             return f"Error: Failed to edit file: {str(e)}"

@@ -149,7 +149,7 @@ def _display_messages_by_turn(
     """按轮次分组显示消息。
 
     将连续的消息（User -> AI -> Tools -> AI）视为一轮对话进行展示。
-    
+
     Args:
         messages: 消息对象列表 (BaseMessage)。
         show_index: 是否显示索引。
@@ -410,8 +410,8 @@ def _setup_chat_tools(config_obj: Any, ws_path: Path, session_id: str) -> tuple[
 
     tools = [
         ReadFileTool(allowed_dirs=allowed_read_dirs),
-        WriteFileTool(allowed_dirs=ws_path),
-        EditFileTool(allowed_dirs=ws_path),
+        WriteFileTool(allowed_dirs=[ws_path]),
+        EditFileTool(allowed_dirs=[ws_path]),
         ListDirTool(allowed_dirs=allowed_read_dirs),
         RememberTool(workspace=str(ws_path)),
         RecallTool(workspace=str(ws_path)),
@@ -633,22 +633,22 @@ def _run_chat_session(
                     if new_sess:
                         # 创建新会话并初始化状态
                         new_config: RunnableConfig = {"configurable": {"thread_id": new_sess}}
-                        
+
                         # 确保新会话 ID 在 metadata 存储中存在
                         if not session_store.session_exists(new_sess):
                             session_store.create_session(new_sess, title=f"Fork from {session_id}")
-                        
+
                         # 更新 Agent 状态到新会话
                         agent.update_state(new_config, {"messages": rolled_back})
-                        
+
                         # 切换当前会话 ID
                         session_id = new_sess
                         msg_count = len(rolled_back)
-                        
+
                         # 更新新会话的显示信息
                         session_display = f"{session_id} (Forked)"
                         console.print(f"[dim]{t('cli.chat.session').format(session_display)}[/dim]")
-                        
+
                         console.print(
                             f"[green]{t('cli.rollback.create_success').format(new_sess, msg_count)}[/green]"
                         )

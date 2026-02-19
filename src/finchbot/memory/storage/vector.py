@@ -2,10 +2,14 @@
 
 使用 ChromaDB + FastEmbed 实现语义检索。
 FastEmbed 使用 ONNX Runtime，无 PyTorch 依赖，轻量快速。
+
+优化版：延迟加载 embedding 模型，减少初始化时间。
 """
 
 from __future__ import annotations
 
+import threading
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -18,12 +22,13 @@ if TYPE_CHECKING:
 
 
 class VectorMemoryStore:
-    """向量记忆存储.
+    """向量记忆存储 - 优化版.
 
     使用 ChromaDB 进行语义检索，支持：
     - 语义相似度检索
     - 元数据过滤
     - 增量更新
+    - 延迟加载 embedding 模型
 
     使用 FastEmbed 本地模型（轻量级，无 PyTorch 依赖）。
 
@@ -44,43 +49,104 @@ class VectorMemoryStore:
         self.vector_dir = workspace / "memory_vectors"
         self.vector_dir.mkdir(parents=True, exist_ok=True)
 
-        self.embeddings = embedding_service.get_embeddings()
-        if not self.embeddings:
-            logger.warning(
-                "No embedding backend available. Install fastembed: pip install fastembed"
-            )
-            self.vectorstore = None
+        self._embedding_service = embedding_service
+        self._embeddings = None
+        self._vectorstore: Chroma | None = None
+        self._initialized = False
+        self._initializing = False
+
+        # 延迟初始化（后台线程）
+        self._start_lazy_init()
+
+    def _start_lazy_init(self) -> None:
+        """启动后台初始化线程."""
+        thread = threading.Thread(target=self._lazy_init, daemon=True)
+        thread.start()
+
+    def _lazy_init(self) -> None:
+        """延迟初始化向量存储."""
+        if self._initializing or self._initialized:
             return
 
-        self.vectorstore: Chroma | None = None
-        self._init_vectorstore()
+        self._initializing = True
+        try:
+            # 获取 embedding（这会触发模型加载）
+            self._embeddings = self._embedding_service.get_embeddings()
+            if not self._embeddings:
+                logger.warning(
+                    "No embedding backend available. Install fastembed: uv add fastembed"
+                )
+                return
+
+            self._init_vectorstore()
+            self._initialized = True
+            logger.debug("VectorMemoryStore initialized successfully")
+        except Exception as e:
+            logger.warning(f"Failed to initialize VectorMemoryStore: {e}")
+        finally:
+            self._initializing = False
+
+    def _ensure_initialized(self, timeout: float = 30.0) -> bool:
+        """确保初始化完成（阻塞等待）.
+
+        Args:
+            timeout: 最大等待时间（秒）。
+
+        Returns:
+            是否初始化成功。
+        """
+        if self._initialized:
+            return True
+
+        if not self._initializing and not self._initialized:
+            # 如果还没开始初始化，启动它
+            self._lazy_init()
+
+        # 等待初始化完成
+        start = time.time()
+        while self._initializing and time.time() - start < timeout:
+            time.sleep(0.05)
+
+        return self._initialized
 
     def _init_vectorstore(self) -> None:
         """初始化向量存储.
-        
+
         使用 ChromaDB 作为后端，FastEmbed 作为 Embedding 模型。
         显式设置距离度量为 L2 (欧几里得距离)，以确保相似度计算公式 (1 - distance/2) 的正确性。
         """
-        if not self.embeddings:
+        if not self._embeddings:
             return
 
         try:
             from langchain_chroma import Chroma
 
-            self.vectorstore = Chroma(
+            self._vectorstore = Chroma(
                 persist_directory=str(self.vector_dir),
-                embedding_function=self.embeddings,
+                embedding_function=self._embeddings,
                 collection_metadata={"hnsw:space": "l2"},  # 显式指定 L2 距离
             )
             logger.debug("Vector store initialized with L2 distance metric")
         except ImportError:
             logger.warning(
-                "langchain-chroma not available. Install with: pip install langchain-chroma"
+                "langchain-chroma not available. Install with: uv add langchain-chroma"
             )
-            self.vectorstore = None
+            self._vectorstore = None
         except Exception as e:
             logger.warning(f"Failed to init vector store: {e}")
-            self.vectorstore = None
+            self._vectorstore = None
+
+    @property
+    def vectorstore(self) -> Chroma | None:
+        """获取向量存储（懒加载）."""
+        self._ensure_initialized()
+        return self._vectorstore
+
+    @property
+    def embeddings(self):
+        """获取 embedding 模型（懒加载）."""
+        self._ensure_initialized()
+        return self._embeddings
 
     def remember(
         self,
@@ -100,11 +166,11 @@ class VectorMemoryStore:
         Returns:
             bool: 添加成功返回 True，失败返回 False。
         """
-        if not self.vectorstore:
+        if not self._ensure_initialized() or self._vectorstore is None:
             return False
 
         try:
-            self.vectorstore.add_texts(
+            self._vectorstore.add_texts(
                 texts=[content],
                 metadatas=[metadata or {}],
                 ids=[id] if id else None,
@@ -119,7 +185,7 @@ class VectorMemoryStore:
         self,
         query: str,
         k: int = 5,
-        where_filter: dict[str, Any] | None = None,
+        filter: dict[str, Any] | None = None,  # noqa: A002
         similarity_threshold: float = 0.5,
     ) -> list[dict[str, Any]]:
         """语义检索记忆.
@@ -136,7 +202,7 @@ class VectorMemoryStore:
         Args:
             query: 查询文本。
             k: 最大返回结果数量。
-            where_filter: 元数据过滤条件（ChromaDB where 语法）。例如 {"category": "personal"}。
+            filter: 元数据过滤条件（ChromaDB where 语法）。例如 {"category": "personal"}。
             similarity_threshold: 相似度阈值 (0.0-1.0)。只返回相似度大于等于此值的记忆。
 
         Returns:
@@ -146,16 +212,16 @@ class VectorMemoryStore:
                 - metadata: 元数据
                 - similarity: 相似度分数
         """
-        if not self.vectorstore:
+        if not self._ensure_initialized() or self._vectorstore is None:
             return []
 
         try:
             # 使用 similarity_search_with_score 获取相似度分数
             # 获取更多候选结果 (k*2) 以便在过滤后仍能尽量满足 k 个结果
-            results_with_scores = self.vectorstore.similarity_search_with_score(
+            results_with_scores = self._vectorstore.similarity_search_with_score(
                 query,
                 k=k * 2,
-                filter=where_filter,
+                filter=filter,
             )
 
             # 过滤低于阈值的结果
@@ -205,15 +271,15 @@ class VectorMemoryStore:
         Returns:
             bool: 删除成功返回 True，失败返回 False。
         """
-        if not self.vectorstore:
+        if not self._ensure_initialized() or self._vectorstore is None:
             return False
 
         try:
             if ids:
-                self.vectorstore.delete(ids=ids)
+                self._vectorstore.delete(ids=ids)
             elif where_filter:
                 # ChromaDB 使用 where 参数而不是 filter
-                self.vectorstore.delete(where=where_filter)
+                self._vectorstore.delete(where=where_filter)
             return True
         except Exception as e:
             logger.error(f"Failed to delete: {e}")
@@ -229,14 +295,14 @@ class VectorMemoryStore:
         Returns:
             格式化的记忆上下文。
         """
-        if not self.vectorstore:
+        if not self._ensure_initialized() or self._vectorstore is None:
             return ""
 
         try:
             if query:
                 results = self.recall(query, k=k)
             else:
-                results = self.vectorstore.similarity_search(
+                results = self._vectorstore.similarity_search(
                     "",
                     k=k,
                 )
@@ -268,9 +334,9 @@ class VectorMemoryStore:
         Returns:
             检索器实例。
         """
-        if not self.vectorstore:
+        if not self._ensure_initialized() or self._vectorstore is None:
             raise ValueError("Vector store not initialized")
-        return self.vectorstore.as_retriever(**kwargs)
+        return self._vectorstore.as_retriever(**kwargs)
 
     def get_all_ids(self) -> list[str]:
         """获取向量存储中所有记忆的 ID.
@@ -278,10 +344,10 @@ class VectorMemoryStore:
         Returns:
             ID 列表。
         """
-        if not self.vectorstore:
+        if not self._ensure_initialized() or self._vectorstore is None:
             return []
         try:
-            return self.vectorstore.get()["ids"]
+            return self._vectorstore.get()["ids"]
         except Exception as e:
             logger.error(f"Failed to get all IDs: {e}")
             return []
@@ -295,10 +361,10 @@ class VectorMemoryStore:
         Returns:
             记忆字典，如果不存在返回 None。
         """
-        if not self.vectorstore:
+        if not self._ensure_initialized() or self._vectorstore is None:
             return None
         try:
-            result = self.vectorstore.get(ids=[id])
+            result = self._vectorstore.get(ids=[id])
             if result["ids"] and len(result["ids"]) > 0:
                 return {
                     "content": result["documents"][0],

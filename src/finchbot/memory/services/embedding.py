@@ -1,10 +1,12 @@
 """Embedding 服务模块.
 
 提供向量嵌入模型的加载、网络检查和镜像选择功能。
+优化版：延迟加载模型，异步网络检查，减少初始化时间。
 """
 
 import os
 import socket
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -20,43 +22,66 @@ MODEL_CACHE_DIR = PROJECT_ROOT / ".models" / "fastembed"
 
 
 class EmbeddingService:
-    """向量嵌入服务."""
+    """向量嵌入服务 - 优化版.
+
+    特性：
+    1. 延迟加载模型（首次使用时加载）
+    2. 异步网络检查（后台线程）
+    3. 缓存网络状态避免重复检查
+    """
 
     def __init__(self, cache_dir: Path | None = None, verbose: bool = True):
         self.cache_dir = cache_dir or MODEL_CACHE_DIR
         self.verbose = verbose
         self._embeddings_cache: FastEmbedEmbeddings | None = None
+        self._model_loading = False
+        self._model_load_error: Exception | None = None
+
+        # 网络状态缓存
+        self._network_checked = False
+        self._has_internet = False
+        self._mirror_url = "https://huggingface.co"
+        self._mirror_name = "官方源"
+
         self._ensure_cache_dir()
+
+        # 后台异步检查网络（非阻塞）
+        self._start_network_check()
 
     def _ensure_cache_dir(self) -> None:
         """确保缓存目录存在."""
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def _check_internet_connection(
-        self, host: str = "huggingface.co", port: int = 443, timeout: int = 3
-    ) -> bool:
-        """检查网络连接."""
-        try:
-            socket.create_connection((host, port), timeout=timeout)
-            return True
-        except OSError:
-            return False
+    def _start_network_check(self) -> None:
+        """启动后台网络检查线程."""
+        thread = threading.Thread(target=self._check_network_async, daemon=True)
+        thread.start()
 
-    def _detect_best_mirror(self) -> tuple[str, str]:
-        """检测最佳下载镜像."""
+    def _check_network_async(self) -> None:
+        """异步检查网络连接和镜像."""
         try:
-            socket.create_connection(("hf-mirror.com", 443), timeout=2)
-            return ("https://hf-mirror.com", "国内镜像")
-        except OSError:
-            pass
+            # 检查网络
+            try:
+                socket.create_connection(("huggingface.co", 443), timeout=2)
+                self._has_internet = True
+            except OSError:
+                self._has_internet = False
 
-        try:
-            socket.create_connection(("huggingface.co", 443), timeout=2)
-            return ("https://huggingface.co", "官方源")
-        except OSError:
-            pass
+            # 检测最佳镜像
+            if self._has_internet:
+                try:
+                    socket.create_connection(("hf-mirror.com", 443), timeout=2)
+                    self._mirror_url = "https://hf-mirror.com"
+                    self._mirror_name = "国内镜像"
+                except OSError:
+                    self._mirror_url = "https://huggingface.co"
+                    self._mirror_name = "官方源"
 
-        return ("https://huggingface.co", "官方源")
+            self._network_checked = True
+            logger.debug(f"Network check completed: {self._mirror_name}, internet={self._has_internet}")
+        except Exception as e:
+            logger.debug(f"Network check failed: {e}")
+            self._network_checked = True
 
     def _check_model_exists(self) -> bool:
         """检查模型文件是否存在."""
@@ -64,12 +89,7 @@ class EmbeddingService:
             return False
         return any(self.cache_dir.rglob("model_optimized.onnx"))
 
-    def _print_model_status(
-        self,
-        model_exists: bool,
-        has_internet: bool,
-        mirror_url: str | None = None,
-    ) -> None:
+    def _print_model_status(self, model_exists: bool) -> None:
         """打印模型状态提示."""
         from rich.console import Console
         from rich.panel import Panel
@@ -80,8 +100,14 @@ class EmbeddingService:
             logger.info(f"✓ 嵌入模型已就绪: {self.cache_dir}")
             return
 
-        if has_internet:
-            mirror_display = mirror_url or "自动检测"
+        # 等待网络检查完成（最多等1秒）
+        import time
+        wait_start = time.time()
+        while not self._network_checked and time.time() - wait_start < 1.0:
+            time.sleep(0.05)
+
+        if self._has_internet:
+            mirror_display = f"{self._mirror_name} ({self._mirror_url})"
             console.print(
                 Panel(
                     f"[yellow]⚠ 嵌入模型未找到[/yellow]\n\n"
@@ -109,28 +135,24 @@ class EmbeddingService:
                 )
             )
 
-    def get_embeddings(self) -> Optional["FastEmbedEmbeddings"]:
-        """获取 FastEmbed 本地模型."""
-        if self._embeddings_cache is not None:
-            return self._embeddings_cache
-
-        model_exists = self._check_model_exists()
-        has_internet = self._check_internet_connection()
-
-        mirror_url, mirror_name = self._detect_best_mirror()
-        if "HF_ENDPOINT" not in os.environ:
-            os.environ["HF_ENDPOINT"] = mirror_url
-            logger.debug(f"Auto-selected mirror: {mirror_name} ({mirror_url})")
-
-        if self.verbose:
-            self._print_model_status(model_exists, has_internet, mirror_url)
-
+    def _load_model(self) -> Optional["FastEmbedEmbeddings"]:
+        """实际加载模型（在后台线程中执行）."""
         try:
             from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 
-            logger.debug(
-                f"Using FastEmbed embeddings (cache: {self.cache_dir}, mirror: {mirror_name})"
-            )
+            # 确保网络检查完成
+            if not self._network_checked:
+                import time
+                wait_start = time.time()
+                while not self._network_checked and time.time() - wait_start < 3.0:
+                    time.sleep(0.05)
+
+            # 设置镜像
+            if "HF_ENDPOINT" not in os.environ and self._mirror_url:
+                os.environ["HF_ENDPOINT"] = self._mirror_url
+                logger.debug(f"Using mirror: {self._mirror_name} ({self._mirror_url})")
+
+            logger.debug(f"Loading FastEmbed model (cache: {self.cache_dir})...")
 
             embeddings = FastEmbedEmbeddings(
                 model_name="BAAI/bge-small-zh-v1.5",
@@ -138,30 +160,53 @@ class EmbeddingService:
                 cache_dir=str(self.cache_dir),
             )
 
-            self._embeddings_cache = embeddings
+            logger.debug("FastEmbed model loaded successfully")
+            return embeddings
 
-            if self.verbose and not model_exists:
+        except ImportError:
+            logger.warning("FastEmbed not available. Install with: uv add fastembed")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to load FastEmbed model: {e}")
+            return None
+
+    def get_embeddings(self) -> Optional["FastEmbedEmbeddings"]:
+        """获取 FastEmbed 本地模型（懒加载）."""
+        # 如果已缓存，直接返回
+        if self._embeddings_cache is not None:
+            return self._embeddings_cache
+
+        # 如果正在加载中，等待完成
+        if self._model_loading:
+            import time
+            wait_start = time.time()
+            while self._model_loading and time.time() - wait_start < 30.0:
+                time.sleep(0.1)
+            return self._embeddings_cache
+
+        # 开始加载
+        self._model_loading = True
+        model_exists = self._check_model_exists()
+
+        try:
+            if self.verbose:
+                self._print_model_status(model_exists)
+
+            self._embeddings_cache = self._load_model()
+
+            if self.verbose and self._embeddings_cache and not model_exists:
                 from rich.console import Console
 
                 console = Console()
                 console.print("[green]✓ 嵌入模型加载成功[/green]")
 
-            return embeddings
+            return self._embeddings_cache
 
-        except ImportError:
-            logger.warning("FastEmbed not available. Install with: pip install fastembed")
-            return None
-        except Exception as e:
-            error_msg = str(e)
-            if not model_exists and not has_internet:
-                logger.error(
-                    "无法加载嵌入模型: 处于离线模式且模型未下载\n"
-                    "请连接网络后运行: finchbot download-models"
-                )
-            elif "download" in error_msg.lower() or "connection" in error_msg.lower():
-                logger.error(
-                    f"模型下载失败: {e}\n请检查网络连接或手动下载: finchbot download-models"
-                )
-            else:
-                logger.warning(f"FastEmbed embeddings failed: {e}")
-            return None
+        finally:
+            self._model_loading = False
+
+    def preload_model(self) -> None:
+        """预加载模型（可选，在后台调用）."""
+        if self._embeddings_cache is None and not self._model_loading:
+            thread = threading.Thread(target=self.get_embeddings, daemon=True)
+            thread.start()

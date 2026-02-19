@@ -4,8 +4,8 @@
 参考 Nanobot 的 Tool 设计，增强验证和错误处理。
 """
 
-from abc import abstractmethod
-from typing import Any
+from pathlib import Path
+from typing import Any, ClassVar
 
 from langchain_core.tools import BaseTool
 from loguru import logger
@@ -20,11 +20,50 @@ class FinchTool(BaseTool):
     Attributes:
         name: 工具名称，用于函数调用。
         description: 工具描述，说明工具功能。
+        parameters: 工具参数定义（可选）。
+        allowed_dirs: 允许访问的目录列表（可选）。
     """
 
-    # 注意：移除 parameters 属性定义，因为 LangChain 的 BaseTool 已经有自己的参数管理机制
-    # 我们将通过 Pydantic 字段或 args_schema 来管理参数，或者让子类自己实现 schema 生成
-    
+    # 工具参数定义（子类可覆盖）
+    # 使用 ClassVar 避免与 Pydantic 字段冲突
+    parameters: ClassVar[dict[str, Any]] = {}
+
+    # 默认允许访问的目录（子类可覆盖）
+    allowed_dirs: list[Path] | None = None
+
+    def validate_path(self, path: str) -> Path | None:
+        """验证并解析路径.
+
+        检查路径是否在允许的目录范围内，防止越权访问。
+
+        Args:
+            path: 要验证的路径字符串。
+
+        Returns:
+            解析后的绝对路径，如果验证失败返回 None。
+        """
+        try:
+            resolved = Path(path).expanduser().resolve()
+
+            # 如果没有设置允许目录，允许所有路径
+            if self.allowed_dirs is None:
+                return resolved
+
+            # 检查路径是否在允许的目录内
+            allowed_dirs = self.allowed_dirs
+            if isinstance(allowed_dirs, Path):
+                allowed_dirs = [allowed_dirs]
+
+            in_allowed = any(str(resolved).startswith(str(d.resolve())) for d in allowed_dirs)
+            if not in_allowed:
+                logger.warning(f"Path {path} not in allowed directories")
+                return None
+
+            return resolved
+        except Exception as e:
+            logger.error(f"Path validation error: {e}")
+            return None
+
     def validate_params(self, params: dict[str, Any]) -> list[str]:
         """验证工具参数.
 
@@ -35,11 +74,11 @@ class FinchTool(BaseTool):
             错误消息列表，空列表表示验证通过。
         """
         errors = []
-        
+
         # 获取子类定义的 parameters 字典（如果有）
         if hasattr(self, "parameters") and isinstance(self.parameters, dict):
             parameters = self.parameters
-            
+
             # 检查必需参数
             required_params = parameters.get("required", [])
             for param_name in required_params:
@@ -73,7 +112,7 @@ class FinchTool(BaseTool):
         """
         # 尝试获取 parameters 属性，如果不存在则设为空字典
         params = getattr(self, "parameters", {})
-        
+
         return {
             "type": "function",
             "function": {
@@ -98,4 +137,6 @@ class FinchTool(BaseTool):
     def __repr__(self) -> str:
         """详细表示."""
         params = getattr(self, "parameters", {})
-        return f"FinchTool(name='{self.name}', description='{self.description}', parameters={params})"
+        return (
+            f"FinchTool(name='{self.name}', description='{self.description}', parameters={params})"
+        )
