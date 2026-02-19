@@ -2,17 +2,16 @@
 
 from finchbot.memory.classifier import Classifier
 from finchbot.memory.manager import MemoryManager
-from finchbot.memory.sqlite_store import SQLiteStore
-from finchbot.memory.types import RetrievalStrategy
-from finchbot.memory.vector import VectorMemoryStore
-from finchbot.memory.vector_sync import DataSyncManager, VectorStoreAdapter
+from finchbot.memory.storage.sqlite import SQLiteStore
+from finchbot.memory.storage.vector import VectorMemoryStore
+from finchbot.memory.types import QueryType
+from finchbot.memory.vector_sync import DataSyncManager
 
 __all__ = [
     "VectorMemoryStore",
-    "RetrievalStrategy",
+    "QueryType",
     "SQLiteStore",
     "DataSyncManager",
-    "VectorStoreAdapter",
     "MemoryManager",
     "Classifier",
 ]

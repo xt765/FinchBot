@@ -177,10 +177,11 @@ class Classifier:
     def _cache_category_embeddings(self) -> None:
         """缓存分类描述的嵌入向量."""
         try:
-            from finchbot.memory.vector import get_embeddings
+            from finchbot.memory.services.embedding import EmbeddingService
 
             if self._embeddings is None:
-                self._embeddings = get_embeddings()
+                service = EmbeddingService()
+                self._embeddings = service.get_embeddings()
 
             if not self._embeddings:
                 return

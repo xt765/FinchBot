@@ -230,6 +230,33 @@ class SessionMetadataStore:
             turn_count=row[5] if len(row) > 5 else 0,
         )
 
+    def list_sessions(self) -> list[SessionMetadata]:
+        """获取所有会话元数据列表.
+
+        Returns:
+            按最后活跃时间倒序排列的会话列表。
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.execute(
+                """
+                SELECT * FROM sessions
+                ORDER BY last_active DESC
+            """
+            )
+            rows = cursor.fetchall()
+
+        return [
+            SessionMetadata(
+                session_id=row[0],
+                title=row[1],
+                created_at=datetime.fromisoformat(row[2]),
+                last_active=datetime.fromisoformat(row[3]),
+                message_count=row[4],
+                turn_count=row[5] if len(row) > 5 else 0,
+            )
+            for row in rows
+        ]
+
     def get_all_sessions(self) -> list[SessionMetadata]:
         """获取所有会话元数据.
 

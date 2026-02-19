@@ -122,11 +122,18 @@ class RecallTool(FinchTool):
                     "description": t("tools.recall.param_top_k"),
                     "default": 5,
                 },
-                "strategy": {
+                "query_type": {
                     "type": "string",
-                    "description": t("tools.recall.param_strategy"),
-                    "enum": ["semantic", "keyword", "hybrid"],
-                    "default": "hybrid",
+                    "description": t("tools.recall.param_query_type"),
+                    "enum": [
+                        "keyword_only",
+                        "semantic_only",
+                        "factual",
+                        "conceptual",
+                        "complex",
+                        "ambiguous",
+                    ],
+                    "default": "complex",
                 },
                 "similarity_threshold": {
                     "type": "number",
@@ -144,7 +151,7 @@ class RecallTool(FinchTool):
         query: str,
         category: str | None = None,
         top_k: int = 5,
-        strategy: str = "hybrid",
+        query_type: str = "complex",
         similarity_threshold: float = 0.5,
     ) -> str:
         """执行记忆检索.
@@ -153,7 +160,7 @@ class RecallTool(FinchTool):
             query: 查询内容。
             category: 可选的分类过滤。
             top_k: 最大返回数量。
-            strategy: 检索策略 (semantic/keyword/hybrid)。
+            query_type: 查询类型。
             similarity_threshold: 相似度阈值 (0.0-1.0)。
 
         Returns:
@@ -161,7 +168,7 @@ class RecallTool(FinchTool):
         """
         from pathlib import Path
 
-        from finchbot.memory import MemoryManager, RetrievalStrategy
+        from finchbot.memory import MemoryManager, QueryType
 
         workspace = (
             Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
@@ -169,13 +176,16 @@ class RecallTool(FinchTool):
         manager = MemoryManager(workspace)
 
         # 将字符串策略转换为枚举
-        strategy_enum = RetrievalStrategy(strategy.lower())
+        try:
+            query_type_enum = QueryType(query_type.lower())
+        except ValueError:
+            query_type_enum = QueryType.COMPLEX
 
         memories = manager.recall(
             query=query,
             top_k=top_k,
             category=category,
-            strategy=strategy_enum,
+            query_type=query_type_enum,
             similarity_threshold=similarity_threshold,
         )
 
@@ -185,7 +195,14 @@ class RecallTool(FinchTool):
         lines = [f"## Found {len(memories)} memories:\n"]
         for i, memory in enumerate(memories, 1):
             lines.append(f"{i}. [{memory['category']}] {memory['content']}")
-            lines.append(f"   Importance: {memory['importance']:.2f} | Source: {memory['source']}")
+            created_at = memory.get("created_at", "Unknown")
+            similarity = memory.get("similarity")
+            similarity_str = f" | Similarity: {similarity:.2f}" if similarity else ""
+            rrf_score = memory.get("_rrf_score")
+            rrf_str = f" | RRF Score: {rrf_score:.4f}" if rrf_score else ""
+            lines.append(
+                f"   Importance: {memory['importance']:.2f} | Source: {memory['source']} | Created: {created_at}{similarity_str}{rrf_str}"
+            )
             lines.append("")
 
         return "\n".join(lines)

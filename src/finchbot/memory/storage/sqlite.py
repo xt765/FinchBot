@@ -358,8 +358,15 @@ class SQLiteStore:
         params = []
 
         if query:
-            conditions.append("content LIKE ?")
-            params.append(f"%{query}%")
+            # 分词处理：将查询按空格分割，每个词都要匹配
+            keywords = [kw.strip() for kw in query.split() if kw.strip()]
+            if keywords:
+                # 使用 AND 连接多个关键词条件
+                keyword_conditions = []
+                for keyword in keywords:
+                    keyword_conditions.append("content LIKE ?")
+                    params.append(f"%{keyword}%")
+                conditions.append(f"({' AND '.join(keyword_conditions)})")
 
         if category:
             conditions.append("category = ?")

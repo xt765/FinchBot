@@ -105,8 +105,8 @@ def _create_workspace_templates(workspace: Path) -> None:
     templates = {
         "SYSTEM.md": i18n.get("bootstrap.templates.system_md"),
         "MEMORY_GUIDE.md": i18n.get("bootstrap.templates.memory_guide_md"),
-        "AGENT_CONFIG.md": i18n.get("bootstrap.templates.agents_md"),
         "SOUL.md": i18n.get("bootstrap.templates.soul_md"),
+        "AGENT_CONFIG.md": i18n.get("bootstrap.templates.agents_md"),
     }
 
     for filename, content in templates.items():
@@ -159,6 +159,26 @@ def build_system_prompt(
                 prompt_parts.append(content)
         except Exception as e:
             logger.warning(f"读取 MEMORY_GUIDE.md 失败: {e}")
+
+    # 加载 SOUL.md
+    soul_md = workspace / "SOUL.md"
+    if soul_md.exists():
+        try:
+            content = soul_md.read_text(encoding="utf-8")
+            if content.strip():
+                prompt_parts.append(content)
+        except Exception as e:
+            logger.warning(f"读取 SOUL.md 失败: {e}")
+
+    # 加载 SOUL.md
+    agent_config_md = workspace / "AGENT_CONFIG.md"
+    if soul_md.exists():
+        try:
+            content = agent_config_md.read_text(encoding="utf-8")
+            if content.strip():
+                prompt_parts.append(content)
+        except Exception as e:
+            logger.warning(f"读取 AGENT_CONFIG.md 失败: {e}")
 
     # 添加运行时信息
     prompt_parts.append(f"## {t('agent.current_time')}\n{now}")

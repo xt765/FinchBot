@@ -11,11 +11,14 @@ from typing import Any
 from loguru import logger
 
 from finchbot.memory.classifier import Classifier
-from finchbot.memory.sqlite_store import SQLiteStore
-from finchbot.memory.types import RetrievalStrategy
-from finchbot.memory.vector_sync import DataSyncManager, VectorStoreAdapter
+from finchbot.memory.services.embedding import EmbeddingService
+from finchbot.memory.services.importance import ImportanceScorer
+from finchbot.memory.services.retrieval import RetrievalService
+from finchbot.memory.storage.sqlite import SQLiteStore
+from finchbot.memory.storage.vector import VectorMemoryStore
+from finchbot.memory.types import QueryType
+from finchbot.memory.vector_sync import DataSyncManager
 
-DEFAULT_SYNC_INTERVAL = 60
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_TOP_K = 5
 DEFAULT_SIMILARITY_THRESHOLD = 0.5
@@ -25,13 +28,6 @@ DEFAULT_RECENT_DAYS = 7
 DEFAULT_RECENT_LIMIT = 20
 DEFAULT_IMPORTANT_MIN_IMPORTANCE = 0.8
 DEFAULT_IMPORTANT_LIMIT = 20
-BASE_IMPORTANCE = 0.5
-CONTENT_LENGTH_LONG_THRESHOLD = 100
-CONTENT_LENGTH_SHORT_THRESHOLD = 20
-CONTENT_LENGTH_IMPORTANCE_DELTA = 0.1
-KEYWORD_IMPORTANCE_DELTA = 0.2
-MIN_IMPORTANCE = 0.1
-MAX_IMPORTANCE = 1.0
 
 
 class MemoryManager:
@@ -46,52 +42,56 @@ class MemoryManager:
     6. 数据同步协调
     """
 
-    def __init__(self, workspace: Path) -> None:
+    def __init__(
+        self,
+        workspace: Path,
+        sqlite_store: SQLiteStore | None = None,
+        vector_store: VectorMemoryStore | None = None,
+        retrieval_service: RetrievalService | None = None,
+        embedding_service: EmbeddingService | None = None,
+    ) -> None:
         """初始化记忆管理器.
 
         Args:
             workspace: 工作目录路径。
+            sqlite_store: 可选的 SQLite 存储实例。
+            vector_store: 可选的向量存储实例。
+            retrieval_service: 可选的检索服务实例。
+            embedding_service: 可选的 Embedding 服务实例。
         """
         self.workspace = workspace
         self.memory_dir = workspace / "memory"
         self.memory_dir.mkdir(parents=True, exist_ok=True)
 
-        # 初始化存储层
-        self.sqlite_store = SQLiteStore(self.memory_dir / "memory.db")
-        self.vector_adapter = VectorStoreAdapter(self.workspace)
+        # 1. 初始化服务层
+        self.embedding_service = embedding_service or EmbeddingService()
+        self.importance_scorer = ImportanceScorer()
 
-        # 简化同步管理器，移除异步队列
+        # 2. 初始化存储层
+        self.sqlite_store = sqlite_store or SQLiteStore(self.memory_dir / "memory.db")
+        self.vector_store = vector_store or VectorMemoryStore(
+            self.workspace, self.embedding_service
+        )
+
+        # 3. 初始化检索服务
+        self.retrieval_service = retrieval_service or RetrievalService(
+            self.sqlite_store, self.vector_store
+        )
+
+        # 4. 初始化同步管理器
         self.sync_manager = DataSyncManager(
             sqlite_store=self.sqlite_store,
-            vector_store=self.vector_adapter,
+            vector_store=self.vector_store,
             max_retries=DEFAULT_MAX_RETRIES,
         )
 
         # 分类器懒加载
-        self._classifier = None
-
-        # 后台预加载向量存储（不阻塞主线程）
-        self._preload_vector_store()
+        self._classifier: Classifier | None = None
 
         logger.info(f"MemoryManager initialized at {self.workspace}")
 
-    def _preload_vector_store(self) -> None:
-        """后台预加载向量存储（不阻塞主线程）."""
-        import threading
-
-        def preload():
-            try:
-                # 立即预加载，不延迟
-                self.vector_adapter._ensure_initialized()
-                logger.debug("Vector store preloaded in background")
-            except Exception as e:
-                logger.debug(f"Vector store preload failed: {e}")
-
-        thread = threading.Thread(target=preload, daemon=True)
-        thread.start()
-
     @property
-    def classifier(self) -> Any:
+    def classifier(self) -> Classifier:
         """分类器（懒加载）.
 
         Returns:
@@ -132,7 +132,7 @@ class MemoryManager:
 
         # 自动重要性评分（如果未指定）
         if importance is None:
-            importance = self._calculate_importance(content, category)
+            importance = self.importance_scorer.calculate_importance(content, category)
 
         # 保存到SQLite
         memory_id = self.sqlite_store.remember(
@@ -148,14 +148,14 @@ class MemoryManager:
             logger.error("Failed to save memory to SQLite")
             return None
 
-        # 同步到向量存储（直接同步，确保一致性）
+        # 同步到向量存储
         sync_success = self.sync_manager.sync_memory(memory_id, "add")
 
-        if not sync_success and self.vector_adapter.is_available():
+        if not sync_success and self.vector_store and self.vector_store.vectorstore:
             logger.warning(
                 f"Memory saved to SQLite but failed to sync to vector store: {memory_id[:8]}..."
             )
-        elif not self.vector_adapter.is_available():
+        elif not self.vector_store or not self.vector_store.vectorstore:
             logger.debug(
                 f"Vector store not available, memory saved to SQLite only: {memory_id[:8]}..."
             )
@@ -171,54 +171,12 @@ class MemoryManager:
         )
         return memory
 
-    def _filter_memory(
-        self, memory: dict[str, Any], category: str | None, include_archived: bool
-    ) -> bool:
-        """过滤记忆条目是否符合条件.
-
-        Args:
-            memory: 记忆条目。
-            category: 分类过滤。
-            include_archived: 是否包含归档的记忆。
-
-        Returns:
-            是否符合条件。
-        """
-        if category and memory["category"] != category:
-            return False
-        return include_archived or not memory.get("is_archived", False)
-
-    def _fetch_vector_memories(
-        self, vector_results: list[dict[str, Any]], category: str | None, include_archived: bool
-    ) -> list[dict[str, Any]]:
-        """从向量存储结果获取完整记忆信息.
-
-        Args:
-            vector_results: 向量搜索结果。
-            category: 分类过滤。
-            include_archived: 是否包含归档的记忆。
-
-        Returns:
-            完整的记忆列表。
-        """
-        memories = []
-        for vec_result in vector_results:
-            memory_id = vec_result.get("id")
-            if not memory_id:
-                continue
-            memory = self.sqlite_store.get_memory(memory_id)
-            if not memory:
-                continue
-            if self._filter_memory(memory, category, include_archived):
-                memories.append(memory)
-        return memories
-
     def recall(
         self,
         query: str,
         top_k: int = DEFAULT_TOP_K,
         category: str | None = None,
-        strategy: RetrievalStrategy = RetrievalStrategy.HYBRID,
+        query_type: QueryType = QueryType.COMPLEX,
         similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
         include_archived: bool = False,
     ) -> list[dict[str, Any]]:
@@ -228,88 +186,31 @@ class MemoryManager:
             query: 查询内容。
             top_k: 最大返回数量。
             category: 分类过滤。
-            strategy: 检索策略。
+            query_type: 查询类型。
             similarity_threshold: 相似度阈值。
             include_archived: 是否包含归档的记忆。
 
         Returns:
             记忆列表。
         """
-        results = []
-
-        # 根据策略选择检索方式
-        if strategy == RetrievalStrategy.KEYWORD:
-            # 仅使用SQLite关键词检索
-            results = self.sqlite_store.search_memories(
-                query=query,
-                category=category,
-                include_archived=include_archived,
-                limit=top_k,
-            )
-
-        elif strategy == RetrievalStrategy.SEMANTIC and self.vector_adapter.is_available():
-            # 仅使用向量语义检索
-            vector_results = self.vector_adapter.search(
-                query=query,
-                top_k=top_k,
-                similarity_threshold=similarity_threshold,
-            )
-            results = self._fetch_vector_memories(vector_results, category, include_archived)
-
-        elif strategy == RetrievalStrategy.HYBRID:
-            # 混合检索：关键词 + 语义
-            keyword_results = self.sqlite_store.search_memories(
-                query=query,
-                category=category,
-                include_archived=include_archived,
-                limit=top_k,
-            )
-
-            vector_results = []
-            if self.vector_adapter.is_available():
-                vector_results_raw = self.vector_adapter.search(
-                    query=query,
-                    top_k=top_k,
-                    similarity_threshold=similarity_threshold,
-                )
-                vector_results = self._fetch_vector_memories(
-                    vector_results_raw, category, include_archived
-                )
-
-            # 合并结果（去重，按重要性排序）
-            seen_ids = set()
-            combined = []
-
-            for result in keyword_results + vector_results:
-                memory_id = result["id"]
-                if memory_id not in seen_ids:
-                    seen_ids.add(memory_id)
-                    combined.append(result)
-
-            # 按重要性排序
-            combined.sort(key=lambda x: x["importance"], reverse=True)
-            results = combined[:top_k]
-
-        else:
-            # 默认使用关键词检索
-            results = self.sqlite_store.search_memories(
-                query=query,
-                category=category,
-                include_archived=include_archived,
-                limit=top_k,
-            )
+        results = self.retrieval_service.search(
+            query=query,
+            query_type=query_type,
+            top_k=top_k,
+            category=category,
+            similarity_threshold=similarity_threshold,
+            include_archived=include_archived,
+        )
 
         # 记录访问日志
         for memory in results:
             self.sqlite_store.record_access(memory["id"], "read", f"recall: {query}")
 
-        logger.debug(f"Recalled {len(results)} memories for query: {query}")
+        logger.debug(f"Recalled {len(results)} memories for query: {query} (type: {query_type})")
         return results
 
     def forget(self, pattern: str) -> dict[str, Any]:
         """删除记忆.
-
-        优化版：同步从向量存储删除，确保数据一致性。
 
         Args:
             pattern: 删除模式（支持通配符）。
@@ -339,16 +240,12 @@ class MemoryManager:
                 self.sqlite_store.archive_memory(memory_id)
                 archived_count += 1
 
-            # 同步从向量存储删除（直接同步，确保一致性）
+            # 同步从向量存储删除
             sync_success = self.sync_manager.sync_memory(memory_id, "delete")
 
-            if not sync_success and self.vector_adapter.is_available():
+            if not sync_success and self.vector_store and self.vector_store.vectorstore:
                 logger.warning(
                     f"Memory deleted from SQLite but failed to delete from vector store: {memory_id[:8]}..."
-                )
-            elif not self.vector_adapter.is_available():
-                logger.debug(
-                    f"Vector store not available, memory deleted from SQLite only: {memory_id[:8]}..."
                 )
 
         stats = {
@@ -362,14 +259,7 @@ class MemoryManager:
         return stats
 
     def get_memory(self, memory_id: str) -> dict[str, Any] | None:
-        """获取记忆详情.
-
-        Args:
-            memory_id: 记忆ID。
-
-        Returns:
-            记忆字典，如果不存在返回None。
-        """
+        """获取记忆详情."""
         memory = self.sqlite_store.get_memory(memory_id)
 
         if memory:
@@ -387,21 +277,7 @@ class MemoryManager:
         tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> bool:
-        """更新记忆.
-
-        优化版：同步更新向量存储，确保数据一致性。
-
-        Args:
-            memory_id: 记忆ID。
-            content: 新的内容。
-            category: 新的分类。
-            importance: 新的重要性评分。
-            tags: 新的标签列表。
-            metadata: 新的元数据。
-
-        Returns:
-            是否成功更新。
-        """
+        """更新记忆."""
         updated = self.sqlite_store.update_memory(
             memory_id=memory_id,
             content=content,
@@ -412,16 +288,12 @@ class MemoryManager:
         )
 
         if updated:
-            # 同步到向量存储（直接同步，确保一致性）
+            # 同步到向量存储
             sync_success = self.sync_manager.sync_memory(memory_id, "update")
 
-            if not sync_success and self.vector_adapter.is_available():
+            if not sync_success and self.vector_store and self.vector_store.vectorstore:
                 logger.warning(
                     f"Memory updated in SQLite but failed to sync to vector store: {memory_id[:8]}..."
-                )
-            elif not self.vector_adapter.is_available():
-                logger.debug(
-                    f"Vector store not available, memory updated in SQLite only: {memory_id[:8]}..."
                 )
 
             # 记录访问日志
@@ -432,29 +304,16 @@ class MemoryManager:
         return updated
 
     def archive_memory(self, memory_id: str) -> bool:
-        """归档记忆.
-
-        优化版：同步从向量存储删除，确保数据一致性。
-
-        Args:
-            memory_id: 记忆ID。
-
-        Returns:
-            是否成功归档。
-        """
+        """归档记忆."""
         archived = self.sqlite_store.archive_memory(memory_id)
 
         if archived:
             # 同步从向量存储删除（归档的记忆不再用于检索）
             sync_success = self.sync_manager.sync_memory(memory_id, "delete")
 
-            if not sync_success and self.vector_adapter.is_available():
+            if not sync_success and self.vector_store and self.vector_store.vectorstore:
                 logger.warning(
                     f"Memory archived in SQLite but failed to delete from vector store: {memory_id[:8]}..."
-                )
-            elif not self.vector_adapter.is_available():
-                logger.debug(
-                    f"Vector store not available, memory archived in SQLite only: {memory_id[:8]}..."
                 )
 
             logger.debug(f"Memory archived: {memory_id[:8]}...")
@@ -462,29 +321,16 @@ class MemoryManager:
         return archived
 
     def unarchive_memory(self, memory_id: str) -> bool:
-        """取消归档记忆.
-
-        优化版：同步到向量存储，确保数据一致性。
-
-        Args:
-            memory_id: 记忆ID。
-
-        Returns:
-            是否成功取消归档。
-        """
+        """取消归档记忆."""
         unarchived = self.sqlite_store.unarchive_memory(memory_id)
 
         if unarchived:
             # 同步到向量存储
             sync_success = self.sync_manager.sync_memory(memory_id, "add")
 
-            if not sync_success and self.vector_adapter.is_available():
+            if not sync_success and self.vector_store and self.vector_store.vectorstore:
                 logger.warning(
                     f"Memory unarchived in SQLite but failed to sync to vector store: {memory_id[:8]}..."
-                )
-            elif not self.vector_adapter.is_available():
-                logger.debug(
-                    f"Vector store not available, memory unarchived in SQLite only: {memory_id[:8]}..."
                 )
 
             logger.debug(f"Memory unarchived: {memory_id[:8]}...")
@@ -492,64 +338,15 @@ class MemoryManager:
         return unarchived
 
     def _classify_content(self, content: str) -> str:
-        """自动分类内容.
-
-        Args:
-            content: 待分类的内容。
-
-        Returns:
-            分类标签。
-        """
+        """自动分类内容."""
         try:
             return self.classifier.classify(content, use_semantic=False)
         except Exception as e:
             logger.warning(f"Classification failed: {e}, using 'general'")
             return "general"
 
-    def _calculate_importance(self, content: str, category: str) -> float:
-        """计算重要性评分.
-
-        Args:
-            content: 记忆内容。
-            category: 分类标签。
-
-        Returns:
-            重要性评分 (0-1)。
-        """
-        base_importance = BASE_IMPORTANCE
-
-        category_importance = {
-            "personal": 0.8,
-            "contact": 0.9,
-            "goal": 0.7,
-            "work": 0.6,
-            "preference": 0.5,
-            "schedule": 0.7,
-        }
-
-        if category in category_importance:
-            base_importance = category_importance[category]
-
-        content_length = len(content)
-        if content_length > CONTENT_LENGTH_LONG_THRESHOLD:
-            base_importance = min(base_importance + CONTENT_LENGTH_IMPORTANCE_DELTA, MAX_IMPORTANCE)
-        elif content_length < CONTENT_LENGTH_SHORT_THRESHOLD:
-            base_importance = max(base_importance - CONTENT_LENGTH_IMPORTANCE_DELTA, MIN_IMPORTANCE)
-
-        important_keywords = ["重要", "关键", "必须", "紧急", "邮箱", "电话", "密码"]
-        for keyword in important_keywords:
-            if keyword in content:
-                base_importance = min(base_importance + KEYWORD_IMPORTANCE_DELTA, MAX_IMPORTANCE)
-                break
-
-        return round(base_importance, 2)
-
     def get_stats(self) -> dict[str, Any]:
-        """获取系统统计信息.
-
-        Returns:
-            统计字典。
-        """
+        """获取系统统计信息."""
         # SQLite统计
         sqlite_stats = self.sqlite_store.get_memory_stats()
 
@@ -557,7 +354,9 @@ class MemoryManager:
         sync_stats = self.sync_manager.get_sync_status()
 
         # 向量存储可用性
-        vector_available = self.vector_adapter.is_available()
+        vector_available = (
+            self.vector_store is not None and self.vector_store.vectorstore is not None
+        )
 
         stats = {
             "sqlite": sqlite_stats,
@@ -579,20 +378,7 @@ class MemoryManager:
         limit: int = DEFAULT_SEARCH_LIMIT,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
-        """搜索记忆（直接SQLite搜索）.
-
-        Args:
-            query: 关键词查询。
-            category: 分类过滤。
-            min_importance: 最小重要性。
-            max_importance: 最大重要性。
-            include_archived: 是否包含归档的记忆。
-            limit: 返回数量限制。
-            offset: 偏移量。
-
-        Returns:
-            记忆列表。
-        """
+        """搜索记忆（直接SQLite搜索）."""
         return self.sqlite_store.search_memories(
             query=query,
             category=category,
@@ -606,15 +392,7 @@ class MemoryManager:
     def get_recent_memories(
         self, days: int = DEFAULT_RECENT_DAYS, limit: int = DEFAULT_RECENT_LIMIT
     ) -> list[dict[str, Any]]:
-        """获取最近添加的记忆.
-
-        Args:
-            days: 最近天数。
-            limit: 返回数量限制。
-
-        Returns:
-            记忆列表。
-        """
+        """获取最近添加的记忆."""
         return self.sqlite_store.get_recent_memories(days=days, limit=limit)
 
     def get_important_memories(
@@ -622,15 +400,7 @@ class MemoryManager:
         min_importance: float = DEFAULT_IMPORTANT_MIN_IMPORTANCE,
         limit: int = DEFAULT_IMPORTANT_LIMIT,
     ) -> list[dict[str, Any]]:
-        """获取重要记忆.
-
-        Args:
-            min_importance: 最小重要性阈值。
-            limit: 返回数量限制。
-
-        Returns:
-            记忆列表。
-        """
+        """获取重要记忆."""
         return self.sqlite_store.get_important_memories(min_importance=min_importance, limit=limit)
 
     def add_category(
@@ -640,17 +410,7 @@ class MemoryManager:
         keywords: list[str] | None = None,
         parent_id: str | None = None,
     ) -> str:
-        """添加分类.
-
-        Args:
-            name: 分类名称。
-            description: 分类描述。
-            keywords: 关键词列表。
-            parent_id: 父分类ID。
-
-        Returns:
-            分类ID。
-        """
+        """添加分类."""
         return self.sqlite_store.add_category(
             name=name,
             description=description,
@@ -659,64 +419,29 @@ class MemoryManager:
         )
 
     def get_categories(self) -> list[dict[str, Any]]:
-        """获取所有分类.
-
-        Returns:
-            分类列表。
-        """
+        """获取所有分类."""
         return self.sqlite_store.get_categories()
 
     def close(self) -> None:
         """关闭记忆管理器."""
         self.sqlite_store.close()
+        self.sync_manager.stop()
         logger.info("MemoryManager closed")
 
     def __enter__(self):
         """上下文管理器入口."""
         return self
 
-    def is_ready(self) -> bool:
-        """检查系统是否就绪.
-
-        优化版：即使向量存储还在预加载中，也认为系统就绪。
-        向量存储不可用时，仍可进行SQLite操作。
-
-        Returns:
-            系统是否就绪。
-        """
-        return self.sqlite_store is not None
-
-    def wait_until_ready(self, timeout: float = 10.0) -> bool:
-        """等待系统就绪.
-
-        优化版：等待向量存储可用，但SQLite始终可用。
-
-        Args:
-            timeout: 超时时间（秒）。
-
-        Returns:
-            是否在超时前就绪。
-        """
-        import time
-
-        # SQLite始终可用
-        if self.sqlite_store is None:
-            return False
-
-        # 如果向量存储已经可用，立即返回
-        if self.vector_adapter.is_available():
-            return True
-
-        # 等待向量存储可用
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            if self.vector_adapter.is_available():
-                return True
-            time.sleep(0.1)
-
-        # 超时后，即使向量存储不可用，也认为系统就绪（SQLite可用）
-        return True
-
     def __exit__(self, exc_type, exc_val, exc_tb):
         """上下文管理器出口."""
         self.close()
+
+    def is_ready(self) -> bool:
+        """检查系统是否就绪."""
+        return self.sqlite_store is not None
+
+    def wait_until_ready(self, timeout: float = 10.0) -> bool:
+        """等待系统就绪."""
+        # SQLite始终可用，所以只要初始化了就返回True
+        # 在新架构中，__init__ 是阻塞的（除了 embedding 懒加载可能），所以实例化后就 ready
+        return True

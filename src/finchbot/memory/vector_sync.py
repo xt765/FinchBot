@@ -4,10 +4,12 @@
 """
 
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from loguru import logger
+
+from finchbot.memory.storage.sqlite import SQLiteStore
+from finchbot.memory.storage.vector import VectorMemoryStore
 
 
 class DataSyncManager:
@@ -19,8 +21,8 @@ class DataSyncManager:
 
     def __init__(
         self,
-        sqlite_store: Any,
-        vector_store: Any,
+        sqlite_store: SQLiteStore,
+        vector_store: VectorMemoryStore | None,
         max_retries: int = 2,
     ) -> None:
         """初始化数据同步管理器.
@@ -65,7 +67,7 @@ class DataSyncManager:
                 if operation == "delete":
                     # 从向量存储删除
                     if self.vector_store:
-                        success = self.vector_store.delete(memory_id)
+                        success = self.vector_store.delete(ids=[memory_id])
                         if success:
                             self.sync_stats["successful_syncs"] += 1
                             logger.debug(f"Deleted from vector store: {memory_id[:8]}...")
@@ -92,9 +94,9 @@ class DataSyncManager:
                 # 同步到向量存储
                 if self.vector_store:
                     try:
+                        success = False
                         if operation == "add":
-                            success = self.vector_store.add(
-                                id=memory_id,
+                            success = self.vector_store.remember(
                                 content=memory["content"],
                                 metadata={
                                     "id": memory_id,
@@ -103,10 +105,13 @@ class DataSyncManager:
                                     "source": memory["source"],
                                     "created_at": memory["created_at"],
                                 },
+                                id=memory_id,
                             )
                         elif operation == "update":
-                            success = self.vector_store.update(
-                                id=memory_id,
+                            # 先删除旧的（如果存在）
+                            self.vector_store.delete(ids=[memory_id])
+                            # 再添加新的
+                            success = self.vector_store.remember(
                                 content=memory["content"],
                                 metadata={
                                     "id": memory_id,
@@ -115,6 +120,7 @@ class DataSyncManager:
                                     "source": memory["source"],
                                     "updated_at": memory["updated_at"],
                                 },
+                                id=memory_id,
                             )
                         else:
                             logger.warning(f"Unknown operation: {operation}")
@@ -181,192 +187,3 @@ class DataSyncManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """上下文管理器出口."""
         self.stop()
-
-
-class VectorStoreAdapter:
-    """向量存储适配器.
-
-    提供统一的向量存储接口，支持不同的向量存储后端。
-    """
-
-    def __init__(self, workspace: Path, embedding_model: str | None = None) -> None:
-        """初始化向量存储适配器.
-
-        Args:
-            workspace: 工作目录路径。
-            embedding_model: 嵌入模型名称。
-        """
-        self.workspace = workspace
-        self.embedding_model = embedding_model or "BAAI/bge-small-zh-v1.5"
-        self.vectorstore = None
-        self._initialized = False
-
-    def _ensure_initialized(self) -> None:
-        """确保向量存储已初始化."""
-        if not self._initialized:
-            self._init_vectorstore()
-            self._initialized = True
-
-    def _init_vectorstore(self) -> None:
-        """初始化向量存储."""
-        try:
-            from finchbot.memory.vector import VectorMemoryStore
-
-            self.vectorstore = VectorMemoryStore(self.workspace)
-
-            # 确保嵌入模型可用
-            if not self.vectorstore.vectorstore:
-                logger.warning("Vector store not available")
-                self.vectorstore = None
-            else:
-                logger.info(f"Vector store initialized with model: {self.embedding_model}")
-
-        except Exception as e:
-            logger.warning(f"Vector store init failed: {e}")
-            self.vectorstore = None
-
-    def add(self, id: str, content: str, metadata: dict[str, Any]) -> bool:
-        """添加记忆到向量存储.
-
-        Args:
-            id: 记忆ID。
-            content: 记忆内容。
-            metadata: 元数据。
-
-        Returns:
-            是否成功添加。
-        """
-        self._ensure_initialized()
-        if not self.vectorstore:
-            return False
-
-        try:
-            success = self.vectorstore.remember(content, metadata, id=id)
-            if success:
-                logger.debug(f"Added to vector store: {id[:8]}...")
-            return success
-        except Exception as e:
-            logger.error(f"Add to vector store error: {e}")
-            return False
-
-    def update(self, id: str, content: str, metadata: dict[str, Any]) -> bool:
-        """更新向量存储中的记忆.
-
-        Args:
-            id: 记忆ID。
-            content: 记忆内容。
-            metadata: 元数据。
-
-        Returns:
-            是否成功更新。
-        """
-        self._ensure_initialized()
-        if not self.vectorstore:
-            return False
-
-        try:
-            self.vectorstore.delete(ids=[id])
-            success = self.vectorstore.remember(content, metadata, id=id)
-            if success:
-                logger.debug(f"Updated in vector store: {id[:8]}...")
-            return success
-        except Exception as e:
-            logger.error(f"Update vector store error: {e}")
-            return False
-
-    def delete(self, id: str) -> bool:
-        """从向量存储删除记忆.
-
-        Args:
-            id: 记忆ID。
-
-        Returns:
-            是否成功删除。
-        """
-        self._ensure_initialized()
-        if not self.vectorstore:
-            return False
-
-        try:
-            success = self.vectorstore.delete(ids=[id])
-            if success:
-                logger.debug(f"Deleted from vector store: {id[:8]}...")
-            return success
-        except Exception as e:
-            logger.error(f"Delete from vector store error: {e}")
-            return False
-
-    def get(self, id: str) -> dict[str, Any] | None:
-        """从向量存储获取记忆.
-
-        Args:
-            id: 记忆ID。
-
-        Returns:
-            记忆字典，如果不存在返回None。
-        """
-        self._ensure_initialized()
-        if not self.vectorstore:
-            return None
-
-        try:
-            return self.vectorstore.get_by_id(id)
-        except Exception as e:
-            logger.error(f"Get from vector store error: {e}")
-            return None
-
-    def get_all_ids(self) -> list[str]:
-        """获取向量存储中的所有记忆ID.
-
-        Returns:
-            记忆ID列表。
-        """
-        self._ensure_initialized()
-        if not self.vectorstore:
-            return []
-
-        try:
-            return self.vectorstore.get_all_ids()
-        except Exception as e:
-            logger.error(f"Get all IDs from vector store error: {e}")
-            return []
-
-    def search(
-        self,
-        query: str,
-        top_k: int = 5,
-        similarity_threshold: float = 0.5,
-    ) -> list[dict[str, Any]]:
-        """在向量存储中搜索.
-
-        Args:
-            query: 查询文本。
-            top_k: 返回数量。
-            similarity_threshold: 相似度阈值。
-
-        Returns:
-            搜索结果列表。
-        """
-        self._ensure_initialized()
-        if not self.vectorstore:
-            return []
-
-        try:
-            # 使用recall方法进行搜索
-            return self.vectorstore.recall(
-                query=query,
-                k=top_k,
-                similarity_threshold=similarity_threshold,
-            )
-        except Exception as e:
-            logger.error(f"Search vector store error: {e}")
-            return []
-
-    def is_available(self) -> bool:
-        """检查向量存储是否可用.
-
-        Returns:
-            是否可用。
-        """
-        self._ensure_initialized()
-        return self.vectorstore is not None
