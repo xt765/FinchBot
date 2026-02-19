@@ -4,73 +4,73 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
 [![Code Style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-**FinchBot (雀翎)** 是一个轻量级、模块化的 AI Agent 框架，基于 LangChain 和 LangGraph 构建。它旨在提供一个灵活、可扩展的基础，用于构建具有持久记忆、工具使用能力和多语言支持的智能助手。
+**FinchBot** is a lightweight, modular AI Agent framework built on LangChain and LangGraph. It is designed to provide a flexible and scalable foundation for building intelligent assistants with persistent memory, tool usage capabilities, and multi-language support.
 
-[中文文档](docs/zh-CN/README.md) | [English Documentation](docs/en-US/README.md)
+[中文文档](../zh-CN/README.md) | [English Documentation](README.md)
 
-## ✨ 特性
+## ✨ Features
 
-- **🧠 强大的记忆系统**: 基于 SQLite 和向量数据库的分层记忆架构，支持自动分类、重要性评分和遗忘机制。
-- **🔌 模块化工具**: 易于扩展的工具系统，内置文件操作、Web 搜索、Shell 执行等常用工具。
-- **🌍 多语言支持**: 完整的 i18n 支持，自动检测系统语言，轻松切换中英文界面。
-- **🛠️ 开发者友好**: 清晰的代码结构，完善的类型提示 (Type Hints)，详细的文档注释。
-- **🚀 现代技术栈**: Python 3.13+, LangGraph, UV, Ruff, Pydantic v2.
+- **🧠 Powerful Memory System**: Layered memory architecture based on SQLite and vector databases, supporting automatic classification, importance scoring, and forgetting mechanisms.
+- **🔌 Modular Tools**: Easily extensible tool system with built-in file operations, web search, shell execution, and more.
+- **🌍 Multi-language Support**: Complete i18n support with automatic system language detection and easy switching between English and Chinese interfaces.
+- **🛠️ Developer Friendly**: Clear code structure, comprehensive Type Hints, and detailed documentation comments.
+- **🚀 Modern Tech Stack**: Python 3.13+, LangGraph, UV, Ruff, Pydantic v2.
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 前置要求
+### Prerequisites
 
 - Windows / Linux / macOS
 - Python 3.13+
-- [uv](https://github.com/astral-sh/uv) (推荐)
+- [uv](https://github.com/astral-sh/uv) (Recommended)
 
-### 安装
+### Installation
 
-1.  克隆仓库：
+1.  Clone the repository:
     ```bash
     git clone https://github.com/yourusername/finchbot.git
     cd finchbot
     ```
 
-2.  使用 uv 创建环境并安装依赖：
+2.  Create environment and install dependencies using uv:
     ```bash
     uv sync
     ```
 
-3.  配置环境变量：
-    复制 `.env.example` 为 `.env` 并填入 API Key。
+3.  Configure environment variables:
+    Copy `.env.example` to `.env` and fill in your API Key.
     ```bash
     cp .env.example .env
     ```
 
-### 使用
+### Usage
 
-启动交互式对话：
+Start an interactive chat session:
 
 ```bash
 uv run finchbot chat
 ```
 
-查看帮助：
+View help:
 
 ```bash
 uv run finchbot --help
 ```
 
-## 📖 文档
+## 📖 Documentation
 
-详细文档请参考 `docs/` 目录：
+Detailed documentation is available in the `docs/` directory:
 
-- [API 接口文档](docs/zh-CN/api.md)
-- [配置说明](docs/zh-CN/config.md)
-- [部署指南](docs/zh-CN/deployment.md)
-- [开发环境搭建](docs/zh-CN/development.md)
-- [贡献指南](docs/zh-CN/contributing.md)
+- [API Reference](api.md)
+- [Configuration Guide](config.md)
+- [Deployment Guide](deployment.md)
+- [Development Guide](development.md)
+- [Contributing Guide](contributing.md)
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎提交 Issue 和 Pull Request！请阅读 [贡献指南](docs/zh-CN/contributing.md) 了解更多信息。
+Contributions are welcome! Please read the [Contributing Guide](contributing.md) for more information.
 
-## 📄 许可证
+## 📄 License
 
-本项目采用 [MIT 许可证](LICENSE)。
+This project is licensed under the [MIT License](../../LICENSE).
