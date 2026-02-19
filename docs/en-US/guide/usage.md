@@ -7,6 +7,12 @@ FinchBot provides a rich Command Line Interface (CLI) for interacting with the a
 ### Start FinchBot
 
 ```bash
+finchbot chat
+```
+
+Or use `uv run`:
+
+```bash
 uv run finchbot chat
 ```
 
@@ -15,7 +21,7 @@ uv run finchbot chat
 You can specify a session ID to continue a previous conversation or start a new one:
 
 ```bash
-uv run finchbot chat --session-id "project-alpha"
+finchbot chat --session "project-alpha"
 ```
 
 If not specified, the system will automatically load the last active session.
@@ -70,13 +76,13 @@ FinchBot provides a full-screen interactive session manager.
 
 ### Enter Manager
 
-Use the `--manage` flag at startup:
+Run the sessions command directly:
 
 ```bash
-uv run finchbot chat --manage
+finchbot sessions
 ```
 
-Or start without arguments when no history sessions exist.
+Or start `finchbot chat` without arguments when no history sessions exist.
 
 ### Controls
 
@@ -89,7 +95,35 @@ Or start without arguments when no history sessions exist.
 
 ---
 
-## 4. Global Options
+## 4. Configuration Manager
+
+FinchBot provides an interactive configuration manager.
+
+### Enter Config Manager
+
+```bash
+finchbot config
+```
+
+This will launch an interactive interface to configure API keys, default model, and other settings.
+
+---
+
+## 5. Model Management
+
+### Download Embedding Models
+
+Download required embedding models for local memory storage:
+
+```bash
+finchbot models download
+```
+
+The system will automatically detect your network environment and choose the best mirror source.
+
+---
+
+## 6. Global Options
 
 The `finchbot` command supports the following global options:
 
@@ -102,5 +136,16 @@ The `finchbot` command supports the following global options:
 
 ```bash
 # Start in debug mode to see detailed thought processes and network requests
-uv run finchbot chat -v
+finchbot chat -v
 ```
+
+### Command Reference
+
+| Command | Description |
+|---------|-------------|
+| `finchbot chat` | Start interactive chat session |
+| `finchbot chat --session <id>` | Start/continue specific session |
+| `finchbot sessions` | Open session manager |
+| `finchbot config` | Open configuration manager |
+| `finchbot models download` | Download embedding models |
+| `finchbot version` | Show version information |

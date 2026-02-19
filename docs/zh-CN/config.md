@@ -56,9 +56,9 @@ FinchBot 采用灵活的层级配置系统，支持通过 **配置文件** 和 *
 
 | 字段 | 类型 | 默认值 | 描述 |
 | :--- | :--- | :--- | :--- |
-| `restrict_to_workspace` | bool | `true` | 是否强制限制文件操作在工作区内。建议保持开启以确保安全。 |
+| `restrict_to_workspace` | bool | `false` | 是否强制限制文件操作在工作区内。建议保持开启以确保安全。 |
 | `web.search.max_results` | int | `5` | 每次搜索返回的最大结果数。 |
-| `web.search.tavily_api_key` | string | - | Tavily 搜索 API Key。 |
+| `web.search.api_key` | string | - | Tavily 搜索 API Key。 |
 | `web.search.brave_api_key` | string | - | Brave 搜索 API Key。 |
 | `exec.timeout` | int | `60` | Shell 命令执行的超时时间（秒）。 |
 
@@ -74,12 +74,12 @@ FinchBot 采用灵活的层级配置系统，支持通过 **配置文件** 和 *
 | :--- | :--- | :--- |
 | OpenAI | `OPENAI_API_KEY` | `OPENAI_API_BASE` |
 | Anthropic | `ANTHROPIC_API_KEY` | `ANTHROPIC_API_BASE` |
-| Google | `GOOGLE_API_KEY` | `GOOGLE_API_BASE` |
+| Gemini | `GOOGLE_API_KEY` | - |
 | DeepSeek | `DEEPSEEK_API_KEY` | `DEEPSEEK_API_BASE` |
+| Groq | `GROQ_API_KEY` | `GROQ_API_BASE` |
 | Moonshot | `MOONSHOT_API_KEY` | `MOONSHOT_API_BASE` |
 | DashScope | `DASHSCOPE_API_KEY` | `DASHSCOPE_API_BASE` |
-| Azure | `AZURE_OPENAI_API_KEY` | `AZURE_OPENAI_API_BASE` |
-| Ollama | - | `OLLAMA_API_BASE` |
+| OpenRouter | `OPENROUTER_API_KEY` | `OPENROUTER_API_BASE` |
 
 ### 搜索工具
 
@@ -103,29 +103,31 @@ FinchBot 采用灵活的层级配置系统，支持通过 **配置文件** 和 *
 ```json
 {
   "language": "zh-CN",
-  "default_model": "gpt-4o",
+  "default_model": "gpt-5",
   "agents": {
     "defaults": {
-      "workspace": "D:/FinchBotWorkspace",
-      "temperature": 0.5,
+      "workspace": "~/.finchbot/workspace",
+      "model": "gpt-5",
+      "temperature": 0.7,
+      "max_tokens": 8192,
       "max_tool_iterations": 20
     }
   },
   "providers": {
     "openai": {
       "api_key": "sk-proj-...",
-      "api_base": "https://api.openai-proxy.com/v1"
+      "api_base": "https://api.openai.com/v1"
     }
   },
   "tools": {
-    "restrict_to_workspace": true,
+    "restrict_to_workspace": false,
     "web": {
       "search": {
-        "max_results": 10
+        "max_results": 5
       }
     },
     "exec": {
-      "timeout": 120
+      "timeout": 60
     }
   }
 }

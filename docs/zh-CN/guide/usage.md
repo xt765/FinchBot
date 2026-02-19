@@ -7,6 +7,12 @@ FinchBot 提供了丰富的命令行界面 (CLI) 来与智能体进行交互。�
 ### 启动 FinchBot
 
 ```bash
+finchbot chat
+```
+
+或者使用 `uv run`：
+
+```bash
 uv run finchbot chat
 ```
 
@@ -15,7 +21,7 @@ uv run finchbot chat
 您可以指定一个会话 ID 来继续之前的对话或开始新对话：
 
 ```bash
-uv run finchbot chat --session-id "project-alpha"
+finchbot chat --session "project-alpha"
 ```
 
 如果未指定，系统会自动加载最近一次活跃的会话。
@@ -70,13 +76,13 @@ FinchBot 提供了一个全屏的交互式会话管理器。
 
 ### 进入管理器
 
-在启动时使用 `--manage` 参数：
+直接运行会话管理命令：
 
 ```bash
-uv run finchbot chat --manage
+finchbot sessions
 ```
 
-或者不带任何参数启动，且没有历史会话时，也会自动进入。
+或者不带任何参数启动 `finchbot chat`，且没有历史会话时，也会自动进入。
 
 ### 操作指南
 
@@ -89,7 +95,35 @@ uv run finchbot chat --manage
 
 ---
 
-## 4. 全局选项
+## 4. 配置管理器
+
+FinchBot 提供了交互式配置管理界面。
+
+### 进入配置管理器
+
+```bash
+finchbot config
+```
+
+这将启动交互式界面，用于配置 API 密钥、默认模型和其他设置。
+
+---
+
+## 5. 模型管理
+
+### 下载嵌入模型
+
+下载本地记忆存储所需的嵌入模型：
+
+```bash
+finchbot models download
+```
+
+系统会自动检测网络环境并选择最佳的镜像源。
+
+---
+
+## 6. 全局选项
 
 `finchbot` 命令行支持以下全局选项：
 
@@ -102,5 +136,16 @@ uv run finchbot chat --manage
 
 ```bash
 # 以调试模式启动，查看详细的思维过程和网络请求
-uv run finchbot chat -v
+finchbot chat -v
 ```
+
+### 命令速查表
+
+| 命令 | 说明 |
+|------|------|
+| `finchbot chat` | 启动交互式聊天会话 |
+| `finchbot chat --session <id>` | 启动/继续指定会话 |
+| `finchbot sessions` | 打开会话管理器 |
+| `finchbot config` | 打开配置管理器 |
+| `finchbot models download` | 下载嵌入模型 |
+| `finchbot version` | 显示版本信息 |

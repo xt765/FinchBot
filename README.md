@@ -14,20 +14,20 @@
     - **Layered Storage**: Combines SQLite (structured facts) and Vector Store (semantic associations).
     - **Automatic Maintenance**: Supports automatic classification, importance scoring, and rule-based forgetting mechanisms.
     - **Consistency**: Built-in data synchronization service ensures consistency across storage layers.
-- **🔌 Modular Tool Ecosystem (11+ Built-in Tools)**:
+- **🔌 Modular Tool Ecosystem (11 Built-in Tools)**:
     - **File Operations**: `read_file`, `write_file`, `edit_file`, `list_dir` - Complete local filesystem control.
-    - **Web Capabilities**: `web_search` (Tavily/Brave), `web_extract` - Real-time information retrieval.
+    - **Web Capabilities**: `web_search` (Tavily/Brave/DuckDuckGo), `web_extract` - Real-time information retrieval.
     - **Memory Management**: `remember`, `recall`, `forget` - Proactive long-term memory management.
     - **System Control**: `exec_command` - Secure shell execution; `session_title` - Manage session titles.
-- **🎓 Skill Extension System (3+ Built-in Skills)**:
-    - **Skill-Creator**: Interactive guide for creating new skills.
-    - **Summarize**: Intelligent document/conversation summarization.
-    - **Weather**: Weather query demonstration skill.
+- **🎓 Skill Extension System (3 Built-in Skills)**:
+    - **skill-creator**: Interactive guide for creating new skills.
+    - **summarize**: Intelligent document/conversation summarization.
+    - **weather**: Weather query demonstration skill.
     - Supports defining new skills (SOPs) via Markdown for In-Context Learning.
 - **💻 Powerful CLI Interface**:
     - **Session Management**: Interactively select, rename, and delete history sessions.
     - **Auto-Title**: Automatically generates concise session titles based on conversation content.
-    - **Time Travel**: Supports `/rollback` and `/back` commands to revert conversation state or create branch sessions.
+    - **Time Travel**: Supports `\rollback` and `\back` commands to revert conversation state or create branch sessions.
     - **Rich Experience**: Built on Rich, supporting Markdown rendering, loading animations, and syntax highlighting.
 - **🌍 Complete Internationalization (i18n)**:
     - Automatic system language detection.

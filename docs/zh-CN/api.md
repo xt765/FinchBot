@@ -12,18 +12,18 @@
 def create_finch_agent(
     model: BaseChatModel,
     workspace: Path,
-    tools: list[BaseTool] | None = None,
-    system_prompt: str | None = None,
+    tools: Sequence[BaseTool] | None = None,
     use_persistent: bool = True,
-) -> tuple[CompiledStateGraph, SqliteSaver]:
+) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
 ```
 
 **参数**:
 - `model`: 基础聊天模型实例 (如 `ChatOpenAI`, `ChatAnthropic`)。
 - `workspace`: 工作目录路径 (`Path` 对象)，用于文件操作、记忆存储等。
-- `tools`: 可用工具列表 (可选，默认为空)。如果提供了工具，Agent 会自动绑定它们。
-- `system_prompt`: 自定义系统提示词 (可选)。如果不提供，将使用默认的 `ContextBuilder` 动态生成。
-- `use_persistent`: 是否启用持久化存储 (Checkpointing)。默认为 `True`，启用后会保存对话历史。
+- `tools`: 可用工具序列 (可选，默认为 None)。如果提供了工具，Agent 会自动绑定它们。
+- `use_persistent`: 是否启用持久化存储 (Checkpointing)。默认为 `True`，启用后会保存对话历史到 SQLite。
+
+**注意**: 系统提示词通过 `build_system_prompt(workspace)` 动态生成，而非通过参数传入。
 
 **返回**:
 - `(agent, checkpointer)` 元组:
@@ -108,34 +108,38 @@ def remember(
 def recall(
     self,
     query: str,
-    k: int = 5,
+    top_k: int = 5,
     category: str | None = None,
-    min_importance: float = 0.0,
-) -> list[dict]:
+    query_type: QueryType = QueryType.COMPLEX,
+    similarity_threshold: float = 0.5,
+    include_archived: bool = False,
+) -> list[dict[str, Any]]:
 ```
 
 **参数**:
 - `query`: 查询文本 (自然语言)。
-- `k`: 返回结果数量 (默认 5)。
+- `top_k`: 返回结果数量 (默认 5)。
 - `category`: 按分类过滤 (可选)。
-- `min_importance`: 最低重要性阈值 (默认 0.0)。
+- `query_type`: 查询类型 (默认 `QueryType.COMPLEX`)。
+- `similarity_threshold`: 相似度阈值 (默认 0.5)。
+- `include_archived`: 是否包含归档的记忆 (默认 False)。
 
 **返回**:
-- 记忆字典列表，每个包含 `id`, `content`, `metadata`, `similarity` 等字段。
+- 记忆字典列表，每个包含 `id`, `content`, `category`, `importance`, `similarity` 等字段。
 
 #### `forget`
 
 删除或归档记忆。
 
 ```python
-def forget(self, pattern: str) -> int:
+def forget(self, pattern: str) -> dict[str, Any]:
 ```
 
 **参数**:
-- `pattern`: 用于匹配记忆内容的字符串或正则表达式。
+- `pattern`: 用于匹配记忆内容的字符串（支持通配符）。
 
 **返回**:
-- 删除/归档的记忆数量。
+- 删除统计信息字典，包含 `total_found`, `deleted`, `archived`, `pattern` 字段。
 
 ---
 
@@ -177,12 +181,14 @@ class FinchTool(BaseTool):
 Pydantic 模型，定义整个应用的配置结构。
 
 ```python
-class Config(BaseModel):
-    language: str = "zh-CN"
-    default_model: str = "gpt-4o"
-    agents: AgentsConfig
-    providers: ProvidersConfig
-    tools: ToolsConfig
+class Config(BaseSettings):
+    language: str = "en-US"
+    language_set_by_user: bool = False
+    default_model: str = "gpt-5"
+    default_model_set_by_user: bool = False
+    agents: AgentsConfig = Field(default_factory=AgentsConfig)
+    providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
+    tools: ToolsConfig = Field(default_factory=ToolsConfig)
 ```
 
 ### 4.2 `load_config`
