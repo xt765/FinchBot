@@ -8,52 +8,82 @@
 
 [中文文档](README_CN.md) | [English Documentation](docs/en-US/README.md)
 
-## ✨ Features
+## Features
 
-- **🧠 Powerful Memory System**:
-    - **Layered Storage**: Combines SQLite (structured facts) and Vector Store (semantic associations).
-    - **Automatic Maintenance**: Supports automatic classification, importance scoring, and rule-based forgetting mechanisms.
-    - **Consistency**: Built-in data synchronization service ensures consistency across storage layers.
-- **🔌 Modular Tool Ecosystem (11 Built-in Tools)**:
-    - **File Operations**: `read_file`, `write_file`, `edit_file`, `list_dir` - Complete local filesystem control.
-    - **Web Capabilities**: `web_search` (Tavily/Brave/DuckDuckGo), `web_extract` - Real-time information retrieval.
-    - **Memory Management**: `remember`, `recall`, `forget` - Proactive long-term memory management.
-    - **System Control**: `exec_command` - Secure shell execution; `session_title` - Manage session titles.
-- **🎓 Skill Extension System (3 Built-in Skills)**:
-    - **skill-creator**: Interactive guide for creating new skills.
-    - **summarize**: Intelligent document/conversation summarization.
-    - **weather**: Weather query demonstration skill.
-    - Supports defining new skills (SOPs) via Markdown for In-Context Learning.
-- **💻 Powerful CLI Interface**:
-    - **Session Management**: Interactively select, rename, and delete history sessions.
-    - **Auto-Title**: Automatically generates concise session titles based on conversation content.
-    - **Time Travel**: Supports `\rollback` and `\back` commands to revert conversation state or create branch sessions.
-    - **Rich Experience**: Built on Rich, supporting Markdown rendering, loading animations, and syntax highlighting.
-- **🌍 Complete Internationalization (i18n)**:
-    - Automatic system language detection.
-    - Supports switching interfaces and prompts between Chinese, English, and Traditional Chinese.
-- **🛠️ Developer Friendly**:
-    - **Type Safety**: Comprehensive use of Python Type Hints.
-    - **Well Documented**: Core code comment coverage > 95%.
-    - **Modern Engineering**: Uses `uv` for dependency management and `ruff` for code quality.
-- **🚀 Modern Tech Stack**: Python 3.13+, LangGraph (Stateful Agents), Pydantic v2.
+### Memory System
 
-## 🌟 Key Advantages
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Layered Storage | SQLite (structured facts) + Vector Store (semantic associations) | Implemented |
+| Auto Classification | Automatic classification based on keywords and semantics | Implemented |
+| Importance Scoring | Automatic memory importance calculation (0-1) | Implemented |
+| Manual Forgetting | Keyword-based deletion/archiving of memories | Implemented |
+| Auto Maintenance | Rule-based automatic forgetting mechanism | Not Implemented |
 
-1.  **Privacy-First Local Memory**: Uses `FastEmbed` locally for vector generation by default, avoiding uploading memory content to OpenAI Embedding API, ensuring privacy and zero cost.
-2.  **True Persistence**: Unlike simple `chat_history` lists, FinchBot's memory system is structured, retrievable, and features "forgetting" mechanisms over time, simulating human memory.
-3.  **Production-Grade Stability**:
-    - **Double-Checked Locking**: Ensures thread-safe tool registration.
-    - **Robust Error Handling**: Auto-retry for network requests, timeout control for Shell execution.
-    - **Full Test Coverage**: Core logic is unit tested.
-4.  **Flexible Extensibility**:
-    - Want a new tool? Inherit `FinchTool` and write a Python class.
-    - Want a new process? Write a `SKILL.md` and drop it in the `skills/` directory.
-    - Want to switch models? Seamlessly switch between OpenAI, Anthropic, Gemini, Ollama via config.
+### Tool Ecosystem (11 Built-in Tools)
 
-## 🏗️ Architecture Overview
+| Category | Tool | Function |
+|----------|------|----------|
+| File Operations | read_file | Read local files |
+| File Operations | write_file | Write local files |
+| File Operations | edit_file | Edit file content |
+| File Operations | list_dir | List directory contents |
+| Web Capabilities | web_search | Web search (Tavily/Brave/DDG) |
+| Web Capabilities | web_extract | Web content extraction |
+| Memory Management | remember | Proactively store memories |
+| Memory Management | recall | Retrieve memories |
+| Memory Management | forget | Delete/archive memories |
+| System Control | exec_command | Secure shell execution |
+| System Control | session_title | Manage session titles |
 
-### 1. System Interaction Flow
+### Skill Extension System
+
+| Skill | Function | Status |
+|-------|----------|--------|
+| skill-creator | Interactive guide for creating new skills | Built-in |
+| summarize | Intelligent document/conversation summarization | Built-in |
+| weather | Weather query demonstration | Built-in |
+| Custom Skills | Define new skills via Markdown | Supported |
+
+### Command Line Interface
+
+| Feature | Description |
+|---------|-------------|
+| Session Management | Interactively select, rename, and delete history sessions |
+| Auto-Title | Automatically generates session titles based on conversation |
+| Time Travel | Supports \\rollback and \\back commands to revert conversation state |
+| Rich Experience | Markdown rendering, loading animations, syntax highlighting |
+
+### Internationalization Support
+
+| Language | Status |
+|----------|--------|
+| Simplified Chinese | Full Support |
+| Traditional Chinese | Full Support |
+| English | Full Support |
+
+### Developer Features
+
+| Feature | Description |
+|---------|-------------|
+| Type Safety | Comprehensive use of Python Type Hints |
+| Code Quality | Ruff formatting + BasedPyright type checking |
+| Dependency Management | uv for fast package management |
+| Tech Stack | Python 3.13+, LangGraph, Pydantic v2 |
+
+## Key Advantages
+
+| Advantage | Description |
+|-----------|-------------|
+| Privacy First | Uses FastEmbed locally for vector generation, no cloud upload |
+| True Persistence | Structured memory storage with semantic retrieval |
+| Production Grade | Double-checked locking, auto-retry, timeout control |
+| Flexible Extension | Inherit FinchTool to add new tools |
+| Model Agnostic | Supports OpenAI, Anthropic, Gemini, Ollama, etc. |
+
+## Architecture Overview
+
+### System Interaction Flow
 
 ```mermaid
 sequenceDiagram
@@ -71,7 +101,7 @@ sequenceDiagram
     loop Think & Act
         Agent->>Agent: Plan Action
         alt Tool Call Needed
-            Agent->>Tools: Execute Tool (e.g. Search/File)
+            Agent->>Tools: Execute Tool
             Tools-->>Agent: Return Result
         end
     end
@@ -81,7 +111,7 @@ sequenceDiagram
     CLI-->>User: Display Result
 ```
 
-### 2. Core Components
+### Core Components
 
 ```mermaid
 classDiagram
@@ -110,64 +140,70 @@ classDiagram
     MemoryManager --> VectorStore : Semantic Storage
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- Windows / Linux / macOS
-- Python 3.13+
-- [uv](https://github.com/astral-sh/uv) (Recommended)
+| Item | Requirement |
+|------|-------------|
+| OS | Windows / Linux / macOS |
+| Python | 3.13+ |
+| Package Manager | uv (Recommended) |
 
 ### Installation
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/yourusername/finchbot.git
-    cd finchbot
-    ```
+1. Clone the repository
 
-2.  Create environment and install dependencies using uv:
-    ```bash
-    uv sync
-    ```
+```bash
+git clone https://github.com/yourusername/finchbot.git
+cd finchbot
+```
 
-3.  Configure environment variables:
-    Copy `.env.example` to `.env` and fill in your API Key.
-    ```bash
-    cp .env.example .env
-    ```
+2. Create environment and install dependencies using uv
+
+```bash
+uv sync
+```
+
+3. Configure environment variables
+
+Copy `.env.example` to `.env` and fill in your API Key
+
+```bash
+cp .env.example .env
+```
 
 ### Usage
 
-Start an interactive chat session:
+Start an interactive chat session
 
 ```bash
 uv run finchbot chat
 ```
 
-View help:
+View help
 
 ```bash
 uv run finchbot --help
 ```
 
-## 📖 Documentation
+## Documentation
 
-Detailed documentation is available in the `docs/` directory:
+| Document | Description |
+|----------|-------------|
+| [System Architecture](docs/en-US/architecture.md) | Architecture design |
+| [User Guide (CLI)](docs/en-US/guide/usage.md) | CLI usage tutorial |
+| [API Reference](docs/en-US/api.md) | API reference |
+| [Configuration Guide](docs/en-US/config.md) | Configuration options |
+| [Extension Guide](docs/en-US/guide/extension.md) | Adding tools/skills |
+| [Deployment Guide](docs/en-US/deployment.md) | Deployment instructions |
+| [Development Guide](docs/en-US/development.md) | Development environment setup |
+| [Contributing Guide](docs/en-US/contributing.md) | Contribution guidelines |
 
-- [System Architecture](docs/en-US/architecture.md) 🌟
-- [User Guide (CLI)](docs/en-US/guide/usage.md) 🌟
-- [API Reference](docs/en-US/api.md)
-- [Configuration Guide](docs/en-US/config.md)
-- [Extension Guide (Adding Tools/Skills)](docs/en-US/guide/extension.md)
-- [Deployment Guide](docs/en-US/deployment.md)
-- [Development Guide](docs/en-US/development.md)
-- [Contributing Guide](docs/en-US/contributing.md)
-
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please read the [Contributing Guide](docs/en-US/contributing.md) for more information.
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
