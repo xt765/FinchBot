@@ -15,8 +15,10 @@ from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from loguru import logger
 from rich.console import Console
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.rule import Rule
+from rich.text import Text
 
 from finchbot.config import load_config
 from finchbot.i18n import t
@@ -33,6 +35,7 @@ def _format_message(
     index: int,
     show_index: bool = True,
     max_content_len: int = 9999,
+    render_markdown: bool = True,
 ) -> None:
     """格式化并显示单条消息。
 
@@ -44,36 +47,22 @@ def _format_message(
         index: 消息在历史记录中的索引。
         show_index: 是否显示索引（用于回滚操作参考）。
         max_content_len: 内容最大显示长度（超过截断），默认不截断。
+        render_markdown: 是否将 AI 消息渲染为 Markdown，默认为 True。
     """
     msg_type = getattr(msg, "type", None)
     content = getattr(msg, "content", "") or ""
-    # tool_calls 是 AIMessage 的属性
     tool_calls = getattr(msg, "tool_calls", None) or []
-    # name 是 ToolMessage 的属性
     name = getattr(msg, "name", None)
 
     prefix = f"[{index}] " if show_index else ""
 
     panel_width = None
 
-    if msg_type == "human" or (hasattr(msg, "role") and msg.role == "user"):
+    msg_role = getattr(msg, "role", None)
+    if msg_type == "human" or msg_role == "user":
         role_label = t("cli.history.role_you")
         role_icon = "👤"
         role_color = "cyan"
-        console.print(
-            Panel(
-                str(content),  # 确保 content 是字符串
-                title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
-                border_style=role_color,
-                padding=(0, 1),
-                width=panel_width,
-            )
-        )
-
-    elif msg_type == "ai" or (hasattr(msg, "role") and msg.role == "assistant"):
-        role_label = t("cli.history.role_bot")
-        role_icon = "🐦"
-        role_color = "green"
         console.print(
             Panel(
                 str(content),
@@ -114,7 +103,24 @@ def _format_message(
             )
         )
 
-    elif msg_type == "system" or (hasattr(msg, "role") and msg.role == "system"):
+    elif msg_type == "ai" or msg_role == "assistant":
+        if not content:
+            return
+        role_label = t("cli.history.role_bot")
+        role_icon = "🐦"
+        role_color = "green"
+        body = Markdown(str(content)) if render_markdown else Text(str(content))
+        console.print(
+            Panel(
+                body,
+                title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
+                border_style=role_color,
+                padding=(0, 1),
+                width=panel_width,
+            )
+        )
+
+    elif msg_type == "system" or msg_role == "system":
         role_label = t("cli.history.role_system")
         role_icon = "⚙️"
         role_color = "dim"
@@ -144,7 +150,7 @@ def _format_message(
 
 
 def _display_messages_by_turn(
-    messages: list[BaseMessage | Any], show_index: bool = True
+    messages: list[BaseMessage | Any], show_index: bool = True, render_markdown: bool = True
 ) -> None:
     """按轮次分组显示消息。
 
@@ -153,6 +159,7 @@ def _display_messages_by_turn(
     Args:
         messages: 消息对象列表 (BaseMessage)。
         show_index: 是否显示索引。
+        render_markdown: 是否将 AI 消息渲染为 Markdown。
     """
     if not messages:
         return
@@ -164,40 +171,50 @@ def _display_messages_by_turn(
     while i < len(messages):
         msg = messages[i]
         msg_type = getattr(msg, "type", None)
+        msg_role = getattr(msg, "role", None)
 
-        if msg_type == "human" or (hasattr(msg, "role") and msg.role == "user"):
+        if msg_type == "human" or msg_role == "user":
             turn_num += 1
             console.print()
             console.print(f"[dim]─── 第 {turn_num} 轮对话 ───[/dim]")
 
-            _format_message(msg, i, show_index=show_index)
+            _format_message(msg, i, show_index=show_index, render_markdown=render_markdown)
 
             j = i + 1
             while j < len(messages):
                 next_msg = messages[j]
                 next_type = getattr(next_msg, "type", None)
+                next_role = getattr(next_msg, "role", None)
                 tool_calls = getattr(next_msg, "tool_calls", None) or []
                 name = getattr(next_msg, "name", None)
 
-                if next_type == "human" or (
-                    hasattr(next_msg, "role") and next_msg.role == "user"
-                ):
+                if next_type == "human" or next_role == "user":
                     break
-                if next_type == "ai" or (
-                    hasattr(next_msg, "role") and next_msg.role == "assistant"
-                ):
-                    _format_message(next_msg, j, show_index=show_index, max_content_len=80)
+                if next_type == "ai" or next_role == "assistant":
+                    _format_message(
+                        next_msg,
+                        j,
+                        show_index=show_index,
+                        max_content_len=80,
+                        render_markdown=render_markdown,
+                    )
                     j += 1
                     break
                 elif tool_calls or name:
-                    _format_message(next_msg, j, show_index=show_index, max_content_len=50)
+                    _format_message(
+                        next_msg,
+                        j,
+                        show_index=show_index,
+                        max_content_len=50,
+                        render_markdown=render_markdown,
+                    )
                     j += 1
                 else:
                     break
 
             i = j
         else:
-            _format_message(msg, i, show_index=show_index)
+            _format_message(msg, i, show_index=show_index, render_markdown=render_markdown)
             i += 1
 
     console.print()
@@ -442,6 +459,7 @@ def _run_chat_session(
     model: str | None,
     workspace: str | None,
     first_message: str | None = None,
+    render_markdown: bool = True,
 ) -> None:
     """启动聊天会话（REPL 模式）.
 
@@ -450,6 +468,7 @@ def _run_chat_session(
         model: 模型名称
         workspace: 工作目录
         first_message: 第一条消息（可选，如提供则先发送此消息再进入交互模式）
+        render_markdown: 是否将 AI 消息渲染为 Markdown，默认为 True
     """
     from prompt_toolkit import PromptSession
     from prompt_toolkit.formatted_text import HTML
@@ -526,7 +545,7 @@ def _run_chat_session(
     messages = current_state.values.get("messages", []) if current_state else []
     if messages:
         console.print(f"\n[dim]{t('cli.history.title')}[/dim]")
-        _display_messages_by_turn(messages, show_index=False)
+        _display_messages_by_turn(messages, show_index=False, render_markdown=render_markdown)
         console.print(f"[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]")
         console.print()
 
@@ -544,19 +563,34 @@ def _run_chat_session(
                         for msg in new_msgs:
                             if msg not in all_messages:
                                 all_messages.append(msg)
-                                _format_message(msg, len(all_messages) - 1, show_index=False)
+                                _format_message(
+                                    msg,
+                                    len(all_messages) - 1,
+                                    show_index=False,
+                                    render_markdown=render_markdown,
+                                )
                     elif chunk.get("model", {}).get("messages"):
                         new_msgs = chunk["model"]["messages"]
                         for msg in new_msgs:
                             if msg not in all_messages:
                                 all_messages.append(msg)
-                                _format_message(msg, len(all_messages) - 1, show_index=False)
+                                _format_message(
+                                    msg,
+                                    len(all_messages) - 1,
+                                    show_index=False,
+                                    render_markdown=render_markdown,
+                                )
                     elif chunk.get("tools", {}).get("messages"):
                         new_msgs = chunk["tools"]["messages"]
                         for msg in new_msgs:
                             if msg not in all_messages:
                                 all_messages.append(msg)
-                                _format_message(msg, len(all_messages) - 1, show_index=False)
+                                _format_message(
+                                    msg,
+                                    len(all_messages) - 1,
+                                    show_index=False,
+                                    render_markdown=render_markdown,
+                                )
             except Exception as stream_error:
                 logger.error(f"Stream error: {stream_error}")
                 console.print(f"[red]Error: {stream_error}[/red]")
@@ -599,7 +633,9 @@ def _run_chat_session(
                     messages = current_state.values.get("messages", [])
 
                     console.print(f"\n[dim]{t('cli.history.title')}[/dim]")
-                    _display_messages_by_turn(messages, show_index=True)
+                    _display_messages_by_turn(
+                        messages, show_index=True, render_markdown=render_markdown
+                    )
                     console.print(
                         f"[dim]{t('cli.history.total_messages').format(len(messages))}[/dim]"
                     )
@@ -717,19 +753,34 @@ def _run_chat_session(
                             for msg in new_msgs:
                                 if msg not in all_messages:
                                     all_messages.append(msg)
-                                    _format_message(msg, len(all_messages) - 1, show_index=False)
+                                    _format_message(
+                                        msg,
+                                        len(all_messages) - 1,
+                                        show_index=False,
+                                        render_markdown=render_markdown,
+                                    )
                         elif chunk.get("model", {}).get("messages"):
                             new_msgs = chunk["model"]["messages"]
                             for msg in new_msgs:
                                 if msg not in all_messages:
                                     all_messages.append(msg)
-                                    _format_message(msg, len(all_messages) - 1, show_index=False)
+                                    _format_message(
+                                        msg,
+                                        len(all_messages) - 1,
+                                        show_index=False,
+                                        render_markdown=render_markdown,
+                                    )
                         elif chunk.get("tools", {}).get("messages"):
                             new_msgs = chunk["tools"]["messages"]
                             for msg in new_msgs:
                                 if msg not in all_messages:
                                     all_messages.append(msg)
-                                    _format_message(msg, len(all_messages) - 1, show_index=False)
+                                    _format_message(
+                                        msg,
+                                        len(all_messages) - 1,
+                                        show_index=False,
+                                        render_markdown=render_markdown,
+                                    )
                 except Exception as stream_error:
                     logger.error(f"Stream error: {stream_error}")
                     console.print(f"[red]Error: {stream_error}[/red]")
