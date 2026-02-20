@@ -242,8 +242,9 @@ def _stream_ai_response(
                 mode, data = event
                 if mode == "messages":
                     if isinstance(data, tuple) and len(data) == 2:
-                        token, metadata = data
-                        if isinstance(token, str):
+                        msg_chunk, metadata = data
+                        token = getattr(msg_chunk, "content", "") or ""
+                        if token:
                             full_content += token
                             live.update(
                                 Panel(
