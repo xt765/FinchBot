@@ -4,11 +4,14 @@
 参考 Nanobot 的 Tool 设计，增强验证和错误处理。
 """
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from langchain_core.tools import BaseTool
 from loguru import logger
+from pydantic import Field
 
 
 class FinchTool(BaseTool):
@@ -22,14 +25,22 @@ class FinchTool(BaseTool):
         description: 工具描述，说明工具功能。
         parameters: 工具参数定义（可选）。
         allowed_dirs: 允许访问的目录列表（可选）。
+        workspace: 工作目录路径（可选）。
     """
 
-    # 工具参数定义（子类可覆盖）
-    # 使用 ClassVar 避免与 Pydantic 字段冲突
-    parameters: ClassVar[dict[str, Any]] = {}
+    name: str = Field(default="", description="Tool name")
+    description: str = Field(default="", description="Tool description")
+    workspace: str = Field(default="", exclude=True)
 
-    # 默认允许访问的目录（子类可覆盖）
     allowed_dirs: list[Path] | None = None
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """返回工具参数定义.
+
+        子类可以覆写此属性以提供自定义参数定义。
+        """
+        return {}
 
     def validate_path(self, path: str) -> Path | None:
         """验证并解析路径.

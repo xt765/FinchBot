@@ -3,8 +3,10 @@
 提供文件读写、编辑、目录列表等功能。
 """
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from finchbot.i18n import t
 from finchbot.tools.base import FinchTool
@@ -60,16 +62,20 @@ class ReadFileTool(FinchTool):
 
     name: str = "read_file"
     description: str = t("tools.read_file.description")
-    parameters: ClassVar[dict[str, Any]] = {
-        "type": "object",
-        "properties": {
-            "file_path": {
-                "type": "string",
-                "description": t("tools.read_file.param_file_path"),
-            }
-        },
-        "required": ["file_path"],
-    }
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """返回参数定义."""
+        return {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": t("tools.read_file.param_file_path"),
+                }
+            },
+            "required": ["file_path"],
+        }
 
     def _run(self, file_path: str) -> str:
         """执行读取文件操作.
@@ -80,16 +86,13 @@ class ReadFileTool(FinchTool):
         Returns:
             str: 文件内容字符串。如果读取失败（如文件不存在、权限不足、路径越权），则返回以 "Error:" 开头的错误信息。
         """
-        # 1. 路径安全检查
         safe_path = self.validate_path(file_path)
         if not safe_path:
             return f"Error: {t('tools.common.access_denied')}: {file_path}"
 
-        # 2. 检查文件是否存在
         if not safe_path.exists():
             return f"Error: {t('tools.read_file.file_not_found')}: {file_path}"
 
-        # 3. 读取文件内容
         try:
             content = safe_path.read_text(encoding="utf-8")
             return content
@@ -106,20 +109,24 @@ class WriteFileTool(FinchTool):
 
     name: str = "write_file"
     description: str = t("tools.write_file.description")
-    parameters: ClassVar[dict[str, Any]] = {
-        "type": "object",
-        "properties": {
-            "file_path": {
-                "type": "string",
-                "description": t("tools.write_file.param_file_path"),
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """返回参数定义."""
+        return {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": t("tools.write_file.param_file_path"),
+                },
+                "content": {
+                    "type": "string",
+                    "description": t("tools.write_file.param_content"),
+                },
             },
-            "content": {
-                "type": "string",
-                "description": t("tools.write_file.param_content"),
-            },
-        },
-        "required": ["file_path", "content"],
-    }
+            "required": ["file_path", "content"],
+        }
 
     def _run(self, file_path: str, content: str) -> str:
         """执行写入文件操作.
@@ -133,16 +140,12 @@ class WriteFileTool(FinchTool):
         Returns:
             str: 成功消息或以 "Error:" 开头的错误信息。
         """
-        # 1. 路径安全检查
         safe_path = self.validate_path(file_path)
         if not safe_path:
             return f"Error: {t('tools.common.access_denied')}: {file_path}"
 
         try:
-            # 2. 自动创建父目录
             safe_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # 3. 写入内容
             safe_path.write_text(content, encoding="utf-8")
             return f"Success: {t('tools.write_file.success')}: {file_path}"
         except Exception as e:
@@ -157,16 +160,20 @@ class ListDirTool(FinchTool):
 
     name: str = "list_dir"
     description: str = t("tools.list_dir.description")
-    parameters: ClassVar[dict[str, Any]] = {
-        "type": "object",
-        "properties": {
-            "dir_path": {
-                "type": "string",
-                "description": t("tools.list_dir.param_dir_path"),
-            }
-        },
-        "required": ["dir_path"],
-    }
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """返回参数定义."""
+        return {
+            "type": "object",
+            "properties": {
+                "dir_path": {
+                    "type": "string",
+                    "description": t("tools.list_dir.param_dir_path"),
+                }
+            },
+            "required": ["dir_path"],
+        }
 
     def _run(self, dir_path: str = ".") -> str:
         """执行列出目录操作.
@@ -177,17 +184,14 @@ class ListDirTool(FinchTool):
         Returns:
             str: 包含文件和目录列表的格式化字符串，或错误信息。
         """
-        # 1. 路径安全检查
         safe_path = self.validate_path(dir_path)
         if not safe_path:
             return f"Error: {t('tools.common.access_denied')}: {dir_path}"
 
-        # 2. 检查是否为目录
         if not safe_path.is_dir():
             return f"Error: {t('tools.list_dir.not_a_directory')}: {dir_path}"
 
         try:
-            # 3. 获取目录内容并排序
             entries = sorted(safe_path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
             result = []
             for entry in entries:
@@ -208,24 +212,28 @@ class EditFileTool(FinchTool):
 
     name: str = "edit_file"
     description: str = t("tools.edit_file.description")
-    parameters: ClassVar[dict[str, Any]] = {
-        "type": "object",
-        "properties": {
-            "file_path": {
-                "type": "string",
-                "description": t("tools.read_file.param_file_path"),
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """返回参数定义."""
+        return {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": t("tools.read_file.param_file_path"),
+                },
+                "old_str": {
+                    "type": "string",
+                    "description": "The exact string to be replaced.",
+                },
+                "new_str": {
+                    "type": "string",
+                    "description": "The new string to replace with.",
+                },
             },
-            "old_str": {
-                "type": "string",
-                "description": "The exact string to be replaced.",
-            },
-            "new_str": {
-                "type": "string",
-                "description": "The new string to replace with.",
-            },
-        },
-        "required": ["file_path", "old_str", "new_str"],
-    }
+            "required": ["file_path", "old_str", "new_str"],
+        }
 
     def _run(self, file_path: str, old_str: str, new_str: str) -> str:
         """执行编辑文件操作.
@@ -238,31 +246,25 @@ class EditFileTool(FinchTool):
         Returns:
             str: 成功消息或错误信息。
         """
-        # 1. 路径安全检查
         safe_path = self.validate_path(file_path)
         if not safe_path:
             return f"Error: {t('tools.common.access_denied')}: {file_path}"
 
-        # 2. 检查文件是否存在
         if not safe_path.exists():
             return f"Error: {t('tools.read_file.file_not_found')}: {file_path}"
 
         try:
-            # 3. 读取内容
             content = safe_path.read_text(encoding="utf-8")
 
-            # 4. 检查旧字符串是否存在
             if old_str not in content:
                 return "Error: old_str not found in file. Please ensure exact match including whitespace."
 
-            # 5. 检查是否有多处匹配（为了安全，目前只替换第一处，或者应该替换全部？通常 edit 工具替换第一处）
             count = content.count(old_str)
             if count > 1:
                 return (
                     f"Warning: old_str found {count} times. Only the first occurrence was replaced."
                 )
 
-            # 6. 执行替换
             new_content = content.replace(old_str, new_str, 1)
             safe_path.write_text(new_content, encoding="utf-8")
 
