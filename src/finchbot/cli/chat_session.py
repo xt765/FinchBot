@@ -228,6 +228,18 @@ def _stream_ai_response(
     all_messages: list[BaseMessage] = []
     pending_tool_calls: list[dict] = []
 
+    def _render_ai_content(content: str) -> None:
+        """渲染 AI 响应内容."""
+        if render_markdown and content.strip():
+            console.print(
+                Panel(
+                    Markdown(content),
+                    title="🐦 FinchBot",
+                    border_style="green",
+                    padding=(0, 1),
+                )
+            )
+
     with Live(
         Panel(Text(""), title="🐦 FinchBot", border_style="green"),
         console=console,
@@ -260,6 +272,9 @@ def _stream_ai_response(
                                 continue
                             for msg in messages:
                                 if hasattr(msg, "tool_calls") and msg.tool_calls:
+                                    if full_content.strip():
+                                        _render_ai_content(full_content)
+                                        full_content = ""
                                     for tc in msg.tool_calls:
                                         pending_tool_calls.append(
                                             {
@@ -284,26 +299,8 @@ def _stream_ai_response(
                                             break
                                 all_messages.append(msg)
 
-    final_ai_content = ""
-    for msg in reversed(all_messages):
-        if hasattr(msg, "type") and msg.type == "ai":
-            content = getattr(msg, "content", "") or ""
-            if content:
-                final_ai_content = content
-                break
-
-    if len(full_content) > len(final_ai_content):
-        final_ai_content = full_content
-
-    if render_markdown and final_ai_content:
-        console.print(
-            Panel(
-                Markdown(final_ai_content),
-                title="🐦 FinchBot",
-                border_style="green",
-                padding=(0, 1),
-            )
-        )
+    if full_content.strip():
+        _render_ai_content(full_content)
 
     return all_messages
 
