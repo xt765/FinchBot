@@ -394,6 +394,15 @@ def _display_messages_by_turn(
                 if next_type == "human" or next_role == "user":
                     break
                 if next_type == "ai" or next_role == "assistant":
+                    ai_content = getattr(next_msg, "content", "") or ""
+                    if ai_content:
+                        _format_message(
+                            next_msg,
+                            j,
+                            show_index=show_index,
+                            max_content_len=80,
+                            render_markdown=render_markdown,
+                        )
                     if tool_calls:
                         for tc in tool_calls:
                             tool_name = tc.get("name", "unknown")
@@ -416,13 +425,6 @@ def _display_messages_by_turn(
                             )
                         j += 1
                     else:
-                        _format_message(
-                            next_msg,
-                            j,
-                            show_index=show_index,
-                            max_content_len=80,
-                            render_markdown=render_markdown,
-                        )
                         j += 1
                         break
                 elif name:
