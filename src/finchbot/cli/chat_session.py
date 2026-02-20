@@ -401,11 +401,13 @@ def _setup_chat_tools(config_obj: Any, ws_path: Path, session_id: str) -> tuple[
     Args:
         config_obj: 配置对象
         ws_path: 工作目录路径
+        session_id: 会话 ID
 
     Returns:
         (tools, web_enabled) 元组
     """
     from finchbot.agent.skills import BUILTIN_SKILLS_DIR
+    from finchbot.memory import MemoryManager
     from finchbot.tools import (
         EditFileTool,
         ExecTool,
@@ -425,14 +427,16 @@ def _setup_chat_tools(config_obj: Any, ws_path: Path, session_id: str) -> tuple[
         BUILTIN_SKILLS_DIR.parent,
     ]
 
+    memory_manager = MemoryManager(ws_path)
+
     tools = [
         ReadFileTool(allowed_dirs=allowed_read_dirs),
         WriteFileTool(allowed_dirs=[ws_path]),
         EditFileTool(allowed_dirs=[ws_path]),
         ListDirTool(allowed_dirs=allowed_read_dirs),
-        RememberTool(workspace=str(ws_path)),
-        RecallTool(workspace=str(ws_path)),
-        ForgetTool(workspace=str(ws_path)),
+        RememberTool(workspace=str(ws_path), memory_manager=memory_manager),
+        RecallTool(workspace=str(ws_path), memory_manager=memory_manager),
+        ForgetTool(workspace=str(ws_path), memory_manager=memory_manager),
         SessionTitleTool(workspace=str(ws_path), session_id=session_id),
         ExecTool(timeout=config_obj.tools.exec.timeout),
         WebExtractTool(),

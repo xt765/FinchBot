@@ -3,12 +3,18 @@
 提供 Agent 主动保存和检索记忆的能力。
 """
 
-from typing import Any
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
 from finchbot.i18n import t
 from finchbot.tools.base import FinchTool
+
+if TYPE_CHECKING:
+    from finchbot.memory import MemoryManager
 
 
 class RememberTool(FinchTool):
@@ -20,6 +26,7 @@ class RememberTool(FinchTool):
     name: str = Field(default="remember", description="Tool name")
     description: str = Field(default="", description="Tool description")
     workspace: str = Field(default="", exclude=True)
+    memory_manager: MemoryManager | None = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -51,6 +58,17 @@ class RememberTool(FinchTool):
             "required": ["content"],
         }
 
+    def _get_manager(self) -> MemoryManager:
+        """获取或创建 MemoryManager 实例."""
+        if self.memory_manager is not None:
+            return self.memory_manager
+        from finchbot.memory import MemoryManager
+
+        workspace = (
+            Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
+        )
+        return MemoryManager(workspace)
+
     def _run(
         self,
         content: str,
@@ -67,14 +85,7 @@ class RememberTool(FinchTool):
         Returns:
             操作结果消息。
         """
-        from pathlib import Path
-
-        from finchbot.memory import MemoryManager
-
-        workspace = (
-            Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
-        )
-        manager = MemoryManager(workspace)
+        manager = self._get_manager()
 
         memory = manager.remember(
             content=content,
@@ -96,6 +107,7 @@ class RecallTool(FinchTool):
     name: str = Field(default="recall", description="Tool name")
     description: str = Field(default="", description="Tool description")
     workspace: str = Field(default="", exclude=True)
+    memory_manager: MemoryManager | None = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -146,6 +158,17 @@ class RecallTool(FinchTool):
             "required": ["query"],
         }
 
+    def _get_manager(self) -> MemoryManager:
+        """获取或创建 MemoryManager 实例."""
+        if self.memory_manager is not None:
+            return self.memory_manager
+        from finchbot.memory import MemoryManager
+
+        workspace = (
+            Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
+        )
+        return MemoryManager(workspace)
+
     def _run(
         self,
         query: str,
@@ -166,16 +189,10 @@ class RecallTool(FinchTool):
         Returns:
             检索结果字符串。
         """
-        from pathlib import Path
+        from finchbot.memory import QueryType
 
-        from finchbot.memory import MemoryManager, QueryType
+        manager = self._get_manager()
 
-        workspace = (
-            Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
-        )
-        manager = MemoryManager(workspace)
-
-        # 将字符串策略转换为枚举
         try:
             query_type_enum = QueryType(query_type.lower())
         except ValueError:
@@ -217,6 +234,7 @@ class ForgetTool(FinchTool):
     name: str = Field(default="forget", description="Tool name")
     description: str = Field(default="", description="Tool description")
     workspace: str = Field(default="", exclude=True)
+    memory_manager: MemoryManager | None = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -238,6 +256,17 @@ class ForgetTool(FinchTool):
             "required": ["pattern"],
         }
 
+    def _get_manager(self) -> MemoryManager:
+        """获取或创建 MemoryManager 实例."""
+        if self.memory_manager is not None:
+            return self.memory_manager
+        from finchbot.memory import MemoryManager
+
+        workspace = (
+            Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
+        )
+        return MemoryManager(workspace)
+
     def _run(self, pattern: str) -> str:
         """执行记忆删除.
 
@@ -247,14 +276,7 @@ class ForgetTool(FinchTool):
         Returns:
             操作结果消息。
         """
-        from pathlib import Path
-
-        from finchbot.memory import MemoryManager
-
-        workspace = (
-            Path(self.workspace) if self.workspace else Path.home() / ".finchbot" / "workspace"
-        )
-        manager = MemoryManager(workspace)
+        manager = self._get_manager()
 
         stats = manager.forget(pattern)
 
