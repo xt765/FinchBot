@@ -154,6 +154,77 @@ def _format_message(
         )
 
 
+def _render_tool_message(
+    tool_name: str,
+    result: str,
+    console: Console,
+    tool_args: dict | None = None,
+    duration: float | None = None,
+    show_index: bool = False,
+    index: int = 0,
+) -> None:
+    """统一的工具消息渲染函数.
+
+    Args:
+        tool_name: 工具名称
+        result: 执行结果
+        console: Rich Console
+        tool_args: 工具参数（可选）
+        duration: 执行时间（可选）
+        show_index: 是否显示索引
+        index: 消息索引
+    """
+    content_parts: list[Any] = []
+
+    if tool_args:
+        args_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
+        args_table.add_column(t("cli.tool_display.param_column"), style="cyan", no_wrap=True)
+        args_table.add_column(t("cli.tool_display.value_column"), style="white")
+
+        for key, value in tool_args.items():
+            value_str = str(value)
+            if len(value_str) > 60:
+                value_str = value_str[:57] + "..."
+            args_table.add_row(key, value_str)
+
+        content_parts.extend(
+            [
+                Text("📥 " + t("cli.tool_display.call_label") + ":", style="bold"),
+                args_table,
+                Text(""),
+            ]
+        )
+
+    display_result = result
+    if len(display_result) > 200:
+        display_result = display_result[:197] + "..."
+
+    content_parts.extend(
+        [
+            Text("📤 " + t("cli.tool_display.result_label") + ":", style="bold"),
+            Text(display_result),
+        ]
+    )
+
+    if duration is not None:
+        content_parts.extend(
+            [
+                Text(""),
+                Text(t("cli.tool_display.execution_time").format(duration), style="dim"),
+            ]
+        )
+
+    prefix = f"[{index}] " if show_index else ""
+    console.print(
+        Panel(
+            Group(*content_parts),
+            title=f"{prefix}🔧 {tool_name}",
+            border_style="yellow",
+            padding=(0, 1),
+        )
+    )
+
+
 def _display_tool_call_with_result(
     tool_name: str,
     tool_args: dict,
@@ -161,7 +232,7 @@ def _display_tool_call_with_result(
     duration: float,
     console: Console,
 ) -> None:
-    """显示工具调用和结果在同一个 Panel.
+    """显示工具调用和结果在同一个 Panel（流式输出专用）.
 
     Args:
         tool_name: 工具名称
@@ -170,38 +241,7 @@ def _display_tool_call_with_result(
         duration: 执行时间（秒）
         console: Rich Console
     """
-    args_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
-    args_table.add_column(t("cli.tool_display.param_column"), style="cyan", no_wrap=True)
-    args_table.add_column(t("cli.tool_display.value_column"), style="white")
-
-    for key, value in tool_args.items():
-        value_str = str(value)
-        if len(value_str) > 60:
-            value_str = value_str[:57] + "..."
-        args_table.add_row(key, value_str)
-
-    display_result = result
-    if len(display_result) > 200:
-        display_result = display_result[:197] + "..."
-
-    content = Group(
-        Text("📥 " + t("cli.tool_display.call_label") + ":", style="bold"),
-        args_table,
-        Text(""),
-        Text("📤 " + t("cli.tool_display.result_label") + ":", style="bold"),
-        Text(display_result),
-        Text(""),
-        Text(t("cli.tool_display.execution_time").format(duration), style="dim"),
-    )
-
-    console.print(
-        Panel(
-            content,
-            title=f"🔧 {tool_name}",
-            border_style="yellow",
-            padding=(0, 1),
-        )
-    )
+    _render_tool_message(tool_name, result, console, tool_args=tool_args, duration=duration)
 
 
 def _stream_ai_response(
@@ -257,8 +297,7 @@ def _stream_ai_response(
         Panel(Text(""), title="🐦 FinchBot", border_style="green"),
         console=console,
         refresh_per_second=10,
-        transient=False,
-        vertical_overflow="visible",
+        transient=True,
     ) as live:
         for event in agent.stream(input_data, config=config, stream_mode=["messages", "updates"]):
             if isinstance(event, tuple) and len(event) == 2:
@@ -292,7 +331,9 @@ def _stream_ai_response(
                                         full_content = ""
                                         live.update(
                                             Panel(
-                                                Text(""), title="🐦 FinchBot", border_style="green"
+                                                Text(""),
+                                                title="🐦 FinchBot",
+                                                border_style="green",
                                             )
                                         )
                                     for tc in msg.tool_calls:
@@ -327,7 +368,7 @@ def _stream_ai_response(
                                 all_messages.append(msg)
 
     if full_content.strip():
-        pass
+        _render_ai_content(full_content)
 
     return all_messages
 
@@ -383,14 +424,28 @@ def _display_messages_by_turn(
                     )
                     j += 1
                     break
-                elif tool_calls or name:
-                    _format_message(
-                        next_msg,
-                        j,
-                        show_index=show_index,
-                        max_content_len=50,
-                        render_markdown=render_markdown,
-                    )
+                elif tool_calls:
+                    for tc in tool_calls:
+                        tool_name = tc.get("name", "unknown")
+                        tool_args = tc.get("args", {})
+                        tool_id = tc.get("id")
+                        result = ""
+                        for k in range(j + 1, len(messages)):
+                            result_msg = messages[k]
+                            result_tool_id = getattr(result_msg, "tool_call_id", None)
+                            if result_tool_id and result_tool_id == tool_id:
+                                result = str(getattr(result_msg, "content", ""))
+                                break
+                        _render_tool_message(
+                            tool_name,
+                            result or "(无结果)",
+                            console,
+                            tool_args=tool_args if tool_args else None,
+                            show_index=show_index,
+                            index=j,
+                        )
+                    j += 1
+                elif name:
                     j += 1
                 else:
                     break
