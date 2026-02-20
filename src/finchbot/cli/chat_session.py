@@ -252,16 +252,20 @@ def _stream_ai_response(
                 if mode == "messages":
                     if isinstance(data, tuple) and len(data) == 2:
                         msg_chunk, metadata = data
-                        token = getattr(msg_chunk, "content", "") or ""
-                        if token:
-                            full_content += token
-                            live.update(
-                                Panel(
-                                    Text(full_content),
-                                    title="🐦 FinchBot",
-                                    border_style="green",
+                        node_name = (
+                            metadata.get("langgraph_node", "") if isinstance(metadata, dict) else ""
+                        )
+                        if node_name == "model" or node_name == "agent":
+                            token = getattr(msg_chunk, "content", "") or ""
+                            if token:
+                                full_content += token
+                                live.update(
+                                    Panel(
+                                        Text(full_content),
+                                        title="🐦 FinchBot",
+                                        border_style="green",
+                                    )
                                 )
-                            )
                 elif mode == "updates":
                     if isinstance(data, dict):
                         for _node_name, node_data in data.items():
