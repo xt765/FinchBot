@@ -50,8 +50,22 @@ Out of the Box → Zero-config startup, automatic fallback, rich CLI
 
 FinchBot is designed with **"Out of the Box"** as a core principle—no complex setup required:
 
+**Three Commands to Get Started:**
+
+```bash
+# Step 1: Configure API keys and default model
+uv run finchbot config
+
+# Step 2: Manage your sessions
+uv run finchbot sessions
+
+# Step 3: Start chatting
+uv run finchbot chat
+```
+
 | Feature | Description |
 |:---:|:---|
+| **Three-Step Start** | `config` → `sessions` → `chat`, complete workflow in three commands |
 | **Environment Variables** | All configurations can be set via environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.) |
 | **Rich CLI Interface** | Full-screen keyboard navigation with ↑/↓ arrows, interactive selection |
 | **i18n Support** | Built-in Chinese/English support, auto-detects system language |

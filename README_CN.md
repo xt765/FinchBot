@@ -50,8 +50,22 @@
 
 FinchBot 将 **"开箱即用"** 作为核心设计理念——无需复杂配置即可上手：
 
+**三步快速上手：**
+
+```bash
+# 第一步：配置 API 密钥和默认模型
+uv run finchbot config
+
+# 第二步：管理你的会话
+uv run finchbot sessions
+
+# 第三步：开始对话
+uv run finchbot chat
+```
+
 | 特性 | 说明 |
 |:---:|:---|
+| **三步上手** | `config` → `sessions` → `chat`，三个命令完成完整工作流程 |
 | **环境变量配置** | 所有配置均可通过环境变量设置（`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 等） |
 | **Rich CLI 界面** | 全屏键盘导航，↑/↓ 箭头选择，交互式操作 |
 | **i18n 国际化** | 内置中英文支持，自动检测系统语言 |
