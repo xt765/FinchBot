@@ -241,7 +241,11 @@ def _stream_ai_response(
         for event in agent.stream(input_data, config=config, stream_mode=["messages", "updates"]):
             if isinstance(event, tuple):
                 token, metadata = event
-                if metadata.get("langgraph_node") == "model":
+                if (
+                    isinstance(metadata, dict)
+                    and metadata.get("langgraph_node") == "model"
+                    or isinstance(token, str)
+                ):
                     full_content += token
                     live.update(
                         Panel(
@@ -250,9 +254,13 @@ def _stream_ai_response(
                             border_style="green",
                         )
                     )
-            else:
+            elif isinstance(event, dict):
                 for _node_name, node_data in event.items():
+                    if not isinstance(node_data, dict):
+                        continue
                     messages = node_data.get("messages", [])
+                    if not messages:
+                        continue
                     for msg in messages:
                         if hasattr(msg, "tool_calls") and msg.tool_calls:
                             for tc in msg.tool_calls:
