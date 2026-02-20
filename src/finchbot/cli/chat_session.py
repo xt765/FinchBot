@@ -258,6 +258,7 @@ def _stream_ai_response(
         console=console,
         refresh_per_second=10,
         transient=False,
+        vertical_overflow="visible",
     ) as live:
         for event in agent.stream(input_data, config=config, stream_mode=["messages", "updates"]):
             if isinstance(event, tuple) and len(event) == 2:
@@ -287,8 +288,13 @@ def _stream_ai_response(
                             for msg in messages:
                                 if hasattr(msg, "tool_calls") and msg.tool_calls:
                                     if full_content.strip():
-                                        console.print()
+                                        _render_ai_content(full_content)
                                         full_content = ""
+                                        live.update(
+                                            Panel(
+                                                Text(""), title="🐦 FinchBot", border_style="green"
+                                            )
+                                        )
                                     for tc in msg.tool_calls:
                                         pending_tool_calls.append(
                                             {
@@ -310,11 +316,18 @@ def _stream_ai_response(
                                                 console,
                                             )
                                             pending_tool_calls.pop(i)
+                                            live.update(
+                                                Panel(
+                                                    Text(""),
+                                                    title="🐦 FinchBot",
+                                                    border_style="green",
+                                                )
+                                            )
                                             break
                                 all_messages.append(msg)
 
     if full_content.strip():
-        console.print()
+        pass
 
     return all_messages
 
