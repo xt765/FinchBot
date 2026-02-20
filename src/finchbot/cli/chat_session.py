@@ -230,7 +230,6 @@ def _stream_ai_response(
     full_content = ""
     all_messages: list[BaseMessage] = []
     tool_start_time: float | None = None
-    current_tool_name: str | None = None
 
     with Live(
         Panel(Text(""), title="🐦 FinchBot", border_style="green"),
@@ -239,41 +238,43 @@ def _stream_ai_response(
         transient=True,
     ) as live:
         for event in agent.stream(input_data, config=config, stream_mode=["messages", "updates"]):
-            if isinstance(event, tuple):
-                token, metadata = event
-                if (
-                    isinstance(metadata, dict)
-                    and metadata.get("langgraph_node") == "model"
-                    or isinstance(token, str)
-                ):
-                    full_content += token
-                    live.update(
-                        Panel(
-                            Text(full_content),
-                            title="🐦 FinchBot",
-                            border_style="green",
-                        )
-                    )
-            elif isinstance(event, dict):
-                for _node_name, node_data in event.items():
-                    if not isinstance(node_data, dict):
-                        continue
-                    messages = node_data.get("messages", [])
-                    if not messages:
-                        continue
-                    for msg in messages:
-                        if hasattr(msg, "tool_calls") and msg.tool_calls:
-                            for tc in msg.tool_calls:
-                                tool_name: str = tc.get("name") or "unknown"
-                                _display_tool_call(tool_name, tc.get("args", {}), console)
-                                tool_start_time = time.time()
-                        elif hasattr(msg, "name") and msg.name:
-                            duration = 0.0
-                            if tool_start_time:
-                                duration = time.time() - tool_start_time
-                                tool_start_time = None
-                            _display_tool_result(msg.name, str(msg.content), duration, console)
-                        all_messages.append(msg)
+            if isinstance(event, tuple) and len(event) == 2:
+                mode, data = event
+                if mode == "messages":
+                    if isinstance(data, tuple) and len(data) == 2:
+                        token, metadata = data
+                        if isinstance(token, str):
+                            full_content += token
+                            live.update(
+                                Panel(
+                                    Text(full_content),
+                                    title="🐦 FinchBot",
+                                    border_style="green",
+                                )
+                            )
+                elif mode == "updates":
+                    if isinstance(data, dict):
+                        for _node_name, node_data in data.items():
+                            if not isinstance(node_data, dict):
+                                continue
+                            messages = node_data.get("messages", [])
+                            if not messages:
+                                continue
+                            for msg in messages:
+                                if hasattr(msg, "tool_calls") and msg.tool_calls:
+                                    for tc in msg.tool_calls:
+                                        tool_name: str = tc.get("name") or "unknown"
+                                        _display_tool_call(tool_name, tc.get("args", {}), console)
+                                        tool_start_time = time.time()
+                                elif hasattr(msg, "name") and msg.name:
+                                    duration = 0.0
+                                    if tool_start_time:
+                                        duration = time.time() - tool_start_time
+                                        tool_start_time = None
+                                    _display_tool_result(
+                                        msg.name, str(msg.content), duration, console
+                                    )
+                                all_messages.append(msg)
 
     if render_markdown and full_content:
         console.print(
