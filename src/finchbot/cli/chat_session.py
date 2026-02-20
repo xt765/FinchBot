@@ -257,7 +257,6 @@ def _stream_ai_response(
         Panel(Text(""), title="🐦 FinchBot", border_style="green"),
         console=console,
         refresh_per_second=10,
-        transient=True,
     ) as live:
         for event in agent.stream(input_data, config=config, stream_mode=["messages", "updates"]):
             if isinstance(event, tuple) and len(event) == 2:
@@ -287,7 +286,7 @@ def _stream_ai_response(
                             for msg in messages:
                                 if hasattr(msg, "tool_calls") and msg.tool_calls:
                                     if full_content.strip():
-                                        _render_ai_content(full_content)
+                                        console.print()
                                         full_content = ""
                                         live.update(
                                             Panel(
@@ -328,7 +327,7 @@ def _stream_ai_response(
                                 all_messages.append(msg)
 
     if full_content.strip():
-        _render_ai_content(full_content)
+        console.print()
 
     return all_messages
 
