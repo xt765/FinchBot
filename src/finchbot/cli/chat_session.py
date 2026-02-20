@@ -279,6 +279,13 @@ def _stream_ai_response(
                                     if full_content.strip():
                                         _render_ai_content(full_content)
                                         full_content = ""
+                                        live.update(
+                                            Panel(
+                                                Text(""),
+                                                title="🐦 FinchBot",
+                                                border_style="green",
+                                            )
+                                        )
                                     for tc in msg.tool_calls:
                                         pending_tool_calls.append(
                                             {
@@ -300,6 +307,13 @@ def _stream_ai_response(
                                                 console,
                                             )
                                             pending_tool_calls.pop(i)
+                                            live.update(
+                                                Panel(
+                                                    Text(""),
+                                                    title="🐦 FinchBot",
+                                                    border_style="green",
+                                                )
+                                            )
                                             break
                                 all_messages.append(msg)
 
