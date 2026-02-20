@@ -78,36 +78,6 @@ def _format_message(
             )
         )
 
-    elif tool_calls:
-        role_label = t("cli.history.role_tool")
-        role_icon = "🔧"
-        role_color = "yellow"
-        tool_names = [tc.get("name", "unknown") for tc in tool_calls]
-        tool_info = f" {', '.join(tool_names)}" if tool_names else ""
-        console.print(
-            Panel(
-                tool_info.strip() or "tool call",
-                title=f"[{role_color}]{prefix}{role_icon} {role_label}[/{role_color}]",
-                border_style=role_color,
-                padding=(0, 1),
-                width=panel_width,
-            )
-        )
-
-    elif name:
-        role_label = t("cli.history.role_tool")
-        role_icon = "🔧"
-        role_color = "yellow"
-        console.print(
-            Panel(
-                str(content),
-                title=f"[{role_color}]{prefix}{role_icon} {name}[/{role_color}]",
-                border_style=role_color,
-                padding=(0, 1),
-                width=panel_width,
-            )
-        )
-
     elif msg_type == "ai" or msg_role == "assistant":
         if not content:
             return
@@ -137,6 +107,15 @@ def _format_message(
                 padding=(0, 1),
                 width=panel_width,
             )
+        )
+
+    elif msg_type == "tool" or (name and not tool_calls):
+        _render_tool_message(
+            name or "unknown",
+            str(content),
+            console,
+            show_index=show_index,
+            index=index,
         )
 
     else:
