@@ -164,6 +164,8 @@ tool_result_title = "📤 {}"
 execution_time = "执行时间: {:.2f}s"
 param_column = "参数"
 value_column = "值"
+call_label = "调用"
+result_label = "结果"
 
 [cli.rollback]
 invalid_index = "无效索引。范围: 0-{}"

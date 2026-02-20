@@ -156,6 +156,8 @@ tool_result_title = "📤 {}"
 execution_time = "執行時間: {:.2f}s"
 param_column = "參數"
 value_column = "值"
+call_label = "調用"
+result_label = "結果"
 
 [cli.rollback]
 invalid_index = "無效索引。範圍: 0-{}"

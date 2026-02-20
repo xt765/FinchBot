@@ -156,6 +156,8 @@ tool_result_title = "📤 {}"
 execution_time = "Execution time: {:.2f}s"
 param_column = "Param"
 value_column = "Value"
+call_label = "Call"
+result_label = "Result"
 
 [cli.rollback]
 invalid_index = "Invalid index. Range: 0-{}"

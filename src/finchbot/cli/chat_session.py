@@ -17,7 +17,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from loguru import logger
 from rich import box
-from rich.console import Console
+from rich.console import Console, Group
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -154,54 +154,51 @@ def _format_message(
         )
 
 
-def _display_tool_call(tool_name: str, tool_args: dict, console: Console) -> None:
-    """显示工具调用参数.
+def _display_tool_call_with_result(
+    tool_name: str,
+    tool_args: dict,
+    result: str,
+    duration: float,
+    console: Console,
+) -> None:
+    """显示工具调用和结果在同一个 Panel.
 
     Args:
         tool_name: 工具名称
         tool_args: 工具参数
+        result: 执行结果
+        duration: 执行时间（秒）
         console: Rich Console
     """
-    table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
-    table.add_column(t("cli.tool_display.param_column"), style="cyan", no_wrap=True)
-    table.add_column(t("cli.tool_display.value_column"), style="white")
+    args_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
+    args_table.add_column(t("cli.tool_display.param_column"), style="cyan", no_wrap=True)
+    args_table.add_column(t("cli.tool_display.value_column"), style="white")
 
     for key, value in tool_args.items():
         value_str = str(value)
         if len(value_str) > 60:
             value_str = value_str[:57] + "..."
-        table.add_row(key, value_str)
+        args_table.add_row(key, value_str)
 
-    console.print(
-        Panel(
-            table,
-            title=t("cli.tool_display.tool_call_title").format(tool_name),
-            border_style="yellow",
-            padding=(0, 1),
-        )
-    )
-
-
-def _display_tool_result(tool_name: str, result: str, duration: float, console: Console) -> None:
-    """显示工具执行结果.
-
-    Args:
-        tool_name: 工具名称
-        result: 执行结果
-        duration: 执行时间（秒）
-        console: Rich Console
-    """
     display_result = result
     if len(display_result) > 200:
         display_result = display_result[:197] + "..."
 
-    border_color = "green" if "✅" in result or result.startswith("Success") else "yellow"
+    content = Group(
+        Text("📥 " + t("cli.tool_display.call_label") + ":", style="bold"),
+        args_table,
+        Text(""),
+        Text("📤 " + t("cli.tool_display.result_label") + ":", style="bold"),
+        Text(display_result),
+        Text(""),
+        Text(t("cli.tool_display.execution_time").format(duration), style="dim"),
+    )
 
     console.print(
         Panel(
-            f"{display_result}\n\n[dim]{t('cli.tool_display.execution_time').format(duration)}[/dim]",
-            title=t("cli.tool_display.tool_result_title").format(tool_name),
-            border_style=border_color,
+            content,
+            title=f"🔧 {tool_name}",
+            border_style="yellow",
             padding=(0, 1),
         )
     )
@@ -229,7 +226,7 @@ def _stream_ai_response(
     input_data = {"messages": [{"role": "user", "content": user_input}]}
     full_content = ""
     all_messages: list[BaseMessage] = []
-    tool_start_time: float | None = None
+    pending_tool_calls: list[dict] = []
 
     with Live(
         Panel(Text(""), title="🐦 FinchBot", border_style="green"),
@@ -264,23 +261,44 @@ def _stream_ai_response(
                             for msg in messages:
                                 if hasattr(msg, "tool_calls") and msg.tool_calls:
                                     for tc in msg.tool_calls:
-                                        tool_name: str = tc.get("name") or "unknown"
-                                        _display_tool_call(tool_name, tc.get("args", {}), console)
-                                        tool_start_time = time.time()
+                                        pending_tool_calls.append(
+                                            {
+                                                "name": tc.get("name") or "unknown",
+                                                "args": tc.get("args", {}),
+                                                "start_time": time.time(),
+                                            }
+                                        )
                                 elif hasattr(msg, "name") and msg.name:
-                                    duration = 0.0
-                                    if tool_start_time:
-                                        duration = time.time() - tool_start_time
-                                        tool_start_time = None
-                                    _display_tool_result(
-                                        msg.name, str(msg.content), duration, console
-                                    )
+                                    tool_name = msg.name
+                                    for i, call_info in enumerate(pending_tool_calls):
+                                        if call_info["name"] == tool_name:
+                                            duration = time.time() - call_info["start_time"]
+                                            _display_tool_call_with_result(
+                                                call_info["name"],
+                                                call_info["args"],
+                                                str(msg.content),
+                                                duration,
+                                                console,
+                                            )
+                                            pending_tool_calls.pop(i)
+                                            break
                                 all_messages.append(msg)
 
-    if render_markdown and full_content:
+    final_ai_content = ""
+    for msg in reversed(all_messages):
+        if hasattr(msg, "type") and msg.type == "ai":
+            content = getattr(msg, "content", "") or ""
+            if content:
+                final_ai_content = content
+                break
+
+    if len(full_content) > len(final_ai_content):
+        final_ai_content = full_content
+
+    if render_markdown and final_ai_content:
         console.print(
             Panel(
-                Markdown(full_content),
+                Markdown(final_ai_content),
                 title="🐦 FinchBot",
                 border_style="green",
                 padding=(0, 1),
