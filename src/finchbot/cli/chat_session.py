@@ -227,18 +227,31 @@ def _stream_ai_response(
     full_content = ""
     all_messages: list[BaseMessage] = []
     pending_tool_calls: list[dict] = []
+    last_render_time: float = 0.0
+    render_interval = 0.1
 
     def _render_ai_content(content: str) -> None:
         """渲染 AI 响应内容."""
-        if render_markdown and content.strip():
+        if content.strip():
+            body = Markdown(content) if render_markdown else Text(content)
             console.print(
                 Panel(
-                    Markdown(content),
+                    body,
                     title="🐦 FinchBot",
                     border_style="green",
                     padding=(0, 1),
                 )
             )
+
+    def _create_content_panel(content: str) -> Panel:
+        """创建内容 Panel，根据设置使用 Markdown 或纯文本."""
+        body = Markdown(content) if render_markdown else Text(content)
+        return Panel(
+            body,
+            title="🐦 FinchBot",
+            border_style="green",
+            padding=(0, 1),
+        )
 
     with Live(
         Panel(Text(""), title="🐦 FinchBot", border_style="green"),
@@ -259,13 +272,10 @@ def _stream_ai_response(
                             token = getattr(msg_chunk, "content", "") or ""
                             if token:
                                 full_content += token
-                                live.update(
-                                    Panel(
-                                        Text(full_content),
-                                        title="🐦 FinchBot",
-                                        border_style="green",
-                                    )
-                                )
+                                current_time = time.time()
+                                if current_time - last_render_time > render_interval:
+                                    live.update(_create_content_panel(full_content))
+                                    last_render_time = current_time
                 elif mode == "updates":
                     if isinstance(data, dict):
                         for _node_name, node_data in data.items():
