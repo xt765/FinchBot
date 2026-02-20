@@ -119,7 +119,7 @@ def _format_message(
         )
 
     else:
-        role_label = "未知"
+        role_label = t("cli.history.role_unknown")
         role_icon = "❓"
         role_color = "red"
         console.print(
@@ -379,7 +379,7 @@ def _display_messages_by_turn(
         if msg_type == "human" or msg_role == "user":
             turn_num += 1
             console.print()
-            console.print(f"[dim]─── 第 {turn_num} 轮对话 ───[/dim]")
+            console.print(f"[dim]─── {t('cli.history.turn_label').format(turn_num)} ───[/dim]")
 
             _format_message(msg, i, show_index=show_index, render_markdown=render_markdown)
 
@@ -417,7 +417,7 @@ def _display_messages_by_turn(
                                     break
                             _render_tool_message(
                                 tool_name,
-                                result or "(无结果)",
+                                result or t("cli.history.no_result"),
                                 console,
                                 tool_args=tool_args if tool_args else None,
                                 show_index=show_index,

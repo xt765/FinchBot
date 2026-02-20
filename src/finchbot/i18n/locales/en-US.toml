@@ -149,6 +149,9 @@ role_you = "You"
 role_bot = "FinchBot"
 total_messages = "Total: {} messages"
 rollback_hint = "Use '/rollback <index> [new_session]' to rollback"
+role_unknown = "Unknown"
+turn_label = "Turn {}"
+no_result = "(No result)"
 
 [cli.tool_display]
 tool_call_title = "🔧 {}"

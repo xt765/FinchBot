@@ -149,6 +149,9 @@ role_you = "你"
 role_bot = "FinchBot"
 total_messages = "共 {} 條訊息"
 rollback_hint = "使用 '/rollback <索引> [新對話名]' 回退"
+role_unknown = "未知"
+turn_label = "第 {} 輪對話"
+no_result = "(無結果)"
 
 [cli.tool_display]
 tool_call_title = "🔧 {}"
