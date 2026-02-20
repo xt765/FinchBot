@@ -170,6 +170,7 @@ tools_web = "Search the web and fetch web pages"
 tools_memory = "Manage memory and notes"
 workspace_memory = "Memory files:"
 workspace_skills = "Custom skills:"
+bootstrap_file_location = "Location"
 
 [agent.skills]
 active_skills = "Active Skills"

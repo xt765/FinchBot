@@ -118,7 +118,9 @@ class ContextBuilder:
                 try:
                     content = file_path.read_text(encoding="utf-8")
                     if content.strip():
-                        parts.append(f"## {filename}\n\n{content}")
+                        parts.append(
+                            f"## {filename} ({t('agent.bootstrap_file_location')}: {file_path})\n\n{content}"
+                        )
                         loaded_files += 1
                         logger.debug(f"加载 Bootstrap 文件: {filename}")
                     else:

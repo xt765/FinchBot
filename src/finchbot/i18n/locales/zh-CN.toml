@@ -178,6 +178,7 @@ tools_web = "搜索网页和获取网页内容"
 tools_memory = "管理记忆和笔记"
 workspace_memory = "记忆文件目录："
 workspace_skills = "自定义技能目录："
+bootstrap_file_location = "位置"
 
 [agent.skills]
 active_skills = "常驻技能"

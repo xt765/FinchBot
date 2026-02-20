@@ -170,6 +170,7 @@ tools_web = "搜尋網頁和獲取網頁內容"
 tools_memory = "管理記憶和筆記"
 workspace_memory = "記憶檔案目錄："
 workspace_skills = "自訂技能目錄："
+bootstrap_file_location = "位置"
 
 [tools.categories]
 file_ops = "檔案操作"
