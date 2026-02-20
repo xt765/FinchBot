@@ -394,36 +394,37 @@ def _display_messages_by_turn(
                 if next_type == "human" or next_role == "user":
                     break
                 if next_type == "ai" or next_role == "assistant":
-                    _format_message(
-                        next_msg,
-                        j,
-                        show_index=show_index,
-                        max_content_len=80,
-                        render_markdown=render_markdown,
-                    )
-                    j += 1
-                    break
-                elif tool_calls:
-                    for tc in tool_calls:
-                        tool_name = tc.get("name", "unknown")
-                        tool_args = tc.get("args", {})
-                        tool_id = tc.get("id")
-                        result = ""
-                        for k in range(j + 1, len(messages)):
-                            result_msg = messages[k]
-                            result_tool_id = getattr(result_msg, "tool_call_id", None)
-                            if result_tool_id and result_tool_id == tool_id:
-                                result = str(getattr(result_msg, "content", ""))
-                                break
-                        _render_tool_message(
-                            tool_name,
-                            result or "(无结果)",
-                            console,
-                            tool_args=tool_args if tool_args else None,
+                    if tool_calls:
+                        for tc in tool_calls:
+                            tool_name = tc.get("name", "unknown")
+                            tool_args = tc.get("args", {})
+                            tool_id = tc.get("id")
+                            result = ""
+                            for k in range(j + 1, len(messages)):
+                                result_msg = messages[k]
+                                result_tool_id = getattr(result_msg, "tool_call_id", None)
+                                if result_tool_id and result_tool_id == tool_id:
+                                    result = str(getattr(result_msg, "content", ""))
+                                    break
+                            _render_tool_message(
+                                tool_name,
+                                result or "(无结果)",
+                                console,
+                                tool_args=tool_args if tool_args else None,
+                                show_index=show_index,
+                                index=j,
+                            )
+                        j += 1
+                    else:
+                        _format_message(
+                            next_msg,
+                            j,
                             show_index=show_index,
-                            index=j,
+                            max_content_len=80,
+                            render_markdown=render_markdown,
                         )
-                    j += 1
+                        j += 1
+                        break
                 elif name:
                     j += 1
                 else:
