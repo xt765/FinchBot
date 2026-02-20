@@ -190,14 +190,14 @@ finchbot config
 
 | 提供商 | 说明 |
 |--------|------|
-| OpenAI | GPT-4, GPT-4o, O1, O3 系列 |
-| Anthropic | Claude 3.5/3.7 Sonnet, Opus |
-| DeepSeek | DeepSeek-V3, DeepSeek-R1 |
-| DashScope | 阿里云通义千问 |
-| Groq | Llama, Mixtral（快速推理） |
-| Moonshot | Kimi 月之暗面 |
+| OpenAI | GPT-5, GPT-5.2, O3-mini |
+| Anthropic | Claude Sonnet 4.5, Claude Opus 4.6 |
+| DeepSeek | DeepSeek Chat, DeepSeek Reasoner |
+| DashScope | 阿里云通义千问 (Qwen, QwQ) |
+| Groq | Llama 4 Scout/Maverick, Llama 3.3 |
+| Moonshot | Kimi K1.5/K2.5 |
 | OpenRouter | 多提供商网关 |
-| Google Gemini | Gemini 1.5/2.0 |
+| Google Gemini | Gemini 2.5 Flash |
 
 ### 环境变量配置
 
@@ -372,14 +372,17 @@ finchbot chat --workspace "~/my-workspace"
 |------|------|
 | `--help` | 显示帮助信息 |
 | `--version` | 显示版本号 |
-| `--verbose` / `-v` | 启用详细日志（调试模式） |
-| `--quiet` / `-q` | 静默模式，只输出错误信息 |
+| `-v` | 显示 INFO 及以上日志 |
+| `-vv` | 显示 DEBUG 及以上日志（调试模式） |
 
 **示例**:
 
 ```bash
-# 以调试模式启动，查看详细的思维过程和网络请求
+# 显示 INFO 级别日志
 finchbot chat -v
+
+# 显示 DEBUG 级别日志，查看详细的思维过程和网络请求
+finchbot chat -vv
 ```
 
 ---

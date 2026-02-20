@@ -2,12 +2,13 @@
 # FinchBot 语言包
 
 [cli]
-help = "FinchBot (雀翎) - 轻量级 AI Agent 框架"
+help = "🐦 FinchBot (雀翎) - 轻量级 AI Agent 框架"
 processing = "🐦 FinchBot: 正在处理..."
 response_title = "🐦 FinchBot 回复"
 error_no_api_key = "错误: 未配置 LLM API 密钥"
 error_config_hint = "请设置环境变量或在 ~/.finchbot/config.json 中配置。"
 version = "version"
+verbose_help = "显示详细日志（默认: WARNING, -v: INFO, -vv: DEBUG）"
 
 [cli.config]
 init_title = "🐦 FinchBot 配置向导"
@@ -125,6 +126,10 @@ download_success = "✓ 模型下载完成"
 download_failed = "✗ 模型下载失败"
 check_network_proxy = "提示: 检查网络连接或尝试设置代理"
 check_network_retry = "提示: 检查网络连接或稍后重试"
+download_help = """下载嵌入模型到本地。
+
+自动检测网络环境，选择最佳镜像源下载模型。
+国内用户使用 hf-mirror.com 镜像，国外用户使用官方源。"""
 
 [cli.chat]
 title = "🐦 FinchBot 聊天"
@@ -138,6 +143,10 @@ auto_detected_model = "自动检测模型: {}"
 session_title = "会话标题: {}"
 finchbot_response = "🐦 FinchBot:"
 check_logs = "查看日志获取详细信息。"
+session_option = "会话 ID"
+model_option = "使用的模型"
+workspace_option = "工作目录"
+markdown_option = "将 AI 响应渲染为 Markdown"
 
 [cli.history]
 title = "对话历史:"

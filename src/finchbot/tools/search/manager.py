@@ -6,8 +6,9 @@
 3. DuckDuckGo - 无依赖备选，始终可用
 """
 
-import logging
 from typing import Any
+
+from loguru import logger
 
 from finchbot.tools.search.base import (
     BaseSearchEngine,
@@ -17,8 +18,6 @@ from finchbot.tools.search.base import (
 from finchbot.tools.search.brave import BraveSearchEngine
 from finchbot.tools.search.ddg import DuckDuckGoSearchEngine
 from finchbot.tools.search.tavily import TavilySearchEngine
-
-logger = logging.getLogger(__name__)
 
 DEFAULT_ENGINE_ORDER = [
     SearchEngineType.TAVILY,

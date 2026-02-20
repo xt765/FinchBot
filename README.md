@@ -451,11 +451,11 @@ def create_finch_agent(
 
 | Provider | Models | Features |
 |:---:|:---|:---|
-| OpenAI | GPT-4, GPT-4o, O1, O3 | Best overall capability |
-| Anthropic | Claude 3.5/4 Sonnet, Opus | High safety, long context |
-| DeepSeek | DeepSeek-V3, R1 | Chinese, cost-effective |
-| Gemini | Gemini 2.0/2.5 Flash | Google's latest |
-| Groq | Llama 4, Mixtral | Ultra-fast inference |
+| OpenAI | GPT-5, GPT-5.2, O3-mini | Best overall capability |
+| Anthropic | Claude Sonnet 4.5, Opus 4.6 | High safety, long context |
+| DeepSeek | DeepSeek Chat, Reasoner | Chinese, cost-effective |
+| Gemini | Gemini 2.5 Flash | Google's latest |
+| Groq | Llama 4 Scout/Maverick | Ultra-fast inference |
 | Moonshot | Kimi K1.5/K2.5 | Long context, Chinese |
 
 ---
@@ -505,6 +505,19 @@ That's it! These three commands cover the complete workflow:
 # Or set environment variables directly
 export OPENAI_API_KEY="your-api-key"
 uv run finchbot chat
+```
+
+### Log Level Control
+
+```bash
+# Default: Show WARNING and above logs
+finchbot chat
+
+# Show INFO and above logs
+finchbot -v chat
+
+# Show DEBUG and above logs (debug mode)
+finchbot -vv chat
 ```
 
 ### Optional: Download Local Embedding Model

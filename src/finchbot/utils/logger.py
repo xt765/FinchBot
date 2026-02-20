@@ -5,20 +5,40 @@
 2. 文件日志自动分割与归档
 3. 统一的日志格式
 4. 异常捕获与记录
+5. 第三方库日志抑制
 """
 
+import logging
 import sys
 from pathlib import Path
 
 from loguru import logger
 
-# 默认日志格式
 LOG_FORMAT = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
     "<level>{level: <8}</level> | "
     "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
     "<level>{message}</level>"
 )
+
+SUPPRESS_MODULES = [
+    "httpx",
+    "httpcore",
+    "chromadb",
+    "langchain",
+    "langgraph",
+    "langsmith",
+    "urllib3",
+    "asyncio",
+    "multipart",
+    "watchfiles",
+]
+
+
+def _suppress_third_party_logs() -> None:
+    """抑制第三方库的日志输出."""
+    for module in SUPPRESS_MODULES:
+        logging.getLogger(module).setLevel(logging.WARNING)
 
 
 def setup_logger(
@@ -39,7 +59,8 @@ def setup_logger(
         retention: 日志保留时间 (如 "30 days")。
         console_enabled: 是否启用控制台输出。
     """
-    # 移除默认的 handler
+    _suppress_third_party_logs()
+
     logger.remove()
 
     # 1. 配置控制台输出

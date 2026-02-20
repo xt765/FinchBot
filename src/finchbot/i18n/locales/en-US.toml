@@ -2,12 +2,13 @@
 # FinchBot Language Pack
 
 [cli]
-help = "FinchBot - Lightweight AI Agent Framework"
+help = "🐦 FinchBot - Lightweight AI Agent Framework"
 processing = "🐦 FinchBot: Processing..."
 response_title = "🐦 FinchBot Response"
 error_no_api_key = "Error: LLM API key not configured"
 error_config_hint = "Please set environment variables or configure in ~/.finchbot/config.json."
 version = "version"
+verbose_help = "Show verbose logs (default: WARNING, -v: INFO, -vv: DEBUG)"
 
 [cli.config]
 init_title = "🐦 FinchBot Configuration"
@@ -120,6 +121,10 @@ download_success = "✓ Model download completed"
 download_failed = "✗ Model download failed"
 check_network_proxy = "Hint: Check network connection or try setting a proxy"
 check_network_retry = "Hint: Check network connection or try again later"
+download_help = """Download embedding model to local.
+
+Automatically detect network environment and select the best mirror.
+Users in China use hf-mirror.com mirror, others use official source."""
 
 [cli.chat]
 title = "🐦 FinchBot Chat"
@@ -133,6 +138,10 @@ auto_detected_model = "Auto-detected model: {}"
 session_title = "Session Title: {}"
 finchbot_response = "🐦 FinchBot:"
 check_logs = "Check logs for more details."
+session_option = "Session ID"
+model_option = "Model to use"
+workspace_option = "Workspace directory"
+markdown_option = "Render AI response as Markdown"
 
 [cli.history]
 title = "Conversation History:"

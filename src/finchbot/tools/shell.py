@@ -19,7 +19,10 @@ DEFAULT_DENY_PATTERNS = [
     r"\brm\s+-[rf]{1,2}\b",
     r"\bdel\s+/[fq]\b",
     r"\brmdir\s+/s\b",
-    r"\b(format|mkfs|diskpart)\b",
+    r"\bformat\s+[a-zA-Z]:",
+    r"\bformat\s+/dev/",
+    r"\bmkfs\b",
+    r"\bdiskpart\b",
     r"\bdd\s+if=",
     r">\s*/dev/sd",
     r"\b(shutdown|reboot|poweroff)\b",
@@ -173,12 +176,12 @@ class ExecTool(FinchTool):
         cmd = command.strip()
         lower = cmd.lower()
 
+        if self.allow_patterns and any(re.search(p, lower) for p in self.allow_patterns):
+            return None
+
         for pattern in self.deny_patterns:
             if re.search(pattern, lower):
                 return "错误: 命令被安全检查阻止（检测到危险模式）"
-
-        if self.allow_patterns and not any(re.search(p, lower) for p in self.allow_patterns):
-            return "错误: 命令被安全检查阻止（不在允许列表中）"
 
         if self.restrict_to_workspace:
             # 检测路径遍历（跨平台）

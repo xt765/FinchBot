@@ -29,12 +29,12 @@
 
 ### 现有框架的痛点
 
-| 痛点 | 传统方案 | FinchBot 方案 |
-|:---:|:---|:---|
-| **扩展困难** | 需要修改核心代码 | 继承基类或创建 Markdown 文件 |
-| **记忆脆弱** | 依赖 LLM 上下文窗口 | 双层持久化存储 + 语义检索 |
-| **提示词僵化** | 硬编码在代码中 | 文件系统，热加载 |
-| **架构过时** | 基于 LangChain 旧版 API | LangChain v1.2 + LangGraph v1.0 |
+|         痛点         | 传统方案                | FinchBot 方案                   |
+| :------------------: | :---------------------- | :------------------------------ |
+|  **扩展困难**  | 需要修改核心代码        | 继承基类或创建 Markdown 文件    |
+|  **记忆脆弱**  | 依赖 LLM 上下文窗口     | 双层持久化存储 + 语义检索       |
+| **提示词僵化** | 硬编码在代码中          | 文件系统，热加载                |
+|  **架构过时**  | 基于 LangChain 旧版 API | LangChain v1.2 + LangGraph v1.0 |
 
 ### 设计哲学
 
@@ -63,14 +63,14 @@ uv run finchbot sessions
 uv run finchbot chat
 ```
 
-| 特性 | 说明 |
-|:---:|:---|
-| **三步上手** | `config` → `sessions` → `chat`，三个命令完成完整工作流程 |
+|          特性          | 说明                                                                         |
+| :---------------------: | :--------------------------------------------------------------------------- |
+|   **三步上手**   | `config` → `sessions` → `chat`，三个命令完成完整工作流程             |
 | **环境变量配置** | 所有配置均可通过环境变量设置（`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 等） |
-| **Rich CLI 界面** | 全屏键盘导航，↑/↓ 箭头选择，交互式操作 |
-| **i18n 国际化** | 内置中英文支持，自动检测系统语言 |
-| **自动降级** | 网页搜索自动降级：Tavily → Brave → DuckDuckGo |
-| **零配置启动** | 只需设置 API Key，运行 `finchbot chat` 即可 |
+| **Rich CLI 界面** | 全屏键盘导航，↑/↓ 箭头选择，交互式操作                                     |
+|  **i18n 国际化**  | 内置中英文支持，自动检测系统语言                                             |
+|   **自动降级**   | 网页搜索自动降级：Tavily → Brave → DuckDuckGo                              |
+|  **零配置启动**  | 只需设置 API Key，运行 `finchbot chat` 即可                                |
 
 ---
 
@@ -194,13 +194,13 @@ FinchBot 实现了先进的**双层记忆架构**，彻底解决了 LLM 上下�
 
 #### 为什么是 Agentic RAG？
 
-| 对比维度 | 传统 RAG | Agentic RAG (FinchBot) |
-|:---:|:---|:---|
-| **检索触发** | 固定流程 | Agent 自主决策 |
-| **检索策略** | 单一向量检索 | 混合检索 + 权重动态调整 |
-| **记忆管理** | 被动存储 | 主动 remember/recall/forget |
-| **分类能力** | 无 | 自动分类 + 重要性评分 |
-| **更新机制** | 全量重建 | 增量同步 |
+|      对比维度      | 传统 RAG     | Agentic RAG (FinchBot)      |
+| :----------------: | :----------- | :-------------------------- |
+| **检索触发** | 固定流程     | Agent 自主决策              |
+| **检索策略** | 单一向量检索 | 混合检索 + 权重动态调整     |
+| **记忆管理** | 被动存储     | 主动 remember/recall/forget |
+| **分类能力** | 无           | 自动分类 + 重要性评分       |
+| **更新机制** | 全量重建     | 增量同步                    |
 
 #### 双层存储架构
 
@@ -209,26 +209,26 @@ flowchart TB
     subgraph Business[业务层]
         MM[MemoryManager]
     end
-    
+  
     subgraph Storage[存储层]
         SQLite[SQLiteStore<br/>真相源]
         Vector[VectorMemoryStore<br/>语义检索]
     end
-    
+  
     subgraph Services[服务层]
         RS[RetrievalService<br/>混合检索]
         CS[ClassificationService<br/>自动分类]
         IS[ImportanceScorer<br/>重要性评分]
         DS[DataSyncManager<br/>数据同步]
     end
-    
+  
     MM --> RS
     MM --> CS
     MM --> IS
-    
+  
     RS --> SQLite
     RS --> Vector
-    
+  
     SQLite <--> DS <--> Vector
 ```
 
@@ -272,18 +272,18 @@ flowchart TD
     B --> D[MEMORY_GUIDE.md]
     B --> E[SOUL.md]
     B --> F[AGENT_CONFIG.md]
-    
+  
     C --> G[组装提示词]
     D --> G
     E --> G
     F --> G
-    
+  
     G --> H[加载常驻技能]
     H --> I[构建技能摘要 XML]
     I --> J[生成工具文档]
     J --> K[注入运行时信息]
     K --> L[完整系统提示]
-    
+  
     L --> M[发送给 LLM]
 ```
 
@@ -299,23 +299,23 @@ flowchart TB
         TR[ToolRegistry<br/>全局注册表]
         Lock[双重检查锁<br/>线程安全]
     end
-    
+  
     subgraph BuiltIn[内置工具 - 11个]
         File[文件操作<br/>read/write/edit/list]
         Web[网络能力<br/>search/extract]
         Memory[记忆管理<br/>remember/recall/forget]
         System[系统控制<br/>exec/session_title]
     end
-    
+  
     subgraph Custom[自定义扩展]
         Inherit[继承 FinchTool]
         Register[注册到 Registry]
     end
-    
+  
     TR --> Lock
     Lock --> BuiltIn
     Lock --> Custom
-    
+  
     File --> Agent[Agent 调用]
     Web --> Agent
     Memory --> Agent
@@ -324,31 +324,32 @@ flowchart TB
 
 #### 内置工具一览
 
-| 类别 | 工具 | 功能 |
-|:---:|:---|:---|
-| **文件操作** | `read_file` | 读取本地文件 |
-| | `write_file` | 写入本地文件 |
-| | `edit_file` | 编辑文件内容 |
-| | `list_dir` | 列出目录内容 |
-| **网络能力** | `web_search` | 联网搜索 (Tavily/Brave/DDG) |
-| | `web_extract` | 网页内容提取 |
-| **记忆管理** | `remember` | 主动存储记忆 |
-| | `recall` | 检索记忆 |
-| | `forget` | 删除/归档记忆 |
-| **系统控制** | `exec` | 安全执行 Shell 命令 |
-| | `session_title` | 管理会话标题 |
+|        类别        | 工具              | 功能                        |
+| :----------------: | :---------------- | :-------------------------- |
+| **文件操作** | `read_file`     | 读取本地文件                |
+|                    | `write_file`    | 写入本地文件                |
+|                    | `edit_file`     | 编辑文件内容                |
+|                    | `list_dir`      | 列出目录内容                |
+| **网络能力** | `web_search`    | 联网搜索 (Tavily/Brave/DDG) |
+|                    | `web_extract`   | 网页内容提取                |
+| **记忆管理** | `remember`      | 主动存储记忆                |
+|                    | `recall`        | 检索记忆                    |
+|                    | `forget`        | 删除/归档记忆               |
+| **系统控制** | `exec`          | 安全执行 Shell 命令         |
+|                    | `session_title` | 管理会话标题                |
 
 #### 网页搜索：三引擎降级设计
 
 FinchBot 的网页搜索工具采用巧妙的**三引擎自动降级机制**，兼顾灵活性和开箱即用体验：
 
-| 优先级 | 引擎 | API Key | 特点 |
-|:---:|:---:|:---:|:---|
-| 1 | **Tavily** | 需要 | 质量最佳，专为 AI 优化，深度搜索 |
-| 2 | **Brave Search** | 需要 | 免费额度大，隐私友好 |
-| 3 | **DuckDuckGo** | 无需 | 始终可用，零配置 |
+| 优先级 |          引擎          | API Key | 特点                             |
+| :----: | :--------------------: | :-----: | :------------------------------- |
+|   1   |    **Tavily**    |  需要  | 质量最佳，专为 AI 优化，深度搜索 |
+|   2   | **Brave Search** |  需要  | 免费额度大，隐私友好             |
+|   3   |  **DuckDuckGo**  |  无需  | 始终可用，零配置                 |
 
 **工作原理**：
+
 1. 如果设置了 `TAVILY_API_KEY` → 使用 Tavily（质量最佳）
 2. 否则如果设置了 `BRAVE_API_KEY` → 使用 Brave Search
 3. 否则 → 使用 DuckDuckGo（无需 API Key，始终可用）
@@ -359,11 +360,11 @@ FinchBot 的网页搜索工具采用巧妙的**三引擎自动降级机制**，�
 
 `session_title` 工具体现了 FinchBot 的开箱即用理念：
 
-| 操作方式 | 说明 | 示例 |
-|:---:|:---|:---|
-| **自动生成** | 对话 2-3 轮后，AI 自动根据内容生成标题 | "Python 异步编程讨论" |
-| **Agent 修改** | 告诉 Agent "把会话标题改成 XXX" | Agent 调用工具自动修改 |
-| **手动重命名** | 在会话管理器中按 `r` 键重命名 | 用户手动输入新标题 |
+|       操作方式       | 说明                                   | 示例                   |
+| :------------------: | :------------------------------------- | :--------------------- |
+|  **自动生成**  | 对话 2-3 轮后，AI 自动根据内容生成标题 | "Python 异步编程讨论"  |
+| **Agent 修改** | 告诉 Agent "把会话标题改成 XXX"        | Agent 调用工具自动修改 |
+| **手动重命名** | 在会话管理器中按 `r` 键重命名        | 用户手动输入新标题     |
 
 这个设计让用户**无需关心技术细节**，无论是自动还是手动，都能轻松管理会话。
 
@@ -404,13 +405,13 @@ skills/
 
 #### 核心设计亮点
 
-| 特性 | 说明 |
-|:---:|:---|
+|           特性           | 说明                              |
+| :----------------------: | :-------------------------------- |
 | **Agent 自动创建** | 告诉 Agent 需求，自动生成技能文件 |
-| **双层技能源** | 工作区技能优先，内置技能兜底 |
-| **依赖检查** | 自动检查 CLI 工具和环境变量 |
-| **缓存失效检测** | 基于文件修改时间，智能缓存 |
-| **渐进式加载** | 常驻技能优先，按需加载其他 |
+|   **双层技能源**   | 工作区技能优先，内置技能兜底      |
+|    **依赖检查**    | 自动检查 CLI 工具和环境变量       |
+|  **缓存失效检测**  | 基于文件修改时间，智能缓存        |
+|   **渐进式加载**   | 常驻技能优先，按需加载其他        |
 
 ### 5. LangChain 1.2 架构实践
 
@@ -426,16 +427,16 @@ def create_finch_agent(
     tools: Sequence[BaseTool] | None = None,
     use_persistent: bool = True,
 ) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
-    
+  
     # 1. 初始化检查点（持久化状态）
     if use_persistent:
         checkpointer = SqliteSaver.from_conn_string(str(db_path))
     else:
         checkpointer = MemorySaver()
-    
+  
     # 2. 构建系统提示
     system_prompt = build_system_prompt(workspace)
-    
+  
     # 3. 创建 Agent（使用 LangChain 官方 API）
     agent = create_agent(
         model=model,
@@ -443,20 +444,20 @@ def create_finch_agent(
         system_prompt=system_prompt,
         checkpointer=checkpointer,
     )
-    
+  
     return agent, checkpointer
 ```
 
 #### 支持的 LLM 提供商
 
-| 提供商 | 模型 | 特点 |
-|:---:|:---|:---|
-| OpenAI | GPT-4, GPT-4o, O1, O3 | 综合能力最强 |
-| Anthropic | Claude 3.5/4 Sonnet, Opus | 安全性高，长文本 |
-| DeepSeek | DeepSeek-V3, R1 | 国产，性价比高 |
-| Gemini | Gemini 2.0/2.5 Flash | Google 最新 |
-| Groq | Llama 4, Mixtral | 极速推理 |
-| Moonshot | Kimi K1.5/K2.5 | 长文本，国产 |
+|  提供商  | 模型                        | 特点             |
+| :-------: | :-------------------------- | :--------------- |
+|  OpenAI  | GPT-5, GPT-5.2, O3-mini     | 综合能力最强     |
+| Anthropic | Claude Sonnet 4.5, Opus 4.6 | 安全性高，长文本 |
+| DeepSeek | DeepSeek Chat, Reasoner     | 国产，性价比高   |
+|  Gemini  | Gemini 2.5 Flash            | Google 最新      |
+|   Groq   | Llama 4 Scout/Maverick      | 极速推理         |
+| Moonshot | Kimi K1.5/K2.5              | 长文本，国产     |
 
 ---
 
@@ -464,11 +465,11 @@ def create_finch_agent(
 
 ### 前置要求
 
-| 项目 | 要求 |
-|:---:|:---|
+|   项目   | 要求                    |
+| :------: | :---------------------- |
 | 操作系统 | Windows / Linux / macOS |
-| Python | 3.13+ |
-| 包管理器 | uv (推荐) |
+|  Python  | 3.13+                   |
+| 包管理器 | uv (推荐)               |
 
 ### 安装步骤
 
@@ -495,6 +496,7 @@ uv run finchbot chat
 ```
 
 就这么简单！这三个命令覆盖了完整的工作流程：
+
 - `finchbot config` — 交互式配置 LLM 提供商、API 密钥和设置
 - `finchbot sessions` — 全屏会话管理器，创建、重命名、删除会话
 - `finchbot chat` — 开始或继续交互式对话
@@ -505,6 +507,19 @@ uv run finchbot chat
 # 或直接设置环境变量
 export OPENAI_API_KEY="your-api-key"
 uv run finchbot chat
+```
+
+### 日志级别控制
+
+```bash
+# 默认：显示 WARNING 及以上日志
+finchbot chat
+
+# 显示 INFO 及以上日志
+finchbot -v chat
+
+# 显示 DEBUG 及以上日志（调试模式）
+finchbot -vv chat
 ```
 
 ### 可选：下载本地嵌入模型
@@ -541,19 +556,19 @@ EOF
 
 ## 技术栈
 
-| 层级 | 技术 | 版本 |
-|:---:|:---|:---:|
-| 基础语言 | Python | 3.13+ |
-| Agent 框架 | LangChain | 1.2.10+ |
-| 状态管理 | LangGraph | 1.0.8+ |
-| 数据验证 | Pydantic | v2 |
-| 向量存储 | ChromaDB | 0.5.0+ |
-| 本地嵌入 | FastEmbed | 0.4.0+ |
-| 搜索增强 | BM25 | 0.2.2+ |
-| CLI 框架 | Typer | 0.23.0+ |
-| 富文本 | Rich | 14.3.0+ |
-| 日志 | Loguru | 0.7.3+ |
-| 配置管理 | Pydantic Settings | 2.12.0+ |
+|    层级    | 技术              |  版本  |
+| :--------: | :---------------- | :-----: |
+|  基础语言  | Python            |  3.13+  |
+| Agent 框架 | LangChain         | 1.2.10+ |
+|  状态管理  | LangGraph         | 1.0.8+ |
+|  数据验证  | Pydantic          |   v2   |
+|  向量存储  | ChromaDB          | 0.5.0+ |
+|  本地嵌入  | FastEmbed         | 0.4.0+ |
+|  搜索增强  | BM25              | 0.2.2+ |
+|  CLI 框架  | Typer             | 0.23.0+ |
+|   富文本   | Rich              | 14.3.0+ |
+|    日志    | Loguru            | 0.7.3+ |
+|  配置管理  | Pydantic Settings | 2.12.0+ |
 
 ---
 
@@ -579,29 +594,29 @@ EOF
 
 ## 项目优势
 
-| 优势 | 说明 |
-|:---:|:---|
-| **隐私优先** | 使用 FastEmbed 本地生成向量，无需上传云端数据 |
-| **真持久化** | 双层记忆存储架构，支持语义检索和精确查询 |
-| **生产级稳定** | 双重检查锁、自动重试、超时控制机制 |
-| **灵活扩展** | 继承 FinchTool 或创建 SKILL.md 即可扩展，无需修改核心代码 |
-| **模型无关** | 支持 OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq 等 |
-| **并发安全** | 工具注册使用双重检查锁定模式，线程安全 |
+|         优势         | 说明                                                        |
+| :------------------: | :---------------------------------------------------------- |
+|  **隐私优先**  | 使用 FastEmbed 本地生成向量，无需上传云端数据               |
+|  **真持久化**  | 双层记忆存储架构，支持语义检索和精确查询                    |
+| **生产级稳定** | 双重检查锁、自动重试、超时控制机制                          |
+|  **灵活扩展**  | 继承 FinchTool 或创建 SKILL.md 即可扩展，无需修改核心代码   |
+|  **模型无关**  | 支持 OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq 等 |
+|  **并发安全**  | 工具注册使用双重检查锁定模式，线程安全                      |
 
 ---
 
 ## 文档
 
-| 文档 | 说明 |
-|:---|:---|
-| [使用指南](docs/zh-CN/guide/usage.md) | CLI 使用教程 |
-| [API 接口文档](docs/zh-CN/api.md) | API 参考 |
-| [配置指南](docs/zh-CN/config.md) | 配置项说明 |
+| 文档                                   | 说明          |
+| :------------------------------------- | :------------ |
+| [使用指南](docs/zh-CN/guide/usage.md)     | CLI 使用教程  |
+| [API 接口文档](docs/zh-CN/api.md)         | API 参考      |
+| [配置指南](docs/zh-CN/config.md)          | 配置项说明    |
 | [扩展指南](docs/zh-CN/guide/extension.md) | 添加工具/技能 |
-| [系统架构](docs/zh-CN/architecture.md) | 系统架构详解 |
-| [部署指南](docs/zh-CN/deployment.md) | 部署说明 |
-| [开发环境搭建](docs/zh-CN/development.md) | 开发环境配置 |
-| [贡献指南](docs/zh-CN/contributing.md) | 贡献规范 |
+| [系统架构](docs/zh-CN/architecture.md)    | 系统架构详解  |
+| [部署指南](docs/zh-CN/deployment.md)      | 部署说明      |
+| [开发环境搭建](docs/zh-CN/development.md) | 开发环境配置  |
+| [贡献指南](docs/zh-CN/contributing.md)    | 贡献规范      |
 
 ---
 

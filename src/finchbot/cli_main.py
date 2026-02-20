@@ -22,29 +22,25 @@ from finchbot.i18n import t
 
 app = typer.Typer(
     name="finchbot",
-    help="FinchBot (雀翎) - Lightweight AI Agent Framework",
+    help=t("cli.help"),
 )
 
 
 @app.callback()
 def main(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="显示调试日志 / Show debug logs"),
-    quiet: bool = typer.Option(False, "--quiet", "-q", help="静默模式 / Quiet mode"),
+    verbose: int = typer.Option(0, "--verbose", "-v", count=True, help=t("cli.verbose_help")),
 ) -> None:
     """FinchBot - 智能 Agent 框架."""
     from finchbot.utils.logger import setup_logger
 
-    if quiet:
-        console_level = "ERROR"
-    elif verbose:
+    if verbose >= 2:
         console_level = "DEBUG"
-    else:
+    elif verbose == 1:
         console_level = "INFO"
+    else:
+        console_level = "WARNING"
 
-    # 初始化日志系统
-    # 默认将日志保存到 workspace/logs 下，但这里尚未获取 workspace，暂时存放到当前目录 logs
-    # 实际项目中可能需要更复杂的逻辑来确定 log_dir
-    setup_logger(console_level=console_level)
+    setup_logger(console_level=console_level, console_enabled=True)
 
 
 @app.command()
@@ -57,9 +53,14 @@ def version() -> None:
 
 @app.command(name="chat")
 def repl(
-    session: str = typer.Option(None, "--session", "-s", help="Session ID / 会话 ID"),
-    model: str = typer.Option(None, "--model", "-m", help="Model to use / 使用的模型"),
-    workspace: str = typer.Option(None, "--workspace", "-w", help="Workspace directory / 工作目录"),
+    session: str = typer.Option(None, "--session", "-s", help=t("cli.chat.session_option")),
+    model: str = typer.Option(None, "--model", "-m", help=t("cli.chat.model_option")),
+    workspace: str = typer.Option(None, "--workspace", "-w", help=t("cli.chat.workspace_option")),
+    markdown: bool = typer.Option(
+        True,
+        "--markdown/--no-markdown",
+        help=t("cli.chat.markdown_option"),
+    ),
 ) -> None:
     """与 FinchBot 对话 (交互式聊天模式).
 
@@ -71,7 +72,7 @@ def repl(
         session = _get_last_active_session(ws_path)
         console.print(f"[dim]{t('sessions.using_last_active')}: {session}[/dim]\n")
 
-    _run_chat_session(session, model, workspace)
+    _run_chat_session(session, model, workspace, render_markdown=markdown)
 
 
 sessions_app = typer.Typer(help=t("cli.commands.sessions_help"))
@@ -109,9 +110,7 @@ app.add_typer(models_app, name="models")
 
 
 @models_app.command("download")
-def models_download(
-    quiet: bool = typer.Option(False, "--quiet", "-q", help="静默模式"),
-) -> None:
+def models_download() -> None:
     """下载嵌入模型到本地.
 
     自动检测网络环境，选择最佳镜像源下载模型。
@@ -129,7 +128,7 @@ def models_download(
     console.print(t("cli.models.source").format(mirror_name, mirror_url))
     console.print()
 
-    success = ensure_models(verbose=not quiet)
+    success = ensure_models(verbose=True)
 
     if success:
         console.print(f"\n[green]{t('cli.models.download_success')}[/green]")

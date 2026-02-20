@@ -190,14 +190,14 @@ This will launch an interactive interface to configure:
 
 | Provider | Description |
 |----------|-------------|
-| OpenAI | GPT-4, GPT-4o, O1, O3 series |
-| Anthropic | Claude 3.5/3.7 Sonnet, Opus |
-| DeepSeek | DeepSeek-V3, DeepSeek-R1 |
-| DashScope | Alibaba Cloud Qwen |
-| Groq | Llama, Mixtral (fast inference) |
-| Moonshot | Kimi |
+| OpenAI | GPT-5, GPT-5.2, O3-mini |
+| Anthropic | Claude Sonnet 4.5, Claude Opus 4.6 |
+| DeepSeek | DeepSeek Chat, DeepSeek Reasoner |
+| DashScope | Alibaba Cloud Qwen, QwQ |
+| Groq | Llama 4 Scout/Maverick, Llama 3.3 |
+| Moonshot | Kimi K1.5/K2.5 |
 | OpenRouter | Multi-provider gateway |
-| Google Gemini | Gemini 1.5/2.0 |
+| Google Gemini | Gemini 2.5 Flash |
 
 ### Environment Variable Configuration
 
@@ -372,14 +372,17 @@ The `finchbot` command supports the following global options:
 |--------|-------------|
 | `--help` | Show help message |
 | `--version` | Show version number |
-| `--verbose` / `-v` | Enable verbose logging (debug mode) |
-| `--quiet` / `-q` | Quiet mode, output errors only |
+| `-v` | Show INFO and above logs |
+| `-vv` | Show DEBUG and above logs (debug mode) |
 
 **Example**:
 
 ```bash
-# Start in debug mode to see detailed thought processes and network requests
+# Show INFO level logs
 finchbot chat -v
+
+# Show DEBUG level logs to see detailed thought processes and network requests
+finchbot chat -vv
 ```
 
 ---
