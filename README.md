@@ -1,30 +1,55 @@
-# FinchBot
+# FinchBot (雀翎)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
 [![Code Style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Type Check: BasedPyright](https://img.shields.io/badge/type%20check-BasedPyright-green.svg)](https://github.com/DetachHead/basedpyright)
 
-**FinchBot** is a lightweight, modular AI Agent framework built on LangChain and LangGraph. It is designed to provide a flexible and scalable foundation for building intelligent assistants with persistent memory, tool usage capabilities, and multi-language support.
+**FinchBot** is a lightweight, modular AI Agent framework built on **LangChain v1.2** and **LangGraph v1.0**. It's not just another LLM wrapper—it's a thoughtfully designed architecture focused on three core challenges:
+
+1. **How to enable infinite Agent extensibility?** — Through a dual-layer extension mechanism of Skills and Tools
+2. **How to give Agents real memory?** — Through a dual-layer storage architecture + Agentic RAG
+3. **How to make Agent behavior customizable?** — Through a dynamic prompt file system
 
 [中文文档](README_CN.md) | [English Documentation](docs/en-US/README.md)
 
 ## Table of Contents
 
-1. [System Architecture](#system-architecture)
-2. [Core Components](#core-components)
-3. [Workflows](#workflows)
-4. [Design Principles](#design-principles)
-5. [Key Advantages](#key-advantages)
-6. [Quick Start](#quick-start)
-7. [Tech Stack](#tech-stack)
-8. [Extension Guide](#extension-guide)
+1. [Why FinchBot?](#why-finchbot)
+2. [System Architecture](#system-architecture)
+3. [Core Components](#core-components)
+4. [Quick Start](#quick-start)
+5. [Tech Stack](#tech-stack)
+6. [Extension Guide](#extension-guide)
+7. [Documentation](#documentation)
+
+---
+
+## Why FinchBot?
+
+### Pain Points of Existing Frameworks
+
+| Pain Point | Traditional Approach | FinchBot Solution |
+|:---:|:---|:---|
+| **Hard to Extend** | Requires modifying core code | Inherit base class or create Markdown files |
+| **Fragile Memory** | Relies on LLM context window | Dual-layer persistent storage + semantic retrieval |
+| **Rigid Prompts** | Hardcoded in source code | File system with hot reloading |
+| **Outdated Architecture** | Based on old LangChain APIs | LangChain v1.2 + LangGraph v1.0 |
+
+### Design Philosophy
+
+```
+Privacy First → Local Embedding, no cloud data upload
+Modularity → Each component independently replaceable
+Developer Friendly → Type safety + comprehensive documentation
+Production Ready → Double-checked locking + auto-retry + timeout control
+```
 
 ---
 
 ## System Architecture
 
-FinchBot is built on **LangChain** and **LangGraph**, serving as an Agent system with persistent memory and dynamic tool scheduling. The system consists of three core components:
+FinchBot is built on **LangChain v1.2** and **LangGraph v1.0**, serving as an Agent system with persistent memory and dynamic tool scheduling.
 
 ```mermaid
 graph TD
@@ -136,333 +161,249 @@ finchbot/
 
 ## Core Components
 
-### Agent Core
+### 1. Skill System: Define Agent Capabilities with Markdown
 
-**Implementation**: `src/finchbot/agent/core.py`
+Skills are FinchBot's unique innovation—**defining Agent capabilities through Markdown files**.
 
-Agent Core is the brain of FinchBot, responsible for decision-making, planning, and tool scheduling.
+#### Skill File Structure
 
-#### Core Features
-
-*   **State Management**: Based on `LangGraph`'s `StateGraph`, maintaining conversation state (`messages`).
-*   **Persistence**: Uses `SqliteSaver` (`checkpoints.db`) to save state snapshots, supporting resume and history rollback.
-*   **Context Construction**:
-    *   Dynamically assembles the system prompt, including:
-        *   **Identity**: `SYSTEM.md` (Role definition)
-        *   **Memory Guide**: `MEMORY_GUIDE.md` (Memory usage guidelines)
-        *   **Soul**: `SOUL.md` (Soul definition)
-        *   **Skills**: Dynamically loaded skill descriptions
-        *   **Tools**: `TOOLS.md` (Tool documentation)
-        *   **Runtime Info**: Current time, OS, Python version, etc.
-
-#### Key Classes and Functions
-
-| Function/Class | Description |
-|----------------|-------------|
-| `create_finch_agent()` | Creates and configures FinchBot Agent |
-| `build_system_prompt()` | Builds the complete system prompt |
-| `get_default_workspace()` | Gets the default workspace directory |
-| `get_sqlite_checkpointer()` | Gets SQLite persistence checkpoint |
-| `get_memory_checkpointer()` | Gets in-memory checkpoint |
-
-#### Thread Safety Mechanism
-
-Tool registration uses the **Double-checked locking pattern** for lazy loading, ensuring thread safety:
-
-```python
-def _register_default_tools() -> None:
-    global _default_tools_registered
-
-    if _default_tools_registered:
-        return
-
-    with _tools_registration_lock:
-        if _default_tools_registered:
-            return
-        # Actual registration logic...
+```
+skills/
+├── skill-creator/        # Skill creator (Built-in)
+│   └── SKILL.md
+├── summarize/            # Intelligent summarization (Built-in)
+│   └── SKILL.md
+├── weather/              # Weather query (Built-in)
+│   └── SKILL.md
+└── my-custom-skill/      # Your custom skill
+    └── SKILL.md
 ```
 
-#### Skill Extension System
+#### Skill Definition Format
 
-FinchBot provides a flexible skill extension system, supporting new skills defined via Markdown:
+```markdown
+<!-- skills/weather/SKILL.md -->
+---
+name: weather
+description: Query current weather and forecast (no API key required)
+metadata:
+  finchbot:
+    emoji: 🌤️
+    always: false
+    requires:
+      bins: [curl]
+      env: []
+---
 
-| Skill | Function | Status |
-|-------|----------|--------|
-| skill-creator | Interactive guide for creating new skills | Built-in |
-| summarize | Intelligent document/conversation summarization | Built-in |
-| weather | Weather query demonstration | Built-in |
-| Custom Skills | Define new skills via Markdown | Supported |
+# Weather Query Skill
 
-### Memory System
+## Functionality
+Query weather information using wttr.in service...
 
-**Implementation**: `src/finchbot/memory/`
-
-FinchBot implements an advanced **Layered Memory Architecture** designed to solve LLM context window limits and long-term forgetting issues.
-
-#### Layered Design
-
-1.  **Structured Layer (SQLite)**:
-    *   **Role**: Source of Truth.
-    *   **Content**: Full text, metadata (tags, source), category, importance score, access logs.
-    *   **Advantage**: Supports precise queries (e.g., filtering by time, category).
-    *   **Implementation**: `SQLiteStore` class, using `aiosqlite` for async operations.
-
-2.  **Semantic Layer (Vector Store)**:
-    *   **Role**: Fuzzy retrieval and association.
-    *   **Content**: Embedding vectors of text.
-    *   **Tech Stack**: ChromaDB + FastEmbed (Local lightweight models).
-    *   **Advantage**: Supports natural language semantic search (e.g., "that Python library I mentioned last time").
-    *   **Implementation**: `VectorMemoryStore` class.
-
-#### Core Features
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| Layered Storage | SQLite (structured facts) + ChromaDB (semantic vectors) | Implemented |
-| Auto Classification | Automatic memory classification based on keywords and semantics | Implemented |
-| Importance Scoring | Automatic memory importance calculation (0-1) | Implemented |
-| Manual Forgetting | Keyword-based deletion/archiving of memories | Implemented |
-| Data Sync | Bidirectional sync between SQLite and Vector Store for consistency | Implemented |
-| Auto Maintenance | Rule-based automatic forgetting mechanism | Planned |
-
-#### Core Services
-
-| Service | Location | Function |
-|---------|----------|----------|
-| **DataSyncManager** | `memory/vector_sync.py` | Ensures eventual consistency between SQLite and Vector Store, with retry support |
-| **ImportanceScorer** | `memory/services/importance.py` | Automatically evaluates memory importance (0.0-1.0) for cleanup and prioritization |
-| **RetrievalService** | `memory/services/retrieval.py` | Hybrid retrieval strategy combining vector similarity and metadata filtering |
-| **ClassificationService** | `memory/services/classification.py` | Automatic classification based on keywords and semantics |
-| **EmbeddingService** | `memory/services/embedding.py` | Local embedding generation using FastEmbed |
-
-#### MemoryManager Interface
-
-```python
-class MemoryManager:
-    def remember(self, content: str, category=None, importance=None, ...)
-    def recall(self, query: str, top_k=5, category=None, ...)
-    def forget(self, pattern: str)
-    def get_stats(self) -> dict
-    def search_memories(self, ...)
-    def get_recent_memories(self, days=7, limit=20)
-    def get_important_memories(self, min_importance=0.8, limit=20)
+## Usage
+When user asks about weather...
 ```
 
-### Tool Ecosystem
+#### Core Design Highlights
 
-**Implementation**: `src/finchbot/tools/`
+| Feature | Description |
+|:---:|:---|
+| **Dual Skill Source** | Workspace skills first, built-in skills fallback |
+| **Dependency Check** | Auto-check CLI tools and environment variables |
+| **Cache Invalidation** | Smart caching based on file modification time |
+| **Progressive Loading** | Always-on skills first, others on demand |
 
-FinchBot provides a rich tool ecosystem that enables the Agent to interact with the external world, with 11 built-in tools.
+### 2. Tool System: Code-Level Capability Extension
 
-#### Registration Mechanism
+Tools are the bridge for Agent to interact with the external world. FinchBot provides 11 built-in tools with easy extension.
 
-*   **ToolRegistry**: Singleton registry managing all available tools.
-*   **Lazy Loading**: Default tools (File, Search, etc.) are automatically registered when the Agent starts.
-*   **OpenAI Compatible**: Supports exporting tool definitions in OpenAI Function Calling format.
-
-#### Tool Base Class
-
-All tools inherit from the `FinchTool` base class and must implement:
-- `name`: Tool name
-- `description`: Tool description
-- `parameters`: Parameter definition (JSON Schema)
-- `execute()`: Execution logic
-
-#### Security Sandbox
-
-*   **File Operations**: Restricted to the workspace (`workspace`) to prevent unauthorized system access.
-*   **Shell Execution**: High-risk commands (rm -rf /) are disabled by default, with timeout control.
-
-#### Built-in Tools List
+#### Built-in Tools
 
 | Category | Tool | Function |
-|----------|------|----------|
-| File Operations | read_file | Read local files |
-| File Operations | write_file | Write local files |
-| File Operations | edit_file | Edit file content |
-| File Operations | list_dir | List directory contents |
-| Web Capabilities | web_search | Web search (Tavily/Brave/DDG) |
-| Web Capabilities | web_extract | Web content extraction |
-| Memory Management | remember | Proactively store memories |
-| Memory Management | recall | Retrieve memories |
-| Memory Management | forget | Delete/archive memories |
-| System Control | exec_command | Secure shell execution |
-| System Control | session_title | Manage session titles |
+|:---:|:---|:---|
+| **File Ops** | `read_file` | Read local files |
+| | `write_file` | Write local files |
+| | `edit_file` | Edit file content |
+| | `list_dir` | List directory contents |
+| **Network** | `web_search` | Web search (Tavily/Brave/DDG) |
+| | `web_extract` | Web content extraction |
+| **Memory** | `remember` | Proactively store memories |
+| | `recall` | Retrieve memories |
+| | `forget` | Delete/archive memories |
+| **System** | `exec` | Secure shell execution |
+| | `session_title` | Manage session titles |
 
-### I18n System (Internationalization)
+#### Tool Registration Mechanism
 
-**Implementation**: `src/finchbot/i18n/`
+```python
+from finchbot.tools.base import FinchTool
+from typing import Any, ClassVar
 
-FinchBot provides complete multi-language support, allowing users worldwide to use it in their familiar language.
-
-#### Supported Languages
-
-| Language | Status |
-|----------|--------|
-| Simplified Chinese | Full Support |
-| Traditional Chinese | Full Support |
-| English | Full Support |
-
-#### Language Fallback Chain
-
-The system implements an intelligent fallback mechanism:
-```
-zh-CN → zh → en-US
-zh-HK → zh → en-US
-en-US → (no fallback)
-```
-
-#### Configuration Priority
-
-1.  Environment variable: `FINCHBOT_LANG`
-2.  User config: `~/.finchbot/config.json`
-3.  System language detection
-4.  Default: `en-US`
-
-### Configuration System
-
-**Implementation**: `src/finchbot/config/`
-
-Uses Pydantic v2 + Pydantic Settings for type-safe configuration management.
-
-#### Configuration Structure
-
-```
-Config (Root)
-├── language
-├── default_model
-├── agents
-│   └── defaults (Agent defaults)
-├── providers
-│   ├── openai
-│   ├── anthropic
-│   ├── deepseek
-│   ├── moonshot
-│   ├── dashscope
-│   ├── groq
-│   ├── gemini
-│   ├── openrouter
-│   └── custom
-└── tools
-    ├── web.search (Search config)
-    ├── exec (Shell execution config)
-    └── restrict_to_workspace
+class MyCustomTool(FinchTool):
+    """Custom tool example."""
+    
+    name: str = "my_custom_tool"
+    description: str = "My custom tool description"
+    parameters: ClassVar[dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "input_text": {
+                "type": "string",
+                "description": "Input text"
+            }
+        },
+        "required": ["input_text"]
+    }
+    
+    def _run(self, input_text: str) -> str:
+        # Implement your logic
+        return f"Result: {input_text}"
 ```
 
----
+### 3. Memory Architecture: Dual-Layer Storage + Agentic RAG
 
-## Workflows
+FinchBot implements an advanced **dual-layer memory architecture** that solves LLM context window limits and long-term forgetting issues.
 
-### Conversation Flow
+#### Why Agentic RAG?
+
+| Dimension | Traditional RAG | Agentic RAG (FinchBot) |
+|:---:|:---|:---|
+| **Retrieval Trigger** | Fixed pipeline | Agent autonomous decision |
+| **Retrieval Strategy** | Single vector retrieval | Hybrid retrieval + dynamic weight adjustment |
+| **Memory Management** | Passive storage | Active remember/recall/forget |
+| **Classification** | None | Auto-classification + importance scoring |
+| **Update Mechanism** | Full rebuild | Incremental sync |
+
+#### Dual-Layer Storage Architecture
 
 ```mermaid
-graph LR
-    A[User Input] --> B[CLI Receive]
-    B --> C[Load History Checkpoint]
-    C --> D[ContextBuilder Build Prompt]
-    D --> E[LLM Inference]
-    E --> F{Need Tool?}
-    F -->|No| G[Generate Final Response]
-    F -->|Yes| H[Execute Tool]
-    H --> I[Return Result]
-    I --> E
-    G --> J[Save Checkpoint]
-    J --> K[Display to User]
+flowchart TB
+    subgraph Business[Business Layer]
+        MM[MemoryManager]
+    end
+    
+    subgraph Storage[Storage Layer]
+        SQLite[SQLiteStore<br/>Source of Truth]
+        Vector[VectorMemoryStore<br/>Semantic Retrieval]
+    end
+    
+    subgraph Services[Service Layer]
+        RS[RetrievalService<br/>Hybrid Retrieval]
+        CS[ClassificationService<br/>Auto Classification]
+        IS[ImportanceScorer<br/>Importance Scoring]
+        DS[DataSyncManager<br/>Data Sync]
+    end
+    
+    MM --> RS
+    MM --> CS
+    MM --> IS
+    
+    RS --> SQLite
+    RS --> Vector
+    
+    SQLite <--> DS <--> Vector
 ```
 
-1.  User input -> Received by CLI
-2.  Agent loads history state (Checkpoint)
-3.  ContextBuilder constructs current Prompt (including relevant memory)
-4.  LLM generates response or tool call request
-5.  If tool call -> Execute tool -> Return result to LLM -> Loop
-6.  LLM generates final response -> Display to user
+#### Hybrid Retrieval Strategy
 
-### CLI Features
+FinchBot uses **Weighted RRF (Weighted Reciprocal Rank Fusion)** strategy:
 
-FinchBot's CLI provides a rich interactive experience:
-
-| Feature | Description |
-|---------|-------------|
-| Session Management | Interactively select, rename, and delete history sessions |
-| Auto-Title | Automatically generates session titles based on conversation |
-| Time Travel | Supports \rollback and \back commands to revert conversation state |
-| Rich Experience | Markdown rendering, loading animations, syntax highlighting |
-
-### Memory Write Flow (Remember)
-
-1.  Agent calls `remember` tool
-2.  `MemoryManager` receives content
-3.  Automatically calculates `category` (ClassificationService)
-4.  Automatically calculates `importance` (ImportanceScorer)
-5.  Writes to SQLite, generating a unique ID
-6.  Synchronously calls Embedding service, writing vector to ChromaDB
-7.  Records access log
-
-### Memory Retrieval Flow (Recall)
-
-1.  Agent calls `recall` tool (Query: "What is my API Key")
-2.  `RetrievalService` converts query to vector
-3.  Searches Top-K similar results in Vector Store
-4.  (Optional) Combines with SQLite for metadata filtering (category, time range, etc.)
-5.  Returns results to Agent
-
----
-
-## Design Principles
-
-### Modularity
-
-Each component has clear responsibility boundaries:
-- `MemoryManager` doesn't directly handle storage details, delegates to `SQLiteStore` and `VectorMemoryStore`
-- `ToolRegistry` only handles registration and lookup, doesn't care about tool implementation
-- `I18n` system is independent of business logic
-
-### Dependency Inversion
-
-High-level modules don't depend on low-level modules, both depend on abstractions:
-```
-AgentCore → MemoryManager (Interface)
-                ↓
-         SQLiteStore / VectorStore (Implementation)
+```python
+class QueryType(StrEnum):
+    """Query type determines retrieval weights"""
+    KEYWORD_ONLY = "keyword_only"      # Pure keyword (1.0/0.0)
+    SEMANTIC_ONLY = "semantic_only"    # Pure semantic (0.0/1.0)
+    FACTUAL = "factual"                # Factual (0.8/0.2)
+    CONCEPTUAL = "conceptual"          # Conceptual (0.2/0.8)
+    COMPLEX = "complex"                # Complex (0.5/0.5)
+    AMBIGUOUS = "ambiguous"            # Ambiguous (0.3/0.7)
 ```
 
-### Privacy First
+### 4. Dynamic Prompt System: User-Editable Agent Brain
 
-- Embedding generation happens locally (FastEmbed), no cloud upload
-- Configuration files stored in user directory `~/.finchbot`
-- File operations restricted to workspace
+FinchBot's prompt system uses **file system + modular assembly** design.
 
-### Defensive Programming
+#### Bootstrap File System
 
-- Double-checked locking prevents concurrency issues
-- Vector store failure doesn't affect SQLite writes (degradation strategy)
-- Timeout control prevents tool hanging
-- Complete error logging (Loguru)
+```
+~/.finchbot/
+├── SYSTEM.md           # Role definition
+├── MEMORY_GUIDE.md     # Memory usage guide
+├── SOUL.md             # Personality settings
+├── AGENT_CONFIG.md     # Agent configuration
+└── workspace/
+    └── skills/         # Custom skills
+```
 
-### Developer Features
+#### Prompt Loading Flow
 
-FinchBot provides a comprehensive development experience for developers:
+```mermaid
+flowchart TD
+    A[Agent Startup] --> B[Load Bootstrap Files]
+    B --> C[SYSTEM.md]
+    B --> D[MEMORY_GUIDE.md]
+    B --> E[SOUL.md]
+    B --> F[AGENT_CONFIG.md]
+    
+    C --> G[Assemble Prompt]
+    D --> G
+    E --> G
+    F --> G
+    
+    G --> H[Load Always-on Skills]
+    H --> I[Build Skill Summary XML]
+    I --> J[Generate Tool Docs]
+    J --> K[Inject Runtime Info]
+    K --> L[Complete System Prompt]
+    
+    L --> M[Send to LLM]
+```
 
-| Feature | Description |
-|---------|-------------|
-| Type Safety | Comprehensive use of Python Type Hints |
-| Code Quality | Ruff formatting + BasedPyright type checking |
-| Dependency Management | uv for fast package management, 10-100x faster |
-| Tech Stack | Python 3.13+, LangGraph v1.0+, Pydantic v2 |
-| Testing Framework | pytest + pytest-asyncio + pytest-cov |
+### 5. LangChain v1.2 Architecture Practice
 
----
+FinchBot is built on **LangChain v1.2** and **LangGraph v1.0**, using the latest Agent architecture.
 
-## Key Advantages
+```python
+from langchain.agents import create_agent
+from langgraph.checkpoint.sqlite import SqliteSaver
 
-| Advantage | Description |
-|-----------|-------------|
-| Privacy First | Uses FastEmbed locally for vector generation, no cloud upload |
-| True Persistence | Dual-layer memory storage with semantic retrieval and precise queries |
-| Production Grade | Double-checked locking, auto-retry, timeout control mechanisms |
-| Flexible Extension | Inherit FinchTool to add new tools without modifying core code |
-| Model Agnostic | Supports OpenAI, Anthropic, Gemini, Ollama, DeepSeek, Moonshot, etc. |
-| Thread Safe | Tool registration uses double-checked locking pattern |
+def create_finch_agent(
+    model: BaseChatModel,
+    workspace: Path,
+    tools: Sequence[BaseTool] | None = None,
+    use_persistent: bool = True,
+) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
+    
+    # 1. Initialize checkpoint (persistent state)
+    if use_persistent:
+        checkpointer = SqliteSaver.from_conn_string(str(db_path))
+    else:
+        checkpointer = MemorySaver()
+    
+    # 2. Build system prompt
+    system_prompt = build_system_prompt(workspace)
+    
+    # 3. Create Agent (using LangChain official API)
+    agent = create_agent(
+        model=model,
+        tools=list(tools) if tools else None,
+        system_prompt=system_prompt,
+        checkpointer=checkpointer,
+    )
+    
+    return agent, checkpointer
+```
+
+#### Supported LLM Providers
+
+| Provider | Models | Features |
+|:---:|:---|:---|
+| OpenAI | GPT-4, GPT-4o, O1, O3 | Best overall capability |
+| Anthropic | Claude 3.5/4 Sonnet, Opus | High safety, long context |
+| DeepSeek | DeepSeek-V3, R1 | Chinese, cost-effective |
+| Gemini | Gemini 2.0/2.5 Flash | Google's latest |
+| Groq | Llama 4, Mixtral | Ultra-fast inference |
+| Moonshot | Kimi K1.5/K2.5 | Long context, Chinese |
 
 ---
 
@@ -471,64 +412,76 @@ FinchBot provides a comprehensive development experience for developers:
 ### Prerequisites
 
 | Item | Requirement |
-|------|-------------|
+|:---:|:---|
 | OS | Windows / Linux / macOS |
 | Python | 3.13+ |
 | Package Manager | uv (Recommended) |
 
 ### Installation
 
-1. Clone the repository
-
 ```bash
-git clone https://github.com/yourusername/finchbot.git
+# Clone repository
+git clone https://github.com/xt765/finchbot.git
 cd finchbot
-```
 
-2. Create environment and install dependencies using uv
-
-```bash
+# Install dependencies with uv
 uv sync
 ```
 
-3. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in your API Key
+### Best Practice: Three Commands to Get Started
 
 ```bash
-cp .env.example .env
-```
+# Step 1: Configure API keys and default model
+uv run finchbot config
 
-### Usage
+# Step 2: Manage your sessions
+uv run finchbot sessions
 
-Start an interactive chat session
-
-```bash
+# Step 3: Start chatting
 uv run finchbot chat
 ```
 
-View help
+That's it! These three commands cover the complete workflow:
+- `finchbot config` — Interactive configuration for LLM providers, API keys, and settings
+- `finchbot sessions` — Full-screen session manager for creating, renaming, deleting sessions
+- `finchbot chat` — Start or continue an interactive conversation
+
+### Alternative: Environment Variables
 
 ```bash
-uv run finchbot --help
+# Or set environment variables directly
+export OPENAI_API_KEY="your-api-key"
+uv run finchbot chat
 ```
 
-Download local embedding models
+### Optional: Download Local Embedding Model
 
 ```bash
+# For memory system semantic search (optional but recommended)
 uv run finchbot models download
 ```
 
-Manage sessions
+### Create Custom Skill
 
 ```bash
-uv run finchbot sessions
-```
+# Create skill directory
+mkdir -p ~/.finchbot/workspace/skills/my-skill
 
-Configuration management
+# Create skill file
+cat > ~/.finchbot/workspace/skills/my-skill/SKILL.md << 'EOF'
+---
+name: my-skill
+description: My custom skill
+metadata:
+  finchbot:
+    emoji: ✨
+    always: false
+---
 
-```bash
-uv run finchbot config
+# My Custom Skill
+
+When user requests XXX, I should...
+EOF
 ```
 
 ---
@@ -536,7 +489,7 @@ uv run finchbot config
 ## Tech Stack
 
 | Layer | Technology | Version |
-|-------|------------|---------|
+|:---:|:---|:---:|
 | Core Language | Python | 3.13+ |
 | Agent Framework | LangChain | 1.2.10+ |
 | State Management | LangGraph | 1.0.8+ |
@@ -555,15 +508,15 @@ uv run finchbot config
 
 ### Adding New Tools
 
-Inherit the `FinchTool` base class, implement the `execute()` method, then register with `ToolRegistry`.
+Inherit `FinchTool` base class, implement `_run()` method, then register with `ToolRegistry`.
+
+### Adding New Skills
+
+Create a `SKILL.md` file in `~/.finchbot/workspace/skills/{skill-name}/`.
 
 ### Adding New LLM Providers
 
 Add a new Provider class in `providers/factory.py`.
-
-### Custom Memory Retrieval Strategy
-
-Inherit `RetrievalService` or modify the `search()` method.
 
 ### Adding New Languages
 
@@ -571,14 +524,28 @@ Add a new `.toml` file under `i18n/locales/`.
 
 ---
 
+## Key Advantages
+
+| Advantage | Description |
+|:---:|:---|
+| **Privacy First** | Uses FastEmbed locally for vector generation, no cloud upload |
+| **True Persistence** | Dual-layer memory storage with semantic retrieval and precise queries |
+| **Production Ready** | Double-checked locking, auto-retry, timeout control mechanisms |
+| **Flexible Extension** | Inherit FinchTool or create SKILL.md to extend without modifying core code |
+| **Model Agnostic** | Supports OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq, etc. |
+| **Thread Safe** | Tool registration uses double-checked locking pattern |
+
+---
+
 ## Documentation
 
 | Document | Description |
-|----------|-------------|
-| [User Guide (CLI)](docs/en-US/guide/usage.md) | CLI usage tutorial |
+|:---|:---|
+| [User Guide](docs/en-US/guide/usage.md) | CLI usage tutorial |
 | [API Reference](docs/en-US/api.md) | API reference |
 | [Configuration Guide](docs/en-US/config.md) | Configuration options |
 | [Extension Guide](docs/en-US/guide/extension.md) | Adding tools/skills |
+| [Architecture](docs/en-US/architecture.md) | System architecture |
 | [Deployment Guide](docs/en-US/deployment.md) | Deployment instructions |
 | [Development Guide](docs/en-US/development.md) | Development environment setup |
 | [Contributing Guide](docs/en-US/contributing.md) | Contribution guidelines |

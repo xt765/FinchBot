@@ -2,7 +2,17 @@
 
 FinchBot 提供了强大的扩展能力，允许开发者通过 **添加新工具 (Tools)** 和 **编写新技能 (Skills)** 来增强 Agent 的能力。
 
-## 1. 添加新工具 (Add New Tools)
+## 目录
+
+1. [添加新工具](#1-添加新工具)
+2. [编写新技能](#2-编写新技能)
+3. [自定义记忆检索策略](#3-自定义记忆检索策略)
+4. [添加新的 LLM 提供商](#4-添加新的-llm-提供商)
+5. [最佳实践](#5-最佳实践)
+
+---
+
+## 1. 添加新工具
 
 工具是 Python 代码，用于执行实际操作（如调用 API、处理数据、操作文件等）。所有工具必须继承自 `finchbot.tools.base.FinchTool`。
 
@@ -11,8 +21,7 @@ FinchBot 提供了强大的扩展能力，允许开发者通过 **添加新工�
 创建一个新的 Python 文件（例如 `src/finchbot/tools/custom/my_tool.py`），并定义工具类。
 
 ```python
-from typing import Any
-from pydantic import Field
+from typing import Any, ClassVar
 from finchbot.tools.base import FinchTool
 
 class WeatherTool(FinchTool):
@@ -28,7 +37,7 @@ class WeatherTool(FinchTool):
     description: str = "Get current weather for a specific city."
     
     # 参数定义 (JSON Schema)
-    parameters: dict = {
+    parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
             "city": {
@@ -59,8 +68,6 @@ class WeatherTool(FinchTool):
 
 ### 步骤 2: 注册工具
 
-在 `src/finchbot/agent/core.py` 的 `_register_default_tools` 函数中注册您的新工具，或者在创建 Agent 时动态传入。
-
 **方法 A: 修改源码注册 (推荐用于内置工具)**
 
 修改 `src/finchbot/agent/core.py`:
@@ -80,15 +87,25 @@ def _register_default_tools():
 **方法 B: 运行时注册 (推荐用于插件)**
 
 ```python
-from finchbot.tools.registry import register_tool
+from finchbot.tools.registry import get_global_registry
 from my_plugin import WeatherTool
 
-register_tool(WeatherTool())
+registry = get_global_registry()
+registry.register(WeatherTool())
 ```
+
+### 工具设计原则
+
+| 原则 | 说明 |
+|:---:|:---|
+| **单一职责** | 一个工具只做一件事 |
+| **清晰描述** | `description` 和 `parameters` 必须清晰，这决定了 LLM 能否正确调用 |
+| **错误处理** | 返回有意义的错误信息，而非抛出异常 |
+| **安全限制** | 敏感操作需要权限检查 |
 
 ---
 
-## 2. 编写新技能 (Add New Skills)
+## 2. 编写新技能
 
 技能 (Skills) 是基于 Markdown 的文档，用于教导 Agent 如何处理特定类型的任务。它们类似于 "标准作业程序 (SOP)" 或 "In-Context Learning" 示例。
 
@@ -118,11 +135,14 @@ workspace/
 ```markdown
 ---
 name: report-writing
-description: 指导 Agent 如何撰写专业的分析报告。
+description: 指导 Agent 如何撰写专业的分析报告
 metadata:
   finchbot:
     emoji: 📝
     always: false  # 是否总是加载此技能 (true/false)
+    requires:
+      bins: []     # 依赖的 CLI 工具
+      env: []      # 依赖的环境变量
 ---
 
 # 报告撰写指南
@@ -155,19 +175,162 @@ metadata:
 ...
 ```
 
+### Frontmatter 字段说明
+
+| 字段 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `name` | string | ✅ | 技能唯一标识符 |
+| `description` | string | ✅ | 技能描述，用于 Agent 决定何时使用 |
+| `metadata.finchbot.emoji` | string | ❌ | 技能图标 |
+| `metadata.finchbot.always` | boolean | ❌ | 是否总是加载（默认 false） |
+| `metadata.finchbot.requires.bins` | list | ❌ | 依赖的 CLI 工具列表 |
+| `metadata.finchbot.requires.env` | list | ❌ | 依赖的环境变量列表 |
+
 ### 技能加载机制
 
-1.  **自动发现**: Agent 启动时会自动扫描 `skills/` 目录。
-2.  **动态注入**: 
-    *   如果 `always: true`，技能内容会被直接拼接到 System Prompt 中。
-    *   如果 `always: false`，技能的 `name` 和 `description` 会出现在 System Prompt 的可用技能列表中。Agent 可以根据当前任务决定是否通过“回忆”或“阅读”来获取技能的详细内容。
+1. **自动发现**: Agent 启动时会自动扫描 `skills/` 目录
+2. **动态注入**:
+    - 如果 `always: true`，技能内容会被直接拼接到 System Prompt 中
+    - 如果 `always: false`，技能的 `name` 和 `description` 会出现在 System Prompt 的可用技能列表中。Agent 可以根据当前任务决定是否通过"回忆"或"阅读"来获取技能的详细内容
 
 ---
 
-## 3. 最佳实践
+## 3. 自定义记忆检索策略
 
-*   **工具 vs 技能**: 
-    *   如果任务需要**执行动作**（如联网、读文件、计算），使用 **工具**。
-    *   如果任务需要**遵循流程**或**特定风格**（如写代码规范、回答风格），使用 **技能**。
-*   **原子性**: 保持工具功能单一，一个工具只做一件事。
-*   **文档**: 为工具编写清晰的 `description` 和 `parameters` 说明，这直接决定了 LLM 能否正确调用它。
+FinchBot 的记忆检索采用 **加权 RRF** 策略，你可以通过修改 `QueryType` 或自定义 `RetrievalService` 来调整检索行为。
+
+### 修改检索权重
+
+在 `src/finchbot/memory/types.py` 中修改 `QueryType` 的权重映射：
+
+```python
+QUERY_WEIGHTS = {
+    QueryType.KEYWORD_ONLY: (1.0, 0.0),    # (关键词权重, 语义权重)
+    QueryType.SEMANTIC_ONLY: (0.0, 1.0),
+    QueryType.FACTUAL: (0.8, 0.2),
+    QueryType.CONCEPTUAL: (0.2, 0.8),
+    QueryType.COMPLEX: (0.5, 0.5),
+    QueryType.AMBIGUOUS: (0.3, 0.7),
+}
+```
+
+### 自定义检索服务
+
+继承 `RetrievalService` 并重写 `search()` 方法：
+
+```python
+from finchbot.memory.services.retrieval import RetrievalService
+
+class MyRetrievalService(RetrievalService):
+    async def search(
+        self,
+        query: str,
+        query_type: QueryType,
+        top_k: int = 5,
+        **kwargs
+    ) -> list[dict]:
+        # 自定义检索逻辑
+        # 例如：添加时间衰减、个性化排序等
+        results = await super().search(query, query_type, top_k, **kwargs)
+        
+        # 应用自定义排序
+        results = self._apply_custom_ranking(results)
+        
+        return results
+```
+
+---
+
+## 4. 添加新的 LLM 提供商
+
+在 `src/finchbot/providers/factory.py` 中添加新的 Provider 类。
+
+### 示例：添加自定义提供商
+
+```python
+from langchain_core.language_models import BaseChatModel
+from langchain_openai import ChatOpenAI
+
+def create_my_provider_model(config: ProviderConfig) -> BaseChatModel:
+    """创建自定义提供商的模型实例."""
+    return ChatOpenAI(
+        model=config.model or "my-default-model",
+        api_key=config.api_key,
+        base_url=config.api_base or "https://api.my-provider.com/v1",
+        temperature=config.temperature or 0.7,
+    )
+
+# 在 ProviderFactory 中注册
+PROVIDER_FACTORIES = {
+    # ... 现有提供商
+    "my-provider": create_my_provider_model,
+}
+```
+
+---
+
+## 5. 最佳实践
+
+### 工具 vs 技能
+
+| 场景 | 使用工具 | 使用技能 |
+|:---|:---:|:---:|
+| 需要执行动作（联网、读文件、计算） | ✅ | ❌ |
+| 需要遵循流程或特定风格 | ❌ | ✅ |
+| 需要调用外部 API | ✅ | ❌ |
+| 需要教导 Agent 如何思考 | ❌ | ✅ |
+
+### 工具开发最佳实践
+
+1. **原子性**: 保持工具功能单一，一个工具只做一件事
+2. **文档**: 为工具编写清晰的 `description` 和 `parameters` 说明
+3. **错误处理**: 返回有意义的错误信息，而非抛出异常
+4. **安全限制**: 敏感操作需要权限检查
+
+### 技能开发最佳实践
+
+1. **明确场景**: 技能描述要明确适用场景
+2. **提供示例**: 包含具体的输入输出示例
+3. **结构清晰**: 使用标题、列表、表格组织内容
+4. **适度长度**: 技能内容不宜过长，避免占用过多上下文
+
+### 扩展示例
+
+```python
+# 完整的自定义工具示例
+from typing import Any, ClassVar
+from finchbot.tools.base import FinchTool
+import aiohttp
+
+class JokeTool(FinchTool):
+    """随机笑话工具."""
+    
+    name: str = "get_joke"
+    description: str = "Get a random joke to make the user happy."
+    parameters: ClassVar[dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "category": {
+                "type": "string",
+                "enum": ["programming", "general", "dad"],
+                "description": "Joke category",
+                "default": "programming"
+            }
+        },
+        "required": [],
+    }
+    
+    async def _arun(self, category: str = "programming") -> str:
+        async with aiohttp.ClientSession() as session:
+            url = f"https://official-joke-api.appspot.com/jokes/{category}/random"
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    joke = data[0] if isinstance(data, list) else data
+                    return f"{joke['setup']} - {joke['punchline']}"
+                return "Sorry, couldn't fetch a joke right now."
+    
+    def _run(self, category: str = "programming") -> str:
+        import asyncio
+        return asyncio.run(self._arun(category))
+```

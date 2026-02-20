@@ -2,6 +2,29 @@
 
 FinchBot 提供了丰富的命令行界面 (CLI) 来与智能体进行交互。本文档详细介绍所有可用的命令和交互方式。
 
+## 快速开始：三步上手
+
+```bash
+# 第一步：配置 API 密钥和默认模型
+uv run finchbot config
+
+# 第二步：管理你的会话
+uv run finchbot sessions
+
+# 第三步：开始对话
+uv run finchbot chat
+```
+
+这三个命令覆盖了 FinchBot 的核心工作流程：
+
+| 命令 | 功能 | 说明 |
+|------|------|------|
+| `finchbot config` | 交互式配置 | 配置 LLM 提供商、API 密钥、默认模型、网页搜索等 |
+| `finchbot sessions` | 会话管理 | 全屏界面创建、重命名、删除会话，查看会话历史 |
+| `finchbot chat` | 开始对话 | 启动交互式聊天，自动加载最近活跃的会话 |
+
+---
+
 ## 1. 启动与基本交互
 
 ### 启动 FinchBot
@@ -26,6 +49,18 @@ finchbot chat --session "project-alpha"
 
 如果未指定，系统会自动加载最近一次活跃的会话。
 
+### 指定模型
+
+```bash
+finchbot chat --model "gpt-4o"
+```
+
+### 指定工作目录
+
+```bash
+finchbot chat --workspace "~/my-project"
+```
+
 ### 交互模式
 
 进入聊天界面后，您可以直接输入自然语言与 Agent 对话。
@@ -47,6 +82,20 @@ finchbot chat --session "project-alpha"
 - **功能**: 显示从会话开始至今的所有消息（用户、AI、工具调用）。
 - **用途**: 回顾上下文，或查看消息索引（用于回滚）。
 
+**示例输出**:
+
+```
+─── 第 1 轮对话 ───
+┌─────────────────────────────────┐
+│ 👤 你                           │
+│ 你好，请记住我的邮箱是 test@example.com
+└─────────────────────────────────┘
+┌─────────────────────────────────┐
+│ 🐦 FinchBot                     │
+│ 好的，我已经记住了您的邮箱地址。  │
+└─────────────────────────────────┘
+```
+
 ### `/rollback <index> [new_session_id]`
 
 时光倒流：将对话状态回滚到指定的消息索引处。
@@ -57,6 +106,10 @@ finchbot chat --session "project-alpha"
 - **示例**:
     - `/rollback 5`: 回滚到第 5 条消息之后的状态（删除索引 > 5 的所有消息）。
     - `/rollback 5 branch-b`: 基于第 5 条消息的状态创建名为 `branch-b` 的新会话。
+
+**使用场景**:
+- 修正错误方向：当对话走向偏离预期时回退
+- 探索分支：创建新会话尝试不同的对话路径
 
 ### `/back <n>`
 
@@ -86,12 +139,27 @@ finchbot sessions
 
 ### 操作指南
 
-- **↑ / ↓**: 导航选择会话。
-- **Enter**: 进入选中的会话。
-- **r**: 重命名当前选中的会话。
-- **d**: 删除当前选中的会话。
-- **n**: 创建新会话。
-- **q**: 退出管理器。
+| 按键 | 功能 |
+|------|------|
+| ↑ / ↓ | 导航选择会话 |
+| Enter | 进入选中的会话 |
+| r | 重命名当前选中的会话 |
+| d | 删除当前选中的会话 |
+| n | 创建新会话 |
+| q | 退出管理器 |
+
+### 会话信息显示
+
+会话列表会显示以下信息：
+
+| 列 | 说明 |
+|----|------|
+| ID | 会话唯一标识 |
+| 标题 | 会话标题（自动生成或手动设置） |
+| 消息数 | 会话中的消息总数 |
+| 会话轮次 | 问答轮次数量 |
+| 创建时间 | 会话创建的时间 |
+| 最后活跃 | 最后一次交互的时间 |
 
 ---
 
@@ -105,7 +173,50 @@ FinchBot 提供了交互式配置管理界面。
 finchbot config
 ```
 
-这将启动交互式界面，用于配置 API 密钥、默认模型和其他设置。
+这将启动交互式界面，用于配置：
+
+### 配置项
+
+| 配置项 | 说明 |
+|--------|------|
+| 语言 | 界面语言（中文/英文） |
+| LLM 提供商 | OpenAI、Anthropic、DeepSeek 等 |
+| API 密钥 | 各提供商的 API Key |
+| API Base URL | 自定义 API 端点（可选） |
+| 默认模型 | 默认使用的聊天模型 |
+| 网页搜索 | Tavily / Brave Search API Key |
+
+### 支持的 LLM 提供商
+
+| 提供商 | 说明 |
+|--------|------|
+| OpenAI | GPT-4, GPT-4o, O1, O3 系列 |
+| Anthropic | Claude 3.5/3.7 Sonnet, Opus |
+| DeepSeek | DeepSeek-V3, DeepSeek-R1 |
+| DashScope | 阿里云通义千问 |
+| Groq | Llama, Mixtral（快速推理） |
+| Moonshot | Kimi 月之暗面 |
+| OpenRouter | 多提供商网关 |
+| Google Gemini | Gemini 1.5/2.0 |
+
+### 环境变量配置
+
+也可以通过环境变量配置：
+
+```bash
+# OpenAI
+export OPENAI_API_KEY="sk-..."
+export OPENAI_API_BASE="https://api.openai.com/v1"  # 可选
+
+# Anthropic
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# DeepSeek
+export DEEPSEEK_API_KEY="sk-..."
+
+# Tavily (网页搜索)
+export TAVILY_API_KEY="tvly-..."
+```
 
 ---
 
@@ -119,18 +230,150 @@ finchbot config
 finchbot models download
 ```
 
-系统会自动检测网络环境并选择最佳的镜像源。
+系统会自动检测网络环境并选择最佳的镜像源：
+- 国内用户：使用 hf-mirror.com 镜像
+- 国外用户：使用 Hugging Face 官方源
+
+**模型信息**：
+- 模型名称：`BAAI/bge-small-zh-v1.5`
+- 用途：记忆系统的语义检索
 
 ---
 
-## 6. 全局选项
+## 6. 内置工具使用
+
+FinchBot 内置了 11 个工具，分为四大类：
+
+### 文件操作工具
+
+| 工具 | 说明 | 使用场景 |
+|------|------|----------|
+| `read_file` | 读取文件内容 | 查看代码、配置文件 |
+| `write_file` | 写入文件（覆盖） | 创建新文件 |
+| `edit_file` | 编辑文件（替换） | 修改现有文件的部分内容 |
+| `list_dir` | 列出目录内容 | 探索项目结构 |
+
+**最佳实践**：
+
+```
+1. 先用 list_dir 了解目录结构
+2. 再用 read_file 查看文件内容
+3. 根据需求使用 write_file 或 edit_file
+```
+
+### 网络工具
+
+| 工具 | 说明 | 使用场景 |
+|------|------|----------|
+| `web_search` | 搜索互联网 | 获取最新信息、验证事实 |
+| `web_extract` | 提取网页内容 | 获取网页全文 |
+
+**搜索引擎优先级**：
+1. Tavily（质量最佳，专为 AI 优化）
+2. Brave Search（免费额度大，隐私友好）
+3. DuckDuckGo（无需 API 密钥，始终可用）
+
+**最佳实践**：
+
+```
+1. 先用 web_search 找到相关 URL
+2. 再用 web_extract 获取详细内容
+```
+
+### 记忆管理工具
+
+| 工具 | 说明 | 使用场景 |
+|------|------|----------|
+| `remember` | 保存记忆 | 记录用户信息、偏好 |
+| `recall` | 检索记忆 | 回忆之前的信息 |
+| `forget` | 删除记忆 | 清除过期或错误信息 |
+
+#### 记忆分类
+
+| 分类 | 说明 | 示例 |
+|------|------|------|
+| personal | 个人信息 | 姓名、年龄、住址 |
+| preference | 用户偏好 | 喜好、习惯 |
+| work | 工作相关 | 项目、任务、会议 |
+| contact | 联系方式 | 邮箱、电话 |
+| goal | 目标计划 | 愿望、计划 |
+| schedule | 日程安排 | 时间、提醒 |
+| general | 通用 | 其他信息 |
+
+#### 检索策略 (QueryType)
+
+| 策略 | 权重 | 使用场景 |
+|------|------|----------|
+| `factual` | 关键词 0.8 / 语义 0.2 | "我的邮箱是多少" |
+| `conceptual` | 关键词 0.2 / 语义 0.8 | "我喜欢的食物" |
+| `complex` | 关键词 0.5 / 语义 0.5 | 复杂查询（默认） |
+| `ambiguous` | 关键词 0.3 / 语义 0.7 | 歧义查询 |
+| `keyword_only` | 关键词 1.0 / 语义 0.0 | 精确匹配 |
+| `semantic_only` | 关键词 0.0 / 语义 1.0 | 语义探索 |
+
+### 系统工具
+
+| 工具 | 说明 | 使用场景 |
+|------|------|----------|
+| `exec` | 执行 shell 命令 | 批量操作、系统命令 |
+| `session_title` | 管理会话标题 | 获取/设置会话标题 |
+
+---
+
+## 7. Bootstrap 文件系统
+
+FinchBot 使用可编辑的 Bootstrap 文件系统来定义 Agent 的行为。这些文件位于工作目录下，用户可以随时编辑。
+
+### Bootstrap 文件
+
+| 文件 | 说明 |
+|------|------|
+| `SYSTEM.md` | 系统提示词，定义 Agent 的基本行为 |
+| `MEMORY_GUIDE.md` | 记忆系统使用指南 |
+| `SOUL.md` | Agent 的自我认知和性格特征 |
+| `AGENT_CONFIG.md` | Agent 配置（温度、最大令牌等） |
+
+### 编辑 Bootstrap 文件
+
+您可以直接编辑这些文件来自定义 Agent 行为：
+
+```bash
+# 查看当前工作目录
+finchbot chat --workspace "~/my-workspace"
+
+# 编辑系统提示词
+# 文件位置: ~/my-workspace/SYSTEM.md
+```
+
+**示例 - 自定义 SYSTEM.md**：
+
+```markdown
+# FinchBot (雀翎)
+
+你是一个专业的代码助手，专注于 Python 开发。
+
+## 角色定位
+你是 FinchBot，一个专业的 Python 开发助手。
+
+## 专长领域
+- Python 3.13+ 特性
+- 异步编程 (asyncio)
+- 类型提示 (type hints)
+- 测试驱动开发 (TDD)
+```
+
+---
+
+## 8. 全局选项
 
 `finchbot` 命令行支持以下全局选项：
 
-- `--help`: 显示帮助信息。
-- `--version`: 显示版本号。
-- `--verbose` / `-v`: 启用详细日志（调试模式）。
-- `--quiet` / `-q`: 静默模式，只输出错误信息。
+| 选项 | 说明 |
+|------|------|
+| `--help` | 显示帮助信息 |
+| `--version` | 显示版本号 |
+| `--verbose` / `-v` | 启用详细日志（调试模式） |
+| `--quiet` / `-q` | 静默模式，只输出错误信息 |
 
 **示例**:
 
@@ -139,13 +382,29 @@ finchbot models download
 finchbot chat -v
 ```
 
-### 命令速查表
+---
+
+## 9. 命令速查表
 
 | 命令 | 说明 |
 |------|------|
 | `finchbot chat` | 启动交互式聊天会话 |
-| `finchbot chat --session <id>` | 启动/继续指定会话 |
+| `finchbot chat -s <id>` | 启动/继续指定会话 |
+| `finchbot chat -m <model>` | 使用指定模型 |
+| `finchbot chat -w <dir>` | 使用指定工作目录 |
 | `finchbot sessions` | 打开会话管理器 |
 | `finchbot config` | 打开配置管理器 |
 | `finchbot models download` | 下载嵌入模型 |
 | `finchbot version` | 显示版本信息 |
+
+---
+
+## 10. 聊天命令速查表
+
+| 命令 | 说明 |
+|------|------|
+| `/history` | 显示会话历史（带索引） |
+| `/rollback <n>` | 回滚到第 n 条消息 |
+| `/rollback <n> <new_id>` | 创建分支会话 |
+| `/back <n>` | 撤销最近 n 条消息 |
+| `exit` / `quit` / `q` | 退出聊天 |

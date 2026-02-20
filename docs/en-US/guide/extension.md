@@ -1,34 +1,43 @@
 # Extension Guide
 
-FinchBot provides powerful extensibility, allowing developers to enhance the Agent's capabilities by **Adding New Tools** and **Writing New Skills**.
+FinchBot provides powerful extension capabilities, allowing developers to enhance Agent capabilities by **adding new Tools** and **writing new Skills**.
+
+## Table of Contents
+
+1. [Adding New Tools](#1-adding-new-tools)
+2. [Writing New Skills](#2-writing-new-skills)
+3. [Custom Memory Retrieval Strategy](#3-custom-memory-retrieval-strategy)
+4. [Adding New LLM Providers](#4-adding-new-llm-providers)
+5. [Best Practices](#5-best-practices)
+
+---
 
 ## 1. Adding New Tools
 
-Tools are Python code used to perform actual operations (e.g., calling APIs, processing data, manipulating files). All tools must inherit from `finchbot.tools.base.FinchTool`.
+Tools are Python code used to perform actual operations (such as calling APIs, processing data, manipulating files, etc.). All tools must inherit from `finchbot.tools.base.FinchTool`.
 
-### Step 1: Create a Tool Class
+### Step 1: Create Tool Class
 
 Create a new Python file (e.g., `src/finchbot/tools/custom/my_tool.py`) and define the tool class.
 
 ```python
-from typing import Any
-from pydantic import Field
+from typing import Any, ClassVar
 from finchbot.tools.base import FinchTool
 
 class WeatherTool(FinchTool):
-    """Weather Query Tool.
+    """Weather query tool.
     
-    Allows the Agent to query weather conditions for a specific city.
+    Allows Agent to query weather conditions for a specified city.
     """
     
-    # Tool name, used by the Agent when calling
+    # Tool name, used when Agent calls
     name: str = "get_weather"
     
-    # Tool description, helps the Agent understand when to use this tool
+    # Tool description, helps Agent understand when to use this tool
     description: str = "Get current weather for a specific city."
     
     # Parameter definition (JSON Schema)
-    parameters: dict = {
+    parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
             "city": {
@@ -48,18 +57,18 @@ class WeatherTool(FinchTool):
     def _run(self, city: str, unit: str = "celsius") -> str:
         """Synchronous execution logic."""
         # Implement actual API call logic here
+        # Example return value
         return f"The weather in {city} is Sunny, 25 degrees {unit}."
 
     async def _arun(self, city: str, unit: str = "celsius") -> str:
         """Asynchronous execution logic (optional)."""
+        # If async operations are needed, implement this method
         return self._run(city, unit)
 ```
 
-### Step 2: Register the Tool
+### Step 2: Register Tool
 
-Register your new tool in `src/finchbot/agent/core.py`'s `_register_default_tools` function, or pass it dynamically when creating the Agent.
-
-**Method A: Source Code Registration (Recommended for built-in tools)**
+**Method A: Modify source code registration (recommended for built-in tools)**
 
 Modify `src/finchbot/agent/core.py`:
 
@@ -75,24 +84,34 @@ def _register_default_tools():
     # ...
 ```
 
-**Method B: Runtime Registration (Recommended for plugins)**
+**Method B: Runtime registration (recommended for plugins)**
 
 ```python
-from finchbot.tools.registry import register_tool
+from finchbot.tools.registry import get_global_registry
 from my_plugin import WeatherTool
 
-register_tool(WeatherTool())
+registry = get_global_registry()
+registry.register(WeatherTool())
 ```
+
+### Tool Design Principles
+
+| Principle | Description |
+|:---:|:---|
+| **Single Responsibility** | One tool does one thing |
+| **Clear Description** | `description` and `parameters` must be clear, this determines if LLM can call correctly |
+| **Error Handling** | Return meaningful error messages, don't throw exceptions |
+| **Security Limits** | Sensitive operations need permission checks |
 
 ---
 
 ## 2. Writing New Skills
 
-Skills are Markdown-based documents used to teach the Agent how to handle specific types of tasks. They are similar to "Standard Operating Procedures (SOPs)" or "In-Context Learning" examples.
+Skills are Markdown-based documents used to teach Agent how to handle specific types of tasks. They are similar to "Standard Operating Procedures (SOP)" or "In-Context Learning" examples.
 
 ### Skill Directory Structure
 
-Skill files are stored in the `skills/` directory of the workspace (default: `~/.finchbot/workspace/skills/`).
+Skill files are stored in the workspace's `skills/` directory (default is `~/.finchbot/workspace/skills/`).
 
 ```text
 workspace/
@@ -109,53 +128,209 @@ Create a new directory under `skills/`, e.g., `report-writing`.
 
 ### Step 2: Write SKILL.md
 
-Create a `SKILL.md` file in the directory. The file contains **YAML Frontmatter** and **Markdown Body**.
+Create a `SKILL.md` file in the directory. The file contains **YAML Frontmatter** and **Markdown content**.
 
 **Example**:
 
 ```markdown
 ---
 name: report-writing
-description: Guide the Agent on how to write professional analysis reports.
+description: Guide Agent on how to write professional analysis reports
 metadata:
   finchbot:
     emoji: 📝
     always: false  # Whether to always load this skill (true/false)
+    requires:
+      bins: []     # Required CLI tools
+      env: []      # Required environment variables
 ---
 
 # Report Writing Guide
 
-When the user requests an analysis report, please follow these structures and principles:
+When user requests an analysis report, follow these structure and principles:
 
 ## 1. Structure Requirements
 
-*   **Title**: Clearly reflects the topic.
-*   **Executive Summary**: Briefly outline core findings (within 200 words).
+*   **Title**: Clearly reflect the topic.
+*   **Executive Summary**: Briefly outline key findings (within 200 words).
 *   **Methodology**: Explain data sources and analysis methods.
-*   **Detailed Analysis**: Elaborate point by point, using data to support arguments.
-*   **Conclusion & Recommendations**: Provide actionable suggestions.
+*   **Detailed Analysis**: Present points with data support.
+*   **Conclusions and Recommendations**: Provide actionable suggestions.
 
 ## 2. Writing Style
 
-*   Maintain objectivity and neutrality.
-*   Use professional terminology but explain obscure words.
-*   Use lists and tables frequently to display data.
+*   Remain objective and neutral.
+*   Use professional terminology, but explain uncommon terms.
+*   Use lists and tables to present data.
 
 ## 3. Example
 
-**User**: Please analyze the Q1 sales data.
+**User**: Please analyze Q1 sales data.
 
 **Agent**:
 # Q1 2024 Sales Data Analysis Report
 
-## Summary
-Sales this quarter increased by 15% year-over-year, mainly driven by...
+## Executive Summary
+Sales grew 15% year-over-year this quarter, primarily driven by...
 ...
 ```
 
+### Frontmatter Field Description
+
+| Field | Type | Required | Description |
+|:---|:---|:---:|:---|
+| `name` | string | ✅ | Skill unique identifier |
+| `description` | string | ✅ | Skill description, used for Agent to decide when to use |
+| `metadata.finchbot.emoji` | string | ❌ | Skill icon |
+| `metadata.finchbot.always` | boolean | ❌ | Whether to always load (default false) |
+| `metadata.finchbot.requires.bins` | list | ❌ | Required CLI tools list |
+| `metadata.finchbot.requires.env` | list | ❌ | Required environment variables list |
+
 ### Skill Loading Mechanism
 
-1.  **Auto-discovery**: The Agent automatically scans the `skills/` directory on startup.
-2.  **Dynamic Injection**: 
-    *   If `always: true`, skill content is directly appended to the System Prompt.
-    *   If `always: false`, the skill's `name` and `description` appear in the System Prompt's available skills list. The Agent can decide whether to fetch the skill's detailed content via "recall" or "read" based on the current task.
+1. **Auto Discovery**: Agent automatically scans `skills/` directory at startup
+2. **Dynamic Injection**:
+    - If `always: true`, skill content is directly appended to System Prompt
+    - If `always: false`, skill's `name` and `description` appear in System Prompt's available skills list. Agent can decide whether to "recall" or "read" to get detailed skill content based on current task
+
+---
+
+## 3. Custom Memory Retrieval Strategy
+
+FinchBot's memory retrieval uses **Weighted RRF** strategy. You can adjust retrieval behavior by modifying `QueryType` or customizing `RetrievalService`.
+
+### Modify Retrieval Weights
+
+Modify `QueryType` weight mapping in `src/finchbot/memory/types.py`:
+
+```python
+QUERY_WEIGHTS = {
+    QueryType.KEYWORD_ONLY: (1.0, 0.0),    # (keyword weight, semantic weight)
+    QueryType.SEMANTIC_ONLY: (0.0, 1.0),
+    QueryType.FACTUAL: (0.8, 0.2),
+    QueryType.CONCEPTUAL: (0.2, 0.8),
+    QueryType.COMPLEX: (0.5, 0.5),
+    QueryType.AMBIGUOUS: (0.3, 0.7),
+}
+```
+
+### Custom Retrieval Service
+
+Inherit `RetrievalService` and override `search()` method:
+
+```python
+from finchbot.memory.services.retrieval import RetrievalService
+
+class MyRetrievalService(RetrievalService):
+    async def search(
+        self,
+        query: str,
+        query_type: QueryType,
+        top_k: int = 5,
+        **kwargs
+    ) -> list[dict]:
+        # Custom retrieval logic
+        # E.g., add time decay, personalized ranking, etc.
+        results = await super().search(query, query_type, top_k, **kwargs)
+        
+        # Apply custom ranking
+        results = self._apply_custom_ranking(results)
+        
+        return results
+```
+
+---
+
+## 4. Adding New LLM Providers
+
+Add a new Provider class in `src/finchbot/providers/factory.py`.
+
+### Example: Adding Custom Provider
+
+```python
+from langchain_core.language_models import BaseChatModel
+from langchain_openai import ChatOpenAI
+
+def create_my_provider_model(config: ProviderConfig) -> BaseChatModel:
+    """Create custom provider model instance."""
+    return ChatOpenAI(
+        model=config.model or "my-default-model",
+        api_key=config.api_key,
+        base_url=config.api_base or "https://api.my-provider.com/v1",
+        temperature=config.temperature or 0.7,
+    )
+
+# Register in ProviderFactory
+PROVIDER_FACTORIES = {
+    # ... existing providers
+    "my-provider": create_my_provider_model,
+}
+```
+
+---
+
+## 5. Best Practices
+
+### Tools vs Skills
+
+| Scenario | Use Tools | Use Skills |
+|:---|:---:|:---:|
+| Need to perform actions (network, read files, calculate) | ✅ | ❌ |
+| Need to follow processes or specific styles | ❌ | ✅ |
+| Need to call external APIs | ✅ | ❌ |
+| Need to teach Agent how to think | ❌ | ✅ |
+
+### Tool Development Best Practices
+
+1. **Atomicity**: Keep tool functionality single, one tool does one thing
+2. **Documentation**: Write clear `description` and `parameters` for tools
+3. **Error Handling**: Return meaningful error messages, don't throw exceptions
+4. **Security Limits**: Sensitive operations need permission checks
+
+### Skill Development Best Practices
+
+1. **Clear Scenarios**: Skill description should clearly define applicable scenarios
+2. **Provide Examples**: Include specific input/output examples
+3. **Clear Structure**: Use headings, lists, tables to organize content
+4. **Moderate Length**: Skill content shouldn't be too long to avoid consuming too much context
+
+### Extension Example
+
+```python
+# Complete custom tool example
+from typing import Any, ClassVar
+from finchbot.tools.base import FinchTool
+import aiohttp
+
+class JokeTool(FinchTool):
+    """Random joke tool."""
+    
+    name: str = "get_joke"
+    description: str = "Get a random joke to make the user happy."
+    parameters: ClassVar[dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "category": {
+                "type": "string",
+                "enum": ["programming", "general", "dad"],
+                "description": "Joke category",
+                "default": "programming"
+            }
+        },
+        "required": [],
+    }
+    
+    async def _arun(self, category: str = "programming") -> str:
+        async with aiohttp.ClientSession() as session:
+            url = f"https://official-joke-api.appspot.com/jokes/{category}/random"
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    joke = data[0] if isinstance(data, list) else data
+                    return f"{joke['setup']} - {joke['punchline']}"
+                return "Sorry, couldn't fetch a joke right now."
+    
+    def _run(self, category: str = "programming") -> str:
+        import asyncio
+        return asyncio.run(self._arun(category))
+```
