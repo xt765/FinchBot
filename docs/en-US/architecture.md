@@ -183,6 +183,23 @@ def _register_default_tools() -> None:
 
 Skills are FinchBot's unique innovation—**defining Agent capabilities through Markdown files**.
 
+#### Key Feature: Agent Auto-Creates Skills
+
+FinchBot includes a built-in **skill-creator** skill, the ultimate expression of the out-of-the-box philosophy:
+
+> **Just tell the Agent what skill you want, and it will create it automatically!**
+
+```
+User: Help me create a translation skill that can translate Chinese to English
+
+Agent: Okay, I'll create a translation skill for you...
+       [Invokes skill-creator skill]
+       ✅ Created skills/translator/SKILL.md
+       You can now use the translation feature directly!
+```
+
+No manual file creation, no coding—**extend Agent capabilities with just one sentence**!
+
 #### Skill File Structure
 
 ```yaml
@@ -309,6 +326,35 @@ All tools inherit from the `FinchTool` base class and must implement:
 | `forget` | Memory | `memory.py` | Delete/archive memory |
 | `session_title` | System | `session_title.py` | Manage session title |
 
+#### Web Search: Three-Engine Fallback Design
+
+FinchBot's web search tool features a clever **three-engine automatic fallback mechanism**, balancing flexibility and out-of-the-box experience:
+
+| Priority | Engine | API Key | Features |
+|:---:|:---:|:---:|:---|
+| 1 | **Tavily** | Required | Best quality, AI-optimized, deep search |
+| 2 | **Brave Search** | Required | Large free tier, privacy-friendly |
+| 3 | **DuckDuckGo** | Not required | Always available, zero config |
+
+**How it works**:
+1. If `TAVILY_API_KEY` is set → Use Tavily (best quality)
+2. Else if `BRAVE_API_KEY` is set → Use Brave Search
+3. Else → Use DuckDuckGo (no API key needed, always works)
+
+This design ensures **web search works out of the box even without any API key configuration**!
+
+#### Session Title: Smart Naming, Out of the Box
+
+The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
+
+| Method | Description | Example |
+|:---:|:---|:---|
+| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion" |
+| **Agent Modify** | Tell Agent "Change session title to XXX" | Agent calls tool to modify automatically |
+| **Manual Rename** | Press `r` key in session manager to rename | User manually enters new title |
+
+This design lets users **manage sessions without technical details**—whether automatic or manual.
+
 ---
 
 ### 2.5 Dynamic Prompt System
@@ -423,7 +469,20 @@ AgentCore → MemoryManager (Interface)
 - Configuration files stored in user directory `~/.finchbot`
 - File operations restricted to workspace
 
-### 4.4 Defensive Programming
+### 4.4 Out of the Box
+
+FinchBot makes "Out of the Box" a core design principle:
+
+| Feature | Description |
+|:---:|:---|
+| **Three-Step Start** | `config` → `sessions` → `chat`, complete workflow in three commands |
+| **Environment Variables** | All configurations can be set via environment variables |
+| **Rich CLI Interface** | Full-screen keyboard navigation, interactive operation |
+| **i18n Support** | Built-in Chinese/English support, auto-detects system language |
+| **Auto Fallback** | Web search automatically falls back: Tavily → Brave → DuckDuckGo |
+| **Agent Auto-Create Skills** | Tell Agent your needs, auto-generates skill files |
+
+### 4.5 Defensive Programming
 
 - Double-checked locking prevents concurrency issues
 - Vector store failure doesn't affect SQLite writes (degradation strategy)

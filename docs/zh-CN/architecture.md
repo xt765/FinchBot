@@ -183,6 +183,23 @@ def _register_default_tools() -> None:
 
 技能是 FinchBot 的独特创新——**用 Markdown 文件定义 Agent 的能力边界**。
 
+#### 最大特色：Agent 自动创建技能
+
+FinchBot 内置了 **skill-creator** 技能，这是开箱即用理念的极致体现：
+
+> **只需告诉 Agent 你想要什么技能，Agent 就会自动创建好！**
+
+```
+用户: 帮我创建一个翻译技能，可以把中文翻译成英文
+
+Agent: 好的，我来为你创建翻译技能...
+       [调用 skill-creator 技能]
+       ✅ 已创建 skills/translator/SKILL.md
+       现在你可以直接使用翻译功能了！
+```
+
+无需手动创建文件、无需编写代码，**一句话就能扩展 Agent 能力**！
+
 #### 技能文件结构
 
 ```yaml
@@ -321,6 +338,35 @@ class MemoryManager:
 | `recall` | 记忆 | `memory.py` | 检索记忆 |
 | `forget` | 记忆 | `memory.py` | 删除/归档记忆 |
 | `session_title` | 系统 | `session_title.py` | 管理会话标题 |
+
+#### 网页搜索：三引擎降级设计
+
+FinchBot 的网页搜索工具采用**三引擎自动降级机制**，兼顾灵活性和开箱即用体验：
+
+| 优先级 | 引擎 | API Key | 特点 |
+|:---:|:---:|:---:|:---|
+| 1 | **Tavily** | 需要 | 质量最佳，专为 AI 优化，深度搜索 |
+| 2 | **Brave Search** | 需要 | 免费额度大，隐私友好 |
+| 3 | **DuckDuckGo** | 无需 | 始终可用，零配置 |
+
+**工作原理**：
+1. 如果设置了 `TAVILY_API_KEY` → 使用 Tavily（质量最佳）
+2. 否则如果设置了 `BRAVE_API_KEY` → 使用 Brave Search
+3. 否则 → 使用 DuckDuckGo（无需 API Key，始终可用）
+
+这个设计确保**即使没有任何 API Key 配置，网页搜索也能开箱即用**！
+
+#### 会话标题：智能命名，开箱即用
+
+`session_title` 工具体现了 FinchBot 的开箱即用理念：
+
+| 操作方式 | 说明 | 示例 |
+|:---:|:---|:---|
+| **自动生成** | 对话 2-3 轮后，AI 自动根据内容生成标题 | "Python 异步编程讨论" |
+| **Agent 修改** | 告诉 Agent "把会话标题改成 XXX" | Agent 调用工具自动修改 |
+| **手动重命名** | 在会话管理器中按 `r` 键重命名 | 用户手动输入新标题 |
+
+这个设计让用户**无需关心技术细节**，无论是自动还是手动，都能轻松管理会话。
 
 ---
 
@@ -496,7 +542,20 @@ AgentCore → MemoryManager (接口)
 - 配置文件存储在用户目录 `~/.finchbot`
 - 文件操作限制在工作区
 
-### 4.4 防御性编程 (Defensive Programming)
+### 4.4 开箱即用 (Out of the Box)
+
+FinchBot 将"开箱即用"作为核心设计理念：
+
+| 特性 | 说明 |
+|:---:|:---|
+| **三步上手** | `config` → `sessions` → `chat`，三个命令完成完整工作流程 |
+| **环境变量配置** | 所有配置均可通过环境变量设置 |
+| **Rich CLI 界面** | 全屏键盘导航，交互式操作 |
+| **i18n 国际化** | 内置中英文支持，自动检测系统语言 |
+| **自动降级** | 网页搜索自动降级：Tavily → Brave → DuckDuckGo |
+| **Agent 自动创建技能** | 告诉 Agent 需求，自动生成技能文件 |
+
+### 4.5 防御性编程 (Defensive Programming)
 
 - 双重检查锁定防止并发问题
 - 向量存储失败不影响 SQLite 写入（降级策略）

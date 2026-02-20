@@ -103,11 +103,52 @@ registry.register(WeatherTool())
 | **Error Handling** | Return meaningful error messages, don't throw exceptions |
 | **Security Limits** | Sensitive operations need permission checks |
 
+### Built-in Tool Example: session_title
+
+The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
+
+| Method | Description | Example |
+|:---:|:---|:---|
+| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion" |
+| **Agent Modify** | Tell Agent "Change session title to XXX" | Agent calls tool to modify automatically |
+| **Manual Rename** | Press `r` key in session manager to rename | User manually enters new title |
+
+```python
+# Agent call example
+session_title(action="set", title="New Session Title")
+
+# Get current title
+session_title(action="get")
+```
+
+This design lets users **manage sessions without technical details**—whether automatic or manual.
+
 ---
 
 ## 2. Writing New Skills
 
 Skills are Markdown-based documents used to teach Agent how to handle specific types of tasks. They are similar to "Standard Operating Procedures (SOP)" or "In-Context Learning" examples.
+
+### Out of the Box: Agent Auto-Creates Skills
+
+FinchBot includes a built-in **skill-creator** skill, the ultimate expression of the out-of-the-box philosophy:
+
+> **Just tell the Agent what skill you want, and it will create it automatically!**
+
+```
+User: Help me create a translation skill that can translate Chinese to English
+
+Agent: Okay, I'll create a translation skill for you...
+       [Invokes skill-creator skill]
+       ✅ Created skills/translator/SKILL.md
+       You can now use the translation feature directly!
+```
+
+No manual file creation, no coding—**extend Agent capabilities with just one sentence**!
+
+### Manual Skill Creation
+
+If you prefer to create skills manually, follow the steps below.
 
 ### Skill Directory Structure
 
