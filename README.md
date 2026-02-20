@@ -43,7 +43,20 @@ Privacy First → Local Embedding, no cloud data upload
 Modularity → Each component independently replaceable
 Developer Friendly → Type safety + comprehensive documentation
 Production Ready → Double-checked locking + auto-retry + timeout control
+Out of the Box → Zero-config startup, automatic fallback, rich CLI
 ```
+
+### Out-of-the-Box Experience
+
+FinchBot is designed with **"Out of the Box"** as a core principle—no complex setup required:
+
+| Feature | Description |
+|:---:|:---|
+| **Environment Variables** | All configurations can be set via environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.) |
+| **Rich CLI Interface** | Full-screen keyboard navigation with ↑/↓ arrows, interactive selection |
+| **i18n Support** | Built-in Chinese/English support, auto-detects system language |
+| **Auto Fallback** | Web search automatically falls back through Tavily → Brave → DuckDuckGo |
+| **Zero Config Start** | Just set API key and run `finchbot chat` |
 
 ---
 
@@ -232,6 +245,23 @@ Tools are the bridge for Agent to interact with the external world. FinchBot pro
 | | `forget` | Delete/archive memories |
 | **System** | `exec` | Secure shell execution |
 | | `session_title` | Manage session titles |
+
+#### Web Search: Three-Engine Fallback Design
+
+FinchBot's web search tool features a clever **three-engine fallback mechanism**, giving users flexibility and out-of-the-box experience:
+
+| Priority | Engine | API Key | Features |
+|:---:|:---:|:---:|:---|
+| 1 | **Tavily** | Required | Best quality, AI-optimized, deep search |
+| 2 | **Brave Search** | Required | Large free tier, privacy-friendly |
+| 3 | **DuckDuckGo** | Not required | Always available, zero config |
+
+**How it works**:
+1. If `TAVILY_API_KEY` is set → Use Tavily (best quality)
+2. Else if `BRAVE_API_KEY` is set → Use Brave Search
+3. Else → Use DuckDuckGo (no API key needed, always works)
+
+This design ensures **web search works out of the box** even without any API key configuration!
 
 #### Tool Registration Mechanism
 
