@@ -150,6 +150,13 @@ role_bot = "FinchBot"
 total_messages = "共 {} 條訊息"
 rollback_hint = "使用 '/rollback <索引> [新對話名]' 回退"
 
+[cli.tool_display]
+tool_call_title = "🔧 {}"
+tool_result_title = "📤 {}"
+execution_time = "執行時間: {:.2f}s"
+param_column = "參數"
+value_column = "值"
+
 [cli.rollback]
 invalid_index = "無效索引。範圍: 0-{}"
 removed_messages = "已刪除 {} 條訊息"

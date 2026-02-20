@@ -158,6 +158,13 @@ total_messages = "共 {} 条消息"
 rollback_hint = "使用 '/rollback <索引> [新会话名]' 回退"
 tool_invoked = "调用工具"
 
+[cli.tool_display]
+tool_call_title = "🔧 {}"
+tool_result_title = "📤 {}"
+execution_time = "执行时间: {:.2f}s"
+param_column = "参数"
+value_column = "值"
+
 [cli.rollback]
 invalid_index = "无效索引。范围: 0-{}"
 removed_messages = "已删除 {} 条消息"

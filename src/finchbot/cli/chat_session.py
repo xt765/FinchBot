@@ -163,8 +163,8 @@ def _display_tool_call(tool_name: str, tool_args: dict, console: Console) -> Non
         console: Rich Console
     """
     table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
-    table.add_column("参数", style="cyan", no_wrap=True)
-    table.add_column("值", style="white")
+    table.add_column(t("cli.tool_display.param_column"), style="cyan", no_wrap=True)
+    table.add_column(t("cli.tool_display.value_column"), style="white")
 
     for key, value in tool_args.items():
         value_str = str(value)
@@ -175,7 +175,7 @@ def _display_tool_call(tool_name: str, tool_args: dict, console: Console) -> Non
     console.print(
         Panel(
             table,
-            title=f"🔧 {tool_name}",
+            title=t("cli.tool_display.tool_call_title").format(tool_name),
             border_style="yellow",
             padding=(0, 1),
         )
@@ -199,8 +199,8 @@ def _display_tool_result(tool_name: str, result: str, duration: float, console: 
 
     console.print(
         Panel(
-            f"{display_result}\n\n[dim]执行时间: {duration:.2f}s[/dim]",
-            title=f"📤 {tool_name}",
+            f"{display_result}\n\n[dim]{t('cli.tool_display.execution_time').format(duration)}[/dim]",
+            title=t("cli.tool_display.tool_result_title").format(tool_name),
             border_style=border_color,
             padding=(0, 1),
         )
