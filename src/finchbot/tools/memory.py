@@ -26,7 +26,7 @@ class RememberTool(FinchTool):
     name: str = Field(default="remember", description="Tool name")
     description: str = Field(default="", description="Tool description")
     workspace: str = Field(default="", exclude=True)
-    memory_manager: MemoryManager | None = Field(default=None, exclude=True)
+    memory_manager: Any = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -107,7 +107,7 @@ class RecallTool(FinchTool):
     name: str = Field(default="recall", description="Tool name")
     description: str = Field(default="", description="Tool description")
     workspace: str = Field(default="", exclude=True)
-    memory_manager: MemoryManager | None = Field(default=None, exclude=True)
+    memory_manager: Any = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
@@ -234,7 +234,7 @@ class ForgetTool(FinchTool):
     name: str = Field(default="forget", description="Tool name")
     description: str = Field(default="", description="Tool description")
     workspace: str = Field(default="", exclude=True)
-    memory_manager: MemoryManager | None = Field(default=None, exclude=True)
+    memory_manager: Any = Field(default=None, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """初始化后设置描述."""
