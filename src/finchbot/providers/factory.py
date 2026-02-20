@@ -16,6 +16,7 @@ def create_chat_model(
     api_key: str | None = None,
     api_base: str | None = None,
     temperature: float = 0.7,
+    streaming: bool = True,
     **kwargs: Any,
 ) -> BaseChatModel:
     """创建聊天模型实例。
@@ -28,6 +29,7 @@ def create_chat_model(
         api_key: API 密钥（可选，优先使用环境变量）。
         api_base: API 基础 URL（可选，优先使用环境变量）。
         temperature: 生成温度。
+        streaming: 是否启用流式输出，默认启用。
         **kwargs: 其他模型参数。
 
     Returns:
@@ -40,7 +42,7 @@ def create_chat_model(
     final_base = get_api_base(provider, api_base)
     secret_key = SecretStr(final_key) if final_key else None
 
-    return _create_model(provider, model, secret_key, final_base, temperature, **kwargs)
+    return _create_model(provider, model, secret_key, final_base, temperature, streaming, **kwargs)
 
 
 def _detect_provider(model_lower: str) -> str:
@@ -76,6 +78,7 @@ def _create_model(
     secret_key: SecretStr | None,
     base_url: str | None,
     temperature: float,
+    streaming: bool = True,
     **kwargs: Any,
 ) -> BaseChatModel:
     """创建具体的模型实例。
@@ -86,6 +89,7 @@ def _create_model(
         secret_key: API 密钥。
         base_url: API 基础 URL。
         temperature: 生成温度。
+        streaming: 是否启用流式输出。
         **kwargs: 其他参数。
 
     Returns:
@@ -99,6 +103,7 @@ def _create_model(
             api_key=secret_key,
             base_url=base_url,
             temperature=temperature,
+            streaming=streaming,
             **kwargs,
         )
 
@@ -109,12 +114,14 @@ def _create_model(
             return ChatAnthropic(
                 model_name=model,
                 temperature=temperature,
+                streaming=streaming,
                 **kwargs,
             )
         return ChatAnthropic(
             model_name=model,
             api_key=secret_key,
             temperature=temperature,
+            streaming=streaming,
             **kwargs,
         )
 
@@ -126,6 +133,7 @@ def _create_model(
             model=model,
             google_api_key=key,
             temperature=temperature,
+            streaming=streaming,
             **kwargs,
         )
 
@@ -137,6 +145,7 @@ def _create_model(
             api_key=secret_key,
             base_url=base_url,
             temperature=temperature,
+            streaming=streaming,
             **kwargs,
         )
 
@@ -147,5 +156,6 @@ def _create_model(
         api_key=secret_key,
         base_url=base_url,
         temperature=temperature,
+        streaming=streaming,
         **kwargs,
     )

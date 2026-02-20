@@ -7,17 +7,22 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import time
 from pathlib import Path
 from typing import Any
 
 import typer
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.graph.state import CompiledStateGraph
 from loguru import logger
+from rich import box
 from rich.console import Console
+from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.rule import Rule
+from rich.table import Table
 from rich.text import Text
 
 from finchbot.config import load_config
@@ -147,6 +152,132 @@ def _format_message(
                 width=panel_width,
             )
         )
+
+
+def _display_tool_call(tool_name: str, tool_args: dict, console: Console) -> None:
+    """显示工具调用参数.
+
+    Args:
+        tool_name: 工具名称
+        tool_args: 工具参数
+        console: Rich Console
+    """
+    table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
+    table.add_column("参数", style="cyan", no_wrap=True)
+    table.add_column("值", style="white")
+
+    for key, value in tool_args.items():
+        value_str = str(value)
+        if len(value_str) > 60:
+            value_str = value_str[:57] + "..."
+        table.add_row(key, value_str)
+
+    console.print(
+        Panel(
+            table,
+            title=f"🔧 {tool_name}",
+            border_style="yellow",
+            padding=(0, 1),
+        )
+    )
+
+
+def _display_tool_result(tool_name: str, result: str, duration: float, console: Console) -> None:
+    """显示工具执行结果.
+
+    Args:
+        tool_name: 工具名称
+        result: 执行结果
+        duration: 执行时间（秒）
+        console: Rich Console
+    """
+    display_result = result
+    if len(display_result) > 200:
+        display_result = display_result[:197] + "..."
+
+    border_color = "green" if "✅" in result or result.startswith("Success") else "yellow"
+
+    console.print(
+        Panel(
+            f"{display_result}\n\n[dim]执行时间: {duration:.2f}s[/dim]",
+            title=f"📤 {tool_name}",
+            border_style=border_color,
+            padding=(0, 1),
+        )
+    )
+
+
+def _stream_ai_response(
+    agent: CompiledStateGraph,
+    user_input: str,
+    config: RunnableConfig,
+    console: Console,
+    render_markdown: bool = True,
+) -> list[BaseMessage]:
+    """流式输出 AI 响应，并显示详细的工具调用信息.
+
+    Args:
+        agent: LangGraph Agent
+        user_input: 用户输入
+        config: 运行配置
+        console: Rich Console
+        render_markdown: 是否渲染 Markdown
+
+    Returns:
+        所有消息列表
+    """
+    input_data = {"messages": [{"role": "user", "content": user_input}]}
+    full_content = ""
+    all_messages: list[BaseMessage] = []
+    tool_start_time: float | None = None
+    current_tool_name: str | None = None
+
+    with Live(
+        Panel(Text(""), title="🐦 FinchBot", border_style="green"),
+        console=console,
+        refresh_per_second=10,
+        transient=True,
+    ) as live:
+        for event in agent.stream(input_data, config=config, stream_mode=["messages", "updates"]):
+            if isinstance(event, tuple):
+                token, metadata = event
+                if metadata.get("langgraph_node") == "model":
+                    full_content += token
+                    live.update(
+                        Panel(
+                            Text(full_content),
+                            title="🐦 FinchBot",
+                            border_style="green",
+                        )
+                    )
+            else:
+                for _node_name, node_data in event.items():
+                    messages = node_data.get("messages", [])
+                    for msg in messages:
+                        if hasattr(msg, "tool_calls") and msg.tool_calls:
+                            for tc in msg.tool_calls:
+                                tool_name: str = tc.get("name") or "unknown"
+                                _display_tool_call(tool_name, tc.get("args", {}), console)
+                                tool_start_time = time.time()
+                        elif hasattr(msg, "name") and msg.name:
+                            duration = 0.0
+                            if tool_start_time:
+                                duration = time.time() - tool_start_time
+                                tool_start_time = None
+                            _display_tool_result(msg.name, str(msg.content), duration, console)
+                        all_messages.append(msg)
+
+    if render_markdown and full_content:
+        console.print(
+            Panel(
+                Markdown(full_content),
+                title="🐦 FinchBot",
+                border_style="green",
+                padding=(0, 1),
+            )
+        )
+
+    return all_messages
 
 
 def _display_messages_by_turn(
@@ -554,57 +685,22 @@ def _run_chat_session(
         console.print()
 
     if first_message:
-        with console.status("[dim]Thinking...[/dim]", spinner="dots"):
-            runnable_config: RunnableConfig = {"configurable": {"thread_id": session_id}}
+        runnable_config: RunnableConfig = {"configurable": {"thread_id": session_id}}
+        try:
+            all_messages = _stream_ai_response(
+                agent, first_message, runnable_config, console, render_markdown
+            )
+        except Exception as stream_error:
+            logger.error(f"Stream error: {stream_error}")
+            console.print(f"[red]Error: {stream_error}[/red]")
             all_messages = []
-            try:
-                for chunk in agent.stream(
-                    {"messages": [{"role": "user", "content": first_message}]},
-                    config=runnable_config,
-                ):
-                    if chunk.get("messages"):
-                        new_msgs = chunk["messages"]
-                        for msg in new_msgs:
-                            if msg not in all_messages:
-                                all_messages.append(msg)
-                                _format_message(
-                                    msg,
-                                    len(all_messages) - 1,
-                                    show_index=False,
-                                    render_markdown=render_markdown,
-                                )
-                    elif chunk.get("model", {}).get("messages"):
-                        new_msgs = chunk["model"]["messages"]
-                        for msg in new_msgs:
-                            if msg not in all_messages:
-                                all_messages.append(msg)
-                                _format_message(
-                                    msg,
-                                    len(all_messages) - 1,
-                                    show_index=False,
-                                    render_markdown=render_markdown,
-                                )
-                    elif chunk.get("tools", {}).get("messages"):
-                        new_msgs = chunk["tools"]["messages"]
-                        for msg in new_msgs:
-                            if msg not in all_messages:
-                                all_messages.append(msg)
-                                _format_message(
-                                    msg,
-                                    len(all_messages) - 1,
-                                    show_index=False,
-                                    render_markdown=render_markdown,
-                                )
-            except Exception as stream_error:
-                logger.error(f"Stream error: {stream_error}")
-                console.print(f"[red]Error: {stream_error}[/red]")
 
-            if not all_messages:
-                console.print("[yellow]No response from agent[/yellow]")
+        if not all_messages:
+            console.print("[yellow]No response from agent[/yellow]")
 
-            msg_count = len(all_messages)
-            session_store.update_activity(session_id, message_count=msg_count)
-            _update_session_turn_count(session_store, session_id, agent, chat_model)
+        msg_count = len(all_messages)
+        session_store.update_activity(session_id, message_count=msg_count)
+        _update_session_turn_count(session_store, session_id, agent, chat_model)
 
         console.print()
 
@@ -744,57 +840,20 @@ def _run_chat_session(
 
                 continue
 
-            with console.status("[dim]Thinking...[/dim]", spinner="dots"):
-                config: RunnableConfig = {"configurable": {"thread_id": session_id}}
+            config: RunnableConfig = {"configurable": {"thread_id": session_id}}
+            try:
+                all_messages = _stream_ai_response(agent, command, config, console, render_markdown)
+            except Exception as stream_error:
+                logger.error(f"Stream error: {stream_error}")
+                console.print(f"[red]Error: {stream_error}[/red]")
                 all_messages = []
-                try:
-                    for chunk in agent.stream(
-                        {"messages": [{"role": "user", "content": command}]},
-                        config=config,
-                    ):
-                        if chunk.get("messages"):
-                            new_msgs = chunk["messages"]
-                            for msg in new_msgs:
-                                if msg not in all_messages:
-                                    all_messages.append(msg)
-                                    _format_message(
-                                        msg,
-                                        len(all_messages) - 1,
-                                        show_index=False,
-                                        render_markdown=render_markdown,
-                                    )
-                        elif chunk.get("model", {}).get("messages"):
-                            new_msgs = chunk["model"]["messages"]
-                            for msg in new_msgs:
-                                if msg not in all_messages:
-                                    all_messages.append(msg)
-                                    _format_message(
-                                        msg,
-                                        len(all_messages) - 1,
-                                        show_index=False,
-                                        render_markdown=render_markdown,
-                                    )
-                        elif chunk.get("tools", {}).get("messages"):
-                            new_msgs = chunk["tools"]["messages"]
-                            for msg in new_msgs:
-                                if msg not in all_messages:
-                                    all_messages.append(msg)
-                                    _format_message(
-                                        msg,
-                                        len(all_messages) - 1,
-                                        show_index=False,
-                                        render_markdown=render_markdown,
-                                    )
-                except Exception as stream_error:
-                    logger.error(f"Stream error: {stream_error}")
-                    console.print(f"[red]Error: {stream_error}[/red]")
 
-                if not all_messages:
-                    console.print("[yellow]No response from agent[/yellow]")
+            if not all_messages:
+                console.print("[yellow]No response from agent[/yellow]")
 
-                msg_count = len(all_messages)
-                session_store.update_activity(session_id, message_count=msg_count)
-                _update_session_turn_count(session_store, session_id, agent, chat_model)
+            msg_count = len(all_messages)
+            session_store.update_activity(session_id, message_count=msg_count)
+            _update_session_turn_count(session_store, session_id, agent, chat_model)
 
             console.print()
 
