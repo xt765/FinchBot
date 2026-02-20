@@ -188,123 +188,7 @@ finchbot/
 
 ## Core Components
 
-### 1. Skill System: Define Agent Capabilities with Markdown
-
-Skills are FinchBot's unique innovation—**defining Agent capabilities through Markdown files**.
-
-#### Skill File Structure
-
-```
-skills/
-├── skill-creator/        # Skill creator (Built-in)
-│   └── SKILL.md
-├── summarize/            # Intelligent summarization (Built-in)
-│   └── SKILL.md
-├── weather/              # Weather query (Built-in)
-│   └── SKILL.md
-└── my-custom-skill/      # Your custom skill
-    └── SKILL.md
-```
-
-#### Skill Definition Format
-
-```markdown
-<!-- skills/weather/SKILL.md -->
----
-name: weather
-description: Query current weather and forecast (no API key required)
-metadata:
-  finchbot:
-    emoji: 🌤️
-    always: false
-    requires:
-      bins: [curl]
-      env: []
----
-
-# Weather Query Skill
-
-## Functionality
-Query weather information using wttr.in service...
-
-## Usage
-When user asks about weather...
-```
-
-#### Core Design Highlights
-
-| Feature | Description |
-|:---:|:---|
-| **Dual Skill Source** | Workspace skills first, built-in skills fallback |
-| **Dependency Check** | Auto-check CLI tools and environment variables |
-| **Cache Invalidation** | Smart caching based on file modification time |
-| **Progressive Loading** | Always-on skills first, others on demand |
-
-### 2. Tool System: Code-Level Capability Extension
-
-Tools are the bridge for Agent to interact with the external world. FinchBot provides 11 built-in tools with easy extension.
-
-#### Built-in Tools
-
-| Category | Tool | Function |
-|:---:|:---|:---|
-| **File Ops** | `read_file` | Read local files |
-| | `write_file` | Write local files |
-| | `edit_file` | Edit file content |
-| | `list_dir` | List directory contents |
-| **Network** | `web_search` | Web search (Tavily/Brave/DDG) |
-| | `web_extract` | Web content extraction |
-| **Memory** | `remember` | Proactively store memories |
-| | `recall` | Retrieve memories |
-| | `forget` | Delete/archive memories |
-| **System** | `exec` | Secure shell execution |
-| | `session_title` | Manage session titles |
-
-#### Web Search: Three-Engine Fallback Design
-
-FinchBot's web search tool features a clever **three-engine fallback mechanism**, giving users flexibility and out-of-the-box experience:
-
-| Priority | Engine | API Key | Features |
-|:---:|:---:|:---:|:---|
-| 1 | **Tavily** | Required | Best quality, AI-optimized, deep search |
-| 2 | **Brave Search** | Required | Large free tier, privacy-friendly |
-| 3 | **DuckDuckGo** | Not required | Always available, zero config |
-
-**How it works**:
-1. If `TAVILY_API_KEY` is set → Use Tavily (best quality)
-2. Else if `BRAVE_API_KEY` is set → Use Brave Search
-3. Else → Use DuckDuckGo (no API key needed, always works)
-
-This design ensures **web search works out of the box** even without any API key configuration!
-
-#### Tool Registration Mechanism
-
-```python
-from finchbot.tools.base import FinchTool
-from typing import Any, ClassVar
-
-class MyCustomTool(FinchTool):
-    """Custom tool example."""
-    
-    name: str = "my_custom_tool"
-    description: str = "My custom tool description"
-    parameters: ClassVar[dict[str, Any]] = {
-        "type": "object",
-        "properties": {
-            "input_text": {
-                "type": "string",
-                "description": "Input text"
-            }
-        },
-        "required": ["input_text"]
-    }
-    
-    def _run(self, input_text: str) -> str:
-        # Implement your logic
-        return f"Result: {input_text}"
-```
-
-### 3. Memory Architecture: Dual-Layer Storage + Agentic RAG
+### 1. Memory Architecture: Dual-Layer Storage + Agentic RAG
 
 FinchBot implements an advanced **dual-layer memory architecture** that solves LLM context window limits and long-term forgetting issues.
 
@@ -363,7 +247,7 @@ class QueryType(StrEnum):
     AMBIGUOUS = "ambiguous"            # Ambiguous (0.3/0.7)
 ```
 
-### 4. Dynamic Prompt System: User-Editable Agent Brain
+### 2. Dynamic Prompt System: User-Editable Agent Brain
 
 FinchBot's prompt system uses **file system + modular assembly** design.
 
@@ -402,6 +286,131 @@ flowchart TD
     
     L --> M[Send to LLM]
 ```
+
+### 3. Tool System: Code-Level Capability Extension
+
+Tools are the bridge for Agent to interact with the external world. FinchBot provides 11 built-in tools with easy extension.
+
+#### Tool System Architecture
+
+```mermaid
+flowchart TB
+    subgraph Registry[Tool Registry]
+        TR[ToolRegistry<br/>Global Registry]
+        Lock[Double-checked Lock<br/>Thread Safe]
+    end
+    
+    subgraph BuiltIn[Built-in Tools - 11]
+        File[File Ops<br/>read/write/edit/list]
+        Web[Network<br/>search/extract]
+        Memory[Memory<br/>remember/recall/forget]
+        System[System<br/>exec/session_title]
+    end
+    
+    subgraph Custom[Custom Extension]
+        Inherit[Inherit FinchTool]
+        Register[Register to Registry]
+    end
+    
+    TR --> Lock
+    Lock --> BuiltIn
+    Lock --> Custom
+    
+    File --> Agent[Agent Call]
+    Web --> Agent
+    Memory --> Agent
+    System --> Agent
+```
+
+#### Built-in Tools
+
+| Category | Tool | Function |
+|:---:|:---|:---|
+| **File Ops** | `read_file` | Read local files |
+| | `write_file` | Write local files |
+| | `edit_file` | Edit file content |
+| | `list_dir` | List directory contents |
+| **Network** | `web_search` | Web search (Tavily/Brave/DDG) |
+| | `web_extract` | Web content extraction |
+| **Memory** | `remember` | Proactively store memories |
+| | `recall` | Retrieve memories |
+| | `forget` | Delete/archive memories |
+| **System** | `exec` | Secure shell execution |
+| | `session_title` | Manage session titles |
+
+#### Web Search: Three-Engine Fallback Design
+
+FinchBot's web search tool features a clever **three-engine fallback mechanism**, giving users flexibility and out-of-the-box experience:
+
+| Priority | Engine | API Key | Features |
+|:---:|:---:|:---:|:---|
+| 1 | **Tavily** | Required | Best quality, AI-optimized, deep search |
+| 2 | **Brave Search** | Required | Large free tier, privacy-friendly |
+| 3 | **DuckDuckGo** | Not required | Always available, zero config |
+
+**How it works**:
+1. If `TAVILY_API_KEY` is set → Use Tavily (best quality)
+2. Else if `BRAVE_API_KEY` is set → Use Brave Search
+3. Else → Use DuckDuckGo (no API key needed, always works)
+
+This design ensures **web search works out of the box** even without any API key configuration!
+
+#### Session Title: Smart Naming, Out of the Box
+
+The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
+
+| Method | Description | Example |
+|:---:|:---|:---|
+| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion" |
+| **Agent Modify** | Tell Agent "Change session title to XXX" | Agent calls tool to modify automatically |
+| **Manual Rename** | Press `r` key in session manager to rename | User manually enters new title |
+
+This design lets users **manage sessions without technical details**—whether automatic or manual.
+
+### 4. Skill System: Define Agent Capabilities with Markdown
+
+Skills are FinchBot's unique innovation—**defining Agent capabilities through Markdown files**.
+
+#### Key Feature: Agent Auto-Creates Skills
+
+FinchBot includes a built-in **skill-creator** skill, the ultimate expression of the out-of-the-box philosophy:
+
+> **Just tell the Agent what skill you want, and it will create it automatically!**
+
+```
+User: Help me create a translation skill that can translate Chinese to English
+
+Agent: Okay, I'll create a translation skill for you...
+       [Invokes skill-creator skill]
+       ✅ Created skills/translator/SKILL.md
+       You can now use the translation feature directly!
+```
+
+No manual file creation, no coding—**extend Agent capabilities with just one sentence**!
+
+#### Skill File Structure
+
+```
+skills/
+├── skill-creator/        # Skill creator (Built-in) - Core of out-of-the-box
+│   └── SKILL.md
+├── summarize/            # Intelligent summarization (Built-in)
+│   └── SKILL.md
+├── weather/              # Weather query (Built-in)
+│   └── SKILL.md
+└── my-custom-skill/      # Agent auto-created or user-defined
+    └── SKILL.md
+```
+
+#### Core Design Highlights
+
+| Feature | Description |
+|:---:|:---|
+| **Agent Auto-Create** | Tell Agent your needs, auto-generates skill files |
+| **Dual Skill Source** | Workspace skills first, built-in skills fallback |
+| **Dependency Check** | Auto-check CLI tools and environment variables |
+| **Cache Invalidation** | Smart caching based on file modification time |
+| **Progressive Loading** | Always-on skills first, others on demand |
 
 ### 5. LangChain v1.2 Architecture Practice
 

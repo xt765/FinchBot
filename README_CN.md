@@ -188,123 +188,7 @@ finchbot/
 
 ## 核心组件
 
-### 1. 技能系统：用 Markdown 定义 Agent 能力
-
-技能是 FinchBot 的独特创新——**用 Markdown 文件定义 Agent 的能力边界**。
-
-#### 技能文件结构
-
-```
-skills/
-├── skill-creator/        # 技能创建器（内置）
-│   └── SKILL.md
-├── summarize/            # 智能总结（内置）
-│   └── SKILL.md
-├── weather/              # 天气查询（内置）
-│   └── SKILL.md
-└── my-custom-skill/      # 你的自定义技能
-    └── SKILL.md
-```
-
-#### 技能定义格式
-
-```markdown
-<!-- skills/weather/SKILL.md -->
----
-name: weather
-description: 查询当前天气和天气预报（无需 API 密钥）
-metadata:
-  finchbot:
-    emoji: 🌤️
-    always: false
-    requires:
-      bins: [curl]
-      env: []
----
-
-# 天气查询技能
-
-## 功能说明
-使用 wttr.in 服务查询天气信息...
-
-## 使用方式
-当用户询问天气相关问题时...
-```
-
-#### 核心设计亮点
-
-| 特性 | 说明 |
-|:---:|:---|
-| **双层技能源** | 工作区技能优先，内置技能兜底 |
-| **依赖检查** | 自动检查 CLI 工具和环境变量 |
-| **缓存失效检测** | 基于文件修改时间，智能缓存 |
-| **渐进式加载** | 常驻技能优先，按需加载其他 |
-
-### 2. 工具系统：代码级能力扩展
-
-工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 11 个内置工具，并支持轻松扩展。
-
-#### 内置工具一览
-
-| 类别 | 工具 | 功能 |
-|:---:|:---|:---|
-| **文件操作** | `read_file` | 读取本地文件 |
-| | `write_file` | 写入本地文件 |
-| | `edit_file` | 编辑文件内容 |
-| | `list_dir` | 列出目录内容 |
-| **网络能力** | `web_search` | 联网搜索 (Tavily/Brave/DDG) |
-| | `web_extract` | 网页内容提取 |
-| **记忆管理** | `remember` | 主动存储记忆 |
-| | `recall` | 检索记忆 |
-| | `forget` | 删除/归档记忆 |
-| **系统控制** | `exec` | 安全执行 Shell 命令 |
-| | `session_title` | 管理会话标题 |
-
-#### 网页搜索：三引擎降级设计
-
-FinchBot 的网页搜索工具采用巧妙的**三引擎自动降级机制**，兼顾灵活性和开箱即用体验：
-
-| 优先级 | 引擎 | API Key | 特点 |
-|:---:|:---:|:---:|:---|
-| 1 | **Tavily** | 需要 | 质量最佳，专为 AI 优化，深度搜索 |
-| 2 | **Brave Search** | 需要 | 免费额度大，隐私友好 |
-| 3 | **DuckDuckGo** | 无需 | 始终可用，零配置 |
-
-**工作原理**：
-1. 如果设置了 `TAVILY_API_KEY` → 使用 Tavily（质量最佳）
-2. 否则如果设置了 `BRAVE_API_KEY` → 使用 Brave Search
-3. 否则 → 使用 DuckDuckGo（无需 API Key，始终可用）
-
-这个设计确保**即使没有任何 API Key 配置，网页搜索也能开箱即用**！
-
-#### 工具注册机制
-
-```python
-from finchbot.tools.base import FinchTool
-from typing import Any, ClassVar
-
-class MyCustomTool(FinchTool):
-    """自定义工具示例"""
-    
-    name: str = "my_custom_tool"
-    description: str = "我的自定义工具描述"
-    parameters: ClassVar[dict[str, Any]] = {
-        "type": "object",
-        "properties": {
-            "input_text": {
-                "type": "string",
-                "description": "输入文本"
-            }
-        },
-        "required": ["input_text"]
-    }
-    
-    def _run(self, input_text: str) -> str:
-        # 实现你的逻辑
-        return f"处理结果: {input_text}"
-```
-
-### 3. 记忆架构：双层存储 + Agentic RAG
+### 1. 记忆架构：双层存储 + Agentic RAG
 
 FinchBot 实现了先进的**双层记忆架构**，彻底解决了 LLM 上下文窗口限制和长期记忆遗忘问题。
 
@@ -363,7 +247,7 @@ class QueryType(StrEnum):
     AMBIGUOUS = "ambiguous"            # 歧义型 (0.3/0.7)
 ```
 
-### 4. 动态提示词系统：用户可编辑的 Agent 大脑
+### 2. 动态提示词系统：用户可编辑的 Agent 大脑
 
 FinchBot 的提示词系统采用**文件系统 + 模块化组装**的设计。
 
@@ -402,6 +286,131 @@ flowchart TD
     
     L --> M[发送给 LLM]
 ```
+
+### 3. 工具系统：代码级能力扩展
+
+工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 11 个内置工具，并支持轻松扩展。
+
+#### 工具系统架构
+
+```mermaid
+flowchart TB
+    subgraph Registry[工具注册中心]
+        TR[ToolRegistry<br/>全局注册表]
+        Lock[双重检查锁<br/>线程安全]
+    end
+    
+    subgraph BuiltIn[内置工具 - 11个]
+        File[文件操作<br/>read/write/edit/list]
+        Web[网络能力<br/>search/extract]
+        Memory[记忆管理<br/>remember/recall/forget]
+        System[系统控制<br/>exec/session_title]
+    end
+    
+    subgraph Custom[自定义扩展]
+        Inherit[继承 FinchTool]
+        Register[注册到 Registry]
+    end
+    
+    TR --> Lock
+    Lock --> BuiltIn
+    Lock --> Custom
+    
+    File --> Agent[Agent 调用]
+    Web --> Agent
+    Memory --> Agent
+    System --> Agent
+```
+
+#### 内置工具一览
+
+| 类别 | 工具 | 功能 |
+|:---:|:---|:---|
+| **文件操作** | `read_file` | 读取本地文件 |
+| | `write_file` | 写入本地文件 |
+| | `edit_file` | 编辑文件内容 |
+| | `list_dir` | 列出目录内容 |
+| **网络能力** | `web_search` | 联网搜索 (Tavily/Brave/DDG) |
+| | `web_extract` | 网页内容提取 |
+| **记忆管理** | `remember` | 主动存储记忆 |
+| | `recall` | 检索记忆 |
+| | `forget` | 删除/归档记忆 |
+| **系统控制** | `exec` | 安全执行 Shell 命令 |
+| | `session_title` | 管理会话标题 |
+
+#### 网页搜索：三引擎降级设计
+
+FinchBot 的网页搜索工具采用巧妙的**三引擎自动降级机制**，兼顾灵活性和开箱即用体验：
+
+| 优先级 | 引擎 | API Key | 特点 |
+|:---:|:---:|:---:|:---|
+| 1 | **Tavily** | 需要 | 质量最佳，专为 AI 优化，深度搜索 |
+| 2 | **Brave Search** | 需要 | 免费额度大，隐私友好 |
+| 3 | **DuckDuckGo** | 无需 | 始终可用，零配置 |
+
+**工作原理**：
+1. 如果设置了 `TAVILY_API_KEY` → 使用 Tavily（质量最佳）
+2. 否则如果设置了 `BRAVE_API_KEY` → 使用 Brave Search
+3. 否则 → 使用 DuckDuckGo（无需 API Key，始终可用）
+
+这个设计确保**即使没有任何 API Key 配置，网页搜索也能开箱即用**！
+
+#### 会话标题：智能命名，开箱即用
+
+`session_title` 工具体现了 FinchBot 的开箱即用理念：
+
+| 操作方式 | 说明 | 示例 |
+|:---:|:---|:---|
+| **自动生成** | 对话 2-3 轮后，AI 自动根据内容生成标题 | "Python 异步编程讨论" |
+| **Agent 修改** | 告诉 Agent "把会话标题改成 XXX" | Agent 调用工具自动修改 |
+| **手动重命名** | 在会话管理器中按 `r` 键重命名 | 用户手动输入新标题 |
+
+这个设计让用户**无需关心技术细节**，无论是自动还是手动，都能轻松管理会话。
+
+### 4. 技能系统：用 Markdown 定义 Agent 能力
+
+技能是 FinchBot 的独特创新——**用 Markdown 文件定义 Agent 的能力边界**。
+
+#### 最大特色：Agent 自动创建技能
+
+FinchBot 内置了 **skill-creator** 技能，这是开箱即用理念的极致体现：
+
+> **只需告诉 Agent 你想要什么技能，Agent 就会自动创建好！**
+
+```
+用户: 帮我创建一个翻译技能，可以把中文翻译成英文
+
+Agent: 好的，我来为你创建翻译技能...
+       [调用 skill-creator 技能]
+       ✅ 已创建 skills/translator/SKILL.md
+       现在你可以直接使用翻译功能了！
+```
+
+无需手动创建文件、无需编写代码，**一句话就能扩展 Agent 能力**！
+
+#### 技能文件结构
+
+```
+skills/
+├── skill-creator/        # 技能创建器（内置）- 开箱即用的核心
+│   └── SKILL.md
+├── summarize/            # 智能总结（内置）
+│   └── SKILL.md
+├── weather/              # 天气查询（内置）
+│   └── SKILL.md
+└── my-custom-skill/      # Agent 自动创建或用户自定义
+    └── SKILL.md
+```
+
+#### 核心设计亮点
+
+| 特性 | 说明 |
+|:---:|:---|
+| **Agent 自动创建** | 告诉 Agent 需求，自动生成技能文件 |
+| **双层技能源** | 工作区技能优先，内置技能兜底 |
+| **依赖检查** | 自动检查 CLI 工具和环境变量 |
+| **缓存失效检测** | 基于文件修改时间，智能缓存 |
+| **渐进式加载** | 常驻技能优先，按需加载其他 |
 
 ### 5. LangChain 1.2 架构实践
 
