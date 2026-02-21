@@ -58,10 +58,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/finchbot"]
-artifacts = [
-    "src/finchbot/skills/**",
-    "src/finchbot/i18n/**",
-]
+artifacts = ["src/finchbot/skills/**", "src/finchbot/i18n/**"]
 
 # 安装时自动下载模型
 [tool.hatch.build.targets.wheel.hooks.custom]
