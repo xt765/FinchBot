@@ -222,9 +222,15 @@ export TAVILY_API_KEY="tvly-..."
 
 ## 5. Model Management
 
-### Download Embedding Models
+### Automatic Download
 
-Download required embedding models for local memory storage:
+The embedding model is automatically downloaded to `.models/fastembed/` during `uv sync`.
+
+> **Note**: The model is ~95MB and will be downloaded from a mirror source during first installation. If download fails, run the command below manually.
+
+### Manual Download
+
+If automatic download fails, you can manually download the embedding model:
 
 ```bash
 finchbot models download

@@ -295,19 +295,46 @@ def _stream_ai_response(
                                 if current_time - last_render_time > render_interval:
                                     live.update(_create_content_panel(full_content))
                                     last_render_time = current_time
-                elif mode == "updates":
-                    if isinstance(data, dict):
-                        for _node_name, node_data in data.items():
-                            if not isinstance(node_data, dict):
-                                continue
-                            messages = node_data.get("messages", [])
-                            if not messages:
-                                continue
-                            for msg in messages:
-                                if hasattr(msg, "tool_calls") and msg.tool_calls:
-                                    if full_content.strip():
-                                        _render_ai_content(full_content)
-                                        full_content = ""
+                elif mode == "updates" and isinstance(data, dict):
+                    for _node_name, node_data in data.items():
+                        if not isinstance(node_data, dict):
+                            continue
+                        messages = node_data.get("messages", [])
+                        if not messages:
+                            continue
+                        for msg in messages:
+                            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                                if full_content.strip():
+                                    _render_ai_content(full_content)
+                                    full_content = ""
+                                    live.update(
+                                        Panel(
+                                            Text(""),
+                                            title="🐦 FinchBot",
+                                            border_style="green",
+                                        )
+                                    )
+                                for tc in msg.tool_calls:
+                                    pending_tool_calls.append(
+                                        {
+                                            "name": tc.get("name") or "unknown",
+                                            "args": tc.get("args", {}),
+                                            "start_time": time.time(),
+                                        }
+                                    )
+                            elif hasattr(msg, "name") and msg.name:
+                                tool_name = msg.name
+                                for i, call_info in enumerate(pending_tool_calls):
+                                    if call_info["name"] == tool_name:
+                                        duration = time.time() - call_info["start_time"]
+                                        _display_tool_call_with_result(
+                                            call_info["name"],
+                                            call_info["args"],
+                                            str(msg.content),
+                                            duration,
+                                            console,
+                                        )
+                                        pending_tool_calls.pop(i)
                                         live.update(
                                             Panel(
                                                 Text(""),
@@ -315,36 +342,8 @@ def _stream_ai_response(
                                                 border_style="green",
                                             )
                                         )
-                                    for tc in msg.tool_calls:
-                                        pending_tool_calls.append(
-                                            {
-                                                "name": tc.get("name") or "unknown",
-                                                "args": tc.get("args", {}),
-                                                "start_time": time.time(),
-                                            }
-                                        )
-                                elif hasattr(msg, "name") and msg.name:
-                                    tool_name = msg.name
-                                    for i, call_info in enumerate(pending_tool_calls):
-                                        if call_info["name"] == tool_name:
-                                            duration = time.time() - call_info["start_time"]
-                                            _display_tool_call_with_result(
-                                                call_info["name"],
-                                                call_info["args"],
-                                                str(msg.content),
-                                                duration,
-                                                console,
-                                            )
-                                            pending_tool_calls.pop(i)
-                                            live.update(
-                                                Panel(
-                                                    Text(""),
-                                                    title="🐦 FinchBot",
-                                                    border_style="green",
-                                                )
-                                            )
-                                            break
-                                all_messages.append(msg)
+                                        break
+                            all_messages.append(msg)
 
     if full_content.strip():
         _render_ai_content(full_content)

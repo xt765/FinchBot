@@ -131,8 +131,11 @@ def check_model_exists(
     if not model_cache.exists():
         return False
 
-    # 检查是否有任何包含模型文件的子目录
-    return any(item.exists() for item in model_cache.rglob("model_optimized.onnx"))
+    # 检查是否有任何包含有效模型文件的子目录（文件大小 > 1MB）
+    return any(
+        item.exists() and item.stat().st_size > 1_000_000
+        for item in model_cache.rglob("model_optimized.onnx")
+    )
 
 
 def ensure_models(

@@ -483,13 +483,19 @@ def create_finch_agent(
 ### 安装步骤
 
 ```bash
-# 克隆仓库
+# 克隆仓库（二选一）
+# Gitee（国内推荐）
+git clone https://gitee.com/xt765/finchbot.git
+# 或 GitHub
 git clone https://github.com/xt765/finchbot.git
+
 cd finchbot
 
-# 使用 uv 安装依赖
-uv sync
+# 使用 uv 安装依赖（嵌入模型会自动下载）
+uv sync --all-extras
 ```
+
+> **注意**：嵌入模型（约 95MB）会在安装时自动下载。如果下载失败，可以稍后手动运行 `uv run finchbot models download`。
 
 ### 最佳实践：三步上手
 

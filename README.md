@@ -483,13 +483,19 @@ def create_finch_agent(
 ### Installation
 
 ```bash
-# Clone repository
+# Clone repository (choose one)
+# Gitee (recommended for users in China)
+git clone https://gitee.com/xt765/finchbot.git
+# or GitHub
 git clone https://github.com/xt765/finchbot.git
+
 cd finchbot
 
-# Install dependencies with uv
-uv sync
+# Install dependencies with uv (embedding model will be downloaded automatically)
+uv sync --all-extras
 ```
+
+> **Note**: The embedding model (~95MB) will be automatically downloaded during installation. If the download fails, you can manually run `uv run finchbot models download` later.
 
 ### Best Practice: Three Commands to Get Started
 

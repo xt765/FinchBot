@@ -78,16 +78,21 @@ class EmbeddingService:
                     self._mirror_name = "官方源"
 
             self._network_checked = True
-            logger.debug(f"Network check completed: {self._mirror_name}, internet={self._has_internet}")
+            logger.debug(
+                f"Network check completed: {self._mirror_name}, internet={self._has_internet}"
+            )
         except Exception as e:
             logger.debug(f"Network check failed: {e}")
             self._network_checked = True
 
     def _check_model_exists(self) -> bool:
-        """检查模型文件是否存在."""
+        """检查模型文件是否存在且有效（文件大小 > 1MB）."""
         if not self.cache_dir.exists():
             return False
-        return any(self.cache_dir.rglob("model_optimized.onnx"))
+        return any(
+            item.exists() and item.stat().st_size > 1_000_000
+            for item in self.cache_dir.rglob("model_optimized.onnx")
+        )
 
     def _print_model_status(self, model_exists: bool) -> None:
         """打印模型状态提示."""
@@ -100,11 +105,17 @@ class EmbeddingService:
             logger.info(f"✓ 嵌入模型已就绪: {self.cache_dir}")
             return
 
-        # 等待网络检查完成（最多等1秒）
+        # 等待网络检查完成（最多等3秒）
         import time
+
         wait_start = time.time()
-        while not self._network_checked and time.time() - wait_start < 1.0:
+        while not self._network_checked and time.time() - wait_start < 3.0:
             time.sleep(0.05)
+
+        # 网络检查未完成时，假设有网络（让下载尝试进行）
+        if not self._network_checked:
+            logger.debug("Network check timeout, assuming online mode")
+            self._has_internet = True
 
         if self._has_internet:
             mirror_display = f"{self._mirror_name} ({self._mirror_url})"
@@ -143,6 +154,7 @@ class EmbeddingService:
             # 确保网络检查完成
             if not self._network_checked:
                 import time
+
                 wait_start = time.time()
                 while not self._network_checked and time.time() - wait_start < 3.0:
                     time.sleep(0.05)
@@ -179,6 +191,7 @@ class EmbeddingService:
         # 如果正在加载中，等待完成
         if self._model_loading:
             import time
+
             wait_start = time.time()
             while self._model_loading and time.time() - wait_start < 30.0:
                 time.sleep(0.1)
