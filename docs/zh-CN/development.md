@@ -28,15 +28,22 @@ cd finchbot
 
 ### 3. 安装依赖
 
+**生产环境**（普通用户）：
+
 ```bash
-# 安装所有依赖（包括开发依赖和嵌入模型）
-uv sync --all-extras
+uv sync
+```
+
+**开发环境**（贡献者）：
+
+```bash
+uv sync --extra dev
 ```
 
 > **说明**：
-> - `--all-extras` 会安装开发依赖（ruff、basedpyright、pytest 等）
-> - 嵌入模型（约 95MB）会在构建时自动下载到 `.models/fastembed/`
-> - 如果模型下载失败，可手动运行 `uv run finchbot models download`
+> - `uv sync` 安装生产依赖 + 自动下载嵌入模型（~95MB）
+> - `--extra dev` 额外安装开发工具：pytest、ruff、basedpyright
+> - 模型下载到 `.models/fastembed/`，如失败可手动运行 `uv run finchbot models download`
 
 ## 测试
 

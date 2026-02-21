@@ -491,11 +491,24 @@ git clone https://github.com/xt765/finchbot.git
 
 cd finchbot
 
-# Install dependencies with uv (embedding model will be downloaded automatically)
-uv sync --all-extras
+# Install dependencies (embedding model will be downloaded automatically)
+uv sync
 ```
 
 > **Note**: The embedding model (~95MB) will be automatically downloaded during installation. If the download fails, you can manually run `uv run finchbot models download` later.
+
+<details>
+<summary>Development Installation</summary>
+
+For development, install with dev dependencies:
+
+```bash
+uv sync --extra dev
+```
+
+This includes: pytest, ruff, basedpyright
+
+</details>
 
 ### Best Practice: Three Commands to Get Started
 
