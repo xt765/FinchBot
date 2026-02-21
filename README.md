@@ -1,4 +1,13 @@
-# FinchBot (雀翎)
+# FinchBot —— A lightweight, flexible, and infinitely extensible AI Agent framework
+
+<p align="center">
+  <img src="docs/image/image.png" alt="FinchBot Logo" width="600">
+</p>
+
+<p align="center">
+  <em>Built on LangChain v1.2 & LangGraph v1.0<br>
+  with persistent memory, dynamic prompts, and seamless tool integration</em>
+</p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
@@ -29,12 +38,12 @@
 
 ### Pain Points of Existing Frameworks
 
-| Pain Point | Traditional Approach | FinchBot Solution |
-|:---:|:---|:---|
-| **Hard to Extend** | Requires modifying core code | Inherit base class or create Markdown files |
-| **Fragile Memory** | Relies on LLM context window | Dual-layer persistent storage + semantic retrieval |
-| **Rigid Prompts** | Hardcoded in source code | File system with hot reloading |
-| **Outdated Architecture** | Based on old LangChain APIs | LangChain v1.2 + LangGraph v1.0 |
+|           Pain Point           | Traditional Approach         | FinchBot Solution                                  |
+| :-----------------------------: | :--------------------------- | :------------------------------------------------- |
+|    **Hard to Extend**    | Requires modifying core code | Inherit base class or create Markdown files        |
+|    **Fragile Memory**    | Relies on LLM context window | Dual-layer persistent storage + semantic retrieval |
+|     **Rigid Prompts**     | Hardcoded in source code     | File system with hot reloading                     |
+| **Outdated Architecture** | Based on old LangChain APIs  | LangChain v1.2 + LangGraph v1.0                    |
 
 ### Design Philosophy
 
@@ -63,14 +72,14 @@ uv run finchbot sessions
 uv run finchbot chat
 ```
 
-| Feature | Description |
-|:---:|:---|
-| **Three-Step Start** | `config` → `sessions` → `chat`, complete workflow in three commands |
+|             Feature             | Description                                                                                               |
+| :-----------------------------: | :-------------------------------------------------------------------------------------------------------- |
+|   **Three-Step Start**   | `config` → `sessions` → `chat`, complete workflow in three commands                               |
 | **Environment Variables** | All configurations can be set via environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.) |
-| **Rich CLI Interface** | Full-screen keyboard navigation with ↑/↓ arrows, interactive selection |
-| **i18n Support** | Built-in Chinese/English support, auto-detects system language |
-| **Auto Fallback** | Web search automatically falls back through Tavily → Brave → DuckDuckGo |
-| **Zero Config Start** | Just set API key and run `finchbot chat` |
+|  **Rich CLI Interface**  | Full-screen keyboard navigation with ↑/↓ arrows, interactive selection                                  |
+|     **i18n Support**     | Built-in Chinese/English support, auto-detects system language                                            |
+|     **Auto Fallback**     | Web search automatically falls back through Tavily → Brave → DuckDuckGo                                 |
+|   **Zero Config Start**   | Just set API key and run `finchbot chat`                                                                |
 
 ---
 
@@ -194,13 +203,13 @@ FinchBot implements an advanced **dual-layer memory architecture** that solves L
 
 #### Why Agentic RAG?
 
-| Dimension | Traditional RAG | Agentic RAG (FinchBot) |
-|:---:|:---|:---|
-| **Retrieval Trigger** | Fixed pipeline | Agent autonomous decision |
+|          Dimension          | Traditional RAG         | Agentic RAG (FinchBot)                       |
+| :--------------------------: | :---------------------- | :------------------------------------------- |
+| **Retrieval Trigger** | Fixed pipeline          | Agent autonomous decision                    |
 | **Retrieval Strategy** | Single vector retrieval | Hybrid retrieval + dynamic weight adjustment |
-| **Memory Management** | Passive storage | Active remember/recall/forget |
-| **Classification** | None | Auto-classification + importance scoring |
-| **Update Mechanism** | Full rebuild | Incremental sync |
+| **Memory Management** | Passive storage         | Active remember/recall/forget                |
+|   **Classification**   | None                    | Auto-classification + importance scoring     |
+|  **Update Mechanism**  | Full rebuild            | Incremental sync                             |
 
 #### Dual-Layer Storage Architecture
 
@@ -209,26 +218,26 @@ flowchart TB
     subgraph Business[Business Layer]
         MM[MemoryManager]
     end
-    
+  
     subgraph Storage[Storage Layer]
         SQLite[SQLiteStore<br/>Source of Truth]
         Vector[VectorMemoryStore<br/>Semantic Retrieval]
     end
-    
+  
     subgraph Services[Service Layer]
         RS[RetrievalService<br/>Hybrid Retrieval]
         CS[ClassificationService<br/>Auto Classification]
         IS[ImportanceScorer<br/>Importance Scoring]
         DS[DataSyncManager<br/>Data Sync]
     end
-    
+  
     MM --> RS
     MM --> CS
     MM --> IS
-    
+  
     RS --> SQLite
     RS --> Vector
-    
+  
     SQLite <--> DS <--> Vector
 ```
 
@@ -272,18 +281,18 @@ flowchart TD
     B --> D[MEMORY_GUIDE.md]
     B --> E[SOUL.md]
     B --> F[AGENT_CONFIG.md]
-    
+  
     C --> G[Assemble Prompt]
     D --> G
     E --> G
     F --> G
-    
+  
     G --> H[Load Always-on Skills]
     H --> I[Build Skill Summary XML]
     I --> J[Generate Tool Docs]
     J --> K[Inject Runtime Info]
     K --> L[Complete System Prompt]
-    
+  
     L --> M[Send to LLM]
 ```
 
@@ -299,23 +308,23 @@ flowchart TB
         TR[ToolRegistry<br/>Global Registry]
         Lock[Double-checked Lock<br/>Thread Safe]
     end
-    
+  
     subgraph BuiltIn[Built-in Tools - 11]
         File[File Ops<br/>read/write/edit/list]
         Web[Network<br/>search/extract]
         Memory[Memory<br/>remember/recall/forget]
         System[System<br/>exec/session_title]
     end
-    
+  
     subgraph Custom[Custom Extension]
         Inherit[Inherit FinchTool]
         Register[Register to Registry]
     end
-    
+  
     TR --> Lock
     Lock --> BuiltIn
     Lock --> Custom
-    
+  
     File --> Agent[Agent Call]
     Web --> Agent
     Memory --> Agent
@@ -324,31 +333,32 @@ flowchart TB
 
 #### Built-in Tools
 
-| Category | Tool | Function |
-|:---:|:---|:---|
-| **File Ops** | `read_file` | Read local files |
-| | `write_file` | Write local files |
-| | `edit_file` | Edit file content |
-| | `list_dir` | List directory contents |
-| **Network** | `web_search` | Web search (Tavily/Brave/DDG) |
-| | `web_extract` | Web content extraction |
-| **Memory** | `remember` | Proactively store memories |
-| | `recall` | Retrieve memories |
-| | `forget` | Delete/archive memories |
-| **System** | `exec` | Secure shell execution |
-| | `session_title` | Manage session titles |
+|      Category      | Tool              | Function                      |
+| :----------------: | :---------------- | :---------------------------- |
+| **File Ops** | `read_file`     | Read local files              |
+|                    | `write_file`    | Write local files             |
+|                    | `edit_file`     | Edit file content             |
+|                    | `list_dir`      | List directory contents       |
+| **Network** | `web_search`    | Web search (Tavily/Brave/DDG) |
+|                    | `web_extract`   | Web content extraction        |
+|  **Memory**  | `remember`      | Proactively store memories    |
+|                    | `recall`        | Retrieve memories             |
+|                    | `forget`        | Delete/archive memories       |
+|  **System**  | `exec`          | Secure shell execution        |
+|                    | `session_title` | Manage session titles         |
 
 #### Web Search: Three-Engine Fallback Design
 
 FinchBot's web search tool features a clever **three-engine fallback mechanism**, giving users flexibility and out-of-the-box experience:
 
-| Priority | Engine | API Key | Features |
-|:---:|:---:|:---:|:---|
-| 1 | **Tavily** | Required | Best quality, AI-optimized, deep search |
-| 2 | **Brave Search** | Required | Large free tier, privacy-friendly |
-| 3 | **DuckDuckGo** | Not required | Always available, zero config |
+| Priority |         Engine         |   API Key   | Features                                |
+| :------: | :--------------------: | :----------: | :-------------------------------------- |
+|    1    |    **Tavily**    |   Required   | Best quality, AI-optimized, deep search |
+|    2    | **Brave Search** |   Required   | Large free tier, privacy-friendly       |
+|    3    |  **DuckDuckGo**  | Not required | Always available, zero config           |
 
 **How it works**:
+
 1. If `TAVILY_API_KEY` is set → Use Tavily (best quality)
 2. Else if `BRAVE_API_KEY` is set → Use Brave Search
 3. Else → Use DuckDuckGo (no API key needed, always works)
@@ -359,11 +369,11 @@ This design ensures **web search works out of the box** even without any API key
 
 The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
 
-| Method | Description | Example |
-|:---:|:---|:---|
-| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion" |
-| **Agent Modify** | Tell Agent "Change session title to XXX" | Agent calls tool to modify automatically |
-| **Manual Rename** | Press `r` key in session manager to rename | User manually enters new title |
+|         Method         | Description                                                        | Example                                  |
+| :---------------------: | :----------------------------------------------------------------- | :--------------------------------------- |
+| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion"    |
+| **Agent Modify** | Tell Agent "Change session title to XXX"                           | Agent calls tool to modify automatically |
+| **Manual Rename** | Press `r` key in session manager to rename                       | User manually enters new title           |
 
 This design lets users **manage sessions without technical details**—whether automatic or manual.
 
@@ -404,13 +414,13 @@ skills/
 
 #### Core Design Highlights
 
-| Feature | Description |
-|:---:|:---|
-| **Agent Auto-Create** | Tell Agent your needs, auto-generates skill files |
-| **Dual Skill Source** | Workspace skills first, built-in skills fallback |
-| **Dependency Check** | Auto-check CLI tools and environment variables |
-| **Cache Invalidation** | Smart caching based on file modification time |
-| **Progressive Loading** | Always-on skills first, others on demand |
+|            Feature            | Description                                       |
+| :---------------------------: | :------------------------------------------------ |
+|  **Agent Auto-Create**  | Tell Agent your needs, auto-generates skill files |
+|  **Dual Skill Source**  | Workspace skills first, built-in skills fallback  |
+|  **Dependency Check**  | Auto-check CLI tools and environment variables    |
+| **Cache Invalidation** | Smart caching based on file modification time     |
+| **Progressive Loading** | Always-on skills first, others on demand          |
 
 ### 5. LangChain v1.2 Architecture Practice
 
@@ -426,16 +436,16 @@ def create_finch_agent(
     tools: Sequence[BaseTool] | None = None,
     use_persistent: bool = True,
 ) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
-    
+  
     # 1. Initialize checkpoint (persistent state)
     if use_persistent:
         checkpointer = SqliteSaver.from_conn_string(str(db_path))
     else:
         checkpointer = MemorySaver()
-    
+  
     # 2. Build system prompt
     system_prompt = build_system_prompt(workspace)
-    
+  
     # 3. Create Agent (using LangChain official API)
     agent = create_agent(
         model=model,
@@ -443,20 +453,20 @@ def create_finch_agent(
         system_prompt=system_prompt,
         checkpointer=checkpointer,
     )
-    
+  
     return agent, checkpointer
 ```
 
 #### Supported LLM Providers
 
-| Provider | Models | Features |
-|:---:|:---|:---|
-| OpenAI | GPT-5, GPT-5.2, O3-mini | Best overall capability |
+| Provider | Models                      | Features                  |
+| :-------: | :-------------------------- | :------------------------ |
+|  OpenAI  | GPT-5, GPT-5.2, O3-mini     | Best overall capability   |
 | Anthropic | Claude Sonnet 4.5, Opus 4.6 | High safety, long context |
-| DeepSeek | DeepSeek Chat, Reasoner | Chinese, cost-effective |
-| Gemini | Gemini 2.5 Flash | Google's latest |
-| Groq | Llama 4 Scout/Maverick | Ultra-fast inference |
-| Moonshot | Kimi K1.5/K2.5 | Long context, Chinese |
+| DeepSeek | DeepSeek Chat, Reasoner     | Chinese, cost-effective   |
+|  Gemini  | Gemini 2.5 Flash            | Google's latest           |
+|   Groq   | Llama 4 Scout/Maverick      | Ultra-fast inference      |
+| Moonshot | Kimi K1.5/K2.5              | Long context, Chinese     |
 
 ---
 
@@ -464,11 +474,11 @@ def create_finch_agent(
 
 ### Prerequisites
 
-| Item | Requirement |
-|:---:|:---|
-| OS | Windows / Linux / macOS |
-| Python | 3.13+ |
-| Package Manager | uv (Recommended) |
+|      Item      | Requirement             |
+| :-------------: | :---------------------- |
+|       OS       | Windows / Linux / macOS |
+|     Python     | 3.13+                   |
+| Package Manager | uv (Recommended)        |
 
 ### Installation
 
@@ -495,6 +505,7 @@ uv run finchbot chat
 ```
 
 That's it! These three commands cover the complete workflow:
+
 - `finchbot config` — Interactive configuration for LLM providers, API keys, and settings
 - `finchbot sessions` — Full-screen session manager for creating, renaming, deleting sessions
 - `finchbot chat` — Start or continue an interactive conversation
@@ -554,19 +565,19 @@ EOF
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|:---:|:---|:---:|
-| Core Language | Python | 3.13+ |
-| Agent Framework | LangChain | 1.2.10+ |
-| State Management | LangGraph | 1.0.8+ |
-| Data Validation | Pydantic | v2 |
-| Vector Storage | ChromaDB | 0.5.0+ |
-| Local Embedding | FastEmbed | 0.4.0+ |
-| Search Enhancement | BM25 | 0.2.2+ |
-| CLI Framework | Typer | 0.23.0+ |
-| Rich Text | Rich | 14.3.0+ |
-| Logging | Loguru | 0.7.3+ |
-| Configuration | Pydantic Settings | 2.12.0+ |
+|       Layer       | Technology        | Version |
+| :----------------: | :---------------- | :-----: |
+|   Core Language   | Python            |  3.13+  |
+|  Agent Framework  | LangChain         | 1.2.10+ |
+|  State Management  | LangGraph         | 1.0.8+ |
+|  Data Validation  | Pydantic          |   v2   |
+|   Vector Storage   | ChromaDB          | 0.5.0+ |
+|  Local Embedding  | FastEmbed         | 0.4.0+ |
+| Search Enhancement | BM25              | 0.2.2+ |
+|   CLI Framework   | Typer             | 0.23.0+ |
+|     Rich Text     | Rich              | 14.3.0+ |
+|      Logging      | Loguru            | 0.7.3+ |
+|   Configuration   | Pydantic Settings | 2.12.0+ |
 
 ---
 
@@ -592,29 +603,29 @@ Add a new `.toml` file under `i18n/locales/`.
 
 ## Key Advantages
 
-| Advantage | Description |
-|:---:|:---|
-| **Privacy First** | Uses FastEmbed locally for vector generation, no cloud upload |
-| **True Persistence** | Dual-layer memory storage with semantic retrieval and precise queries |
-| **Production Ready** | Double-checked locking, auto-retry, timeout control mechanisms |
+|          Advantage          | Description                                                                |
+| :--------------------------: | :------------------------------------------------------------------------- |
+|   **Privacy First**   | Uses FastEmbed locally for vector generation, no cloud upload              |
+|  **True Persistence**  | Dual-layer memory storage with semantic retrieval and precise queries      |
+|  **Production Ready**  | Double-checked locking, auto-retry, timeout control mechanisms             |
 | **Flexible Extension** | Inherit FinchTool or create SKILL.md to extend without modifying core code |
-| **Model Agnostic** | Supports OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq, etc. |
-| **Thread Safe** | Tool registration uses double-checked locking pattern |
+|   **Model Agnostic**   | Supports OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq, etc.         |
+|    **Thread Safe**    | Tool registration uses double-checked locking pattern                      |
 
 ---
 
 ## Documentation
 
-| Document | Description |
-|:---|:---|
-| [User Guide](docs/en-US/guide/usage.md) | CLI usage tutorial |
-| [API Reference](docs/en-US/api.md) | API reference |
-| [Configuration Guide](docs/en-US/config.md) | Configuration options |
-| [Extension Guide](docs/en-US/guide/extension.md) | Adding tools/skills |
-| [Architecture](docs/en-US/architecture.md) | System architecture |
-| [Deployment Guide](docs/en-US/deployment.md) | Deployment instructions |
-| [Development Guide](docs/en-US/development.md) | Development environment setup |
-| [Contributing Guide](docs/en-US/contributing.md) | Contribution guidelines |
+| Document                                      | Description                   |
+| :-------------------------------------------- | :---------------------------- |
+| [User Guide](docs/en-US/guide/usage.md)          | CLI usage tutorial            |
+| [API Reference](docs/en-US/api.md)               | API reference                 |
+| [Configuration Guide](docs/en-US/config.md)      | Configuration options         |
+| [Extension Guide](docs/en-US/guide/extension.md) | Adding tools/skills           |
+| [Architecture](docs/en-US/architecture.md)       | System architecture           |
+| [Deployment Guide](docs/en-US/deployment.md)     | Deployment instructions       |
+| [Development Guide](docs/en-US/development.md)   | Development environment setup |
+| [Contributing Guide](docs/en-US/contributing.md) | Contribution guidelines       |
 
 ---
 

@@ -1,4 +1,13 @@
-# FinchBot (雀翎)
+# FinchBot (雀翎) —— 轻量灵活，无限扩展的 AI Agent 框架
+
+<p align="center">
+  <img src="docs/image/image.png" alt="FinchBot Logo" width="600">
+</p>
+
+<p align="center">
+  <em>基于 LangChain v1.2 与 LangGraph v1.0 构建<br>
+  具备持久记忆、动态提示词、无缝工具集成</em>
+</p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
