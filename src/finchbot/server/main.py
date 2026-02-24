@@ -1,5 +1,8 @@
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pathlib import Path
 from loguru import logger
 import asyncio
@@ -10,51 +13,37 @@ from finchbot.channels.manager import ChannelManager
 from finchbot.server.loop import AgentLoop
 from finchbot.channels.implementations.web import WebChannel
 
-# Global instances (to be accessed by routes)
-# In a larger app, we might use dependency injection or app.state
 bus = None
 manager = None
 loop = None
 web_channel = None
 
+STATIC_DIR = Path(os.getenv("STATIC_DIR", Path(__file__).parent.parent.parent.parent / "web" / "dist"))
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global bus, manager, loop, web_channel
     
-    # 1. Load Config
     logger.info("Loading configuration...")
-    # Assuming standard config loading. 
-    # TODO: Allow passing config path via env var or similar if needed.
     config = load_config()
     
-    # TODO: Make workspace configurable
     workspace = Path("./finchbot_workspace").resolve()
     workspace.mkdir(exist_ok=True)
     
-    # 2. Init Components
     bus = MessageBus()
     manager = ChannelManager(config, bus)
     loop = AgentLoop(bus, config, workspace)
     
-    # 3. Register Channels
-    # WebChannel is special as it needs direct access from routes
     web_channel = WebChannel(config, bus)
     manager.register_channel("web", web_channel)
     
-    # Register other channels here in future phases
-    # e.g., if config.channels.discord.enabled: ...
-    
-    # 4. Start Services
-    # Start loop first to be ready for messages
     await loop.start()
-    # Start channels
     await manager.start_all()
     
     logger.info("FinchBot Server started successfully")
     
     yield
     
-    # 5. Shutdown
     logger.info("Shutting down FinchBot Server...")
     await manager.stop_all()
     await loop.stop()
@@ -91,3 +80,23 @@ async def health_check():
         "channels": channels,
         "agent_active": loop._running if loop else False
     }
+
+@app.get("/api/info")
+async def api_info():
+    """API info endpoint."""
+    return {
+        "name": "FinchBot",
+        "version": "0.1.0",
+        "description": "Lightweight AI Agent Framework"
+    }
+
+if STATIC_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+    
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        """Serve SPA - return index.html for all non-API routes."""
+        file_path = STATIC_DIR / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(STATIC_DIR / "index.html")
