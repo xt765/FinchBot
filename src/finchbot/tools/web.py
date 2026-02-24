@@ -201,26 +201,26 @@ class WebExtractTool(FinchTool):
 
     def _extract_with_jina(self, urls: list[str], httpx: Any) -> str:
         """使用 jina.ai reader 提取网页内容（无需 API Key）.
-        
+
         Args:
             urls: URL 列表.
             httpx: httpx 模块.
-            
+
         Returns:
             提取的内容字符串.
         """
         if not httpx:
-             return "Error: httpx not installed. Run: uv add httpx"
-             
+            return "Error: httpx not installed. Run: uv add httpx"
+
         output_parts = []
         failed_urls = []
-        
+
         for url in urls:
             try:
                 # 使用 jina.ai reader: https://r.jina.ai/<url>
                 jina_url = f"https://r.jina.ai/{url}"
                 response = httpx.get(jina_url, timeout=30.0)
-                
+
                 if response.status_code == 200:
                     output_parts.append(f"## {url}\n")
                     content = response.text
@@ -229,13 +229,13 @@ class WebExtractTool(FinchTool):
                     output_parts.append("\n---\n")
                 else:
                     failed_urls.append(url)
-                    
+
             except Exception:
                 failed_urls.append(url)
-                
+
         if failed_urls:
             output_parts.append(f"\n**Failed URLs**: {', '.join(failed_urls)}")
-            
+
         return "\n".join(output_parts) if output_parts else "No content extracted (Jina)"
 
     def _format_results(self, data: dict[str, Any]) -> str:

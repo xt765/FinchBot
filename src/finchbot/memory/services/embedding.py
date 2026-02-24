@@ -59,7 +59,7 @@ class EmbeddingService:
 
     def _check_network_async(self) -> None:
         """异步检查网络连接和镜像.
-        
+
         策略：
         1. 优先检查国内镜像 (hf-mirror.com)
         2. 如果国内镜像可用，直接使用，视为有网络

@@ -594,8 +594,6 @@ def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | N
     return None, None, None, None
 
 
-
-
 def _run_chat_session(
     session_id: str,
     model: str | None,

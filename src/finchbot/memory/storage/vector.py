@@ -120,11 +120,11 @@ class VectorMemoryStore:
 
         try:
             import chromadb
-            from langchain_chroma import Chroma
 
             # 显式获取或创建默认 collection
             # 这一步是为了确保 tenant/database 初始化正确
             from chromadb.config import Settings
+            from langchain_chroma import Chroma
 
             client = chromadb.PersistentClient(
                 path=str(self.vector_dir.resolve()),  # 强制使用绝对路径
