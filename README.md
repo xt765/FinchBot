@@ -90,7 +90,8 @@ FinchBot is built on **LangChain v1.2** and **LangGraph v1.0**, serving as an Ag
 ```mermaid
 graph TD
     User[User] --> CLI[CLI Interface]
-    CLI --> Agent[Agent Core]
+    CLI --> Factory[Agent Factory]
+    Factory --> Agent[Agent Core]
 
     subgraph Core
         Planner[Planner]
@@ -101,6 +102,9 @@ graph TD
 
     Agent --> ContextBuilder
     ContextBuilder --> SystemPrompt[System Prompt]
+
+    Factory --> ToolFactory[Tool Factory]
+    ToolFactory --> ToolSet[Tool Ecosystem]
 
     Agent --> MemoryMgr[Memory System]
     subgraph MemSys

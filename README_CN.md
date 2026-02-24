@@ -90,7 +90,8 @@ FinchBot 采用 **LangChain v1.2** + **LangGraph v1.0** 构建，是一个具备
 ```mermaid
 graph TD
     User[用户] --> CLI[命令行界面]
-    CLI --> Agent[Agent Core]
+    CLI --> Factory[Agent Factory]
+    Factory --> Agent[Agent Core]
 
     subgraph Core
         Planner[规划器]
@@ -101,6 +102,9 @@ graph TD
 
     Agent --> ContextBuilder
     ContextBuilder --> SystemPrompt[系统提示词]
+
+    Factory --> ToolFactory[Tool Factory]
+    ToolFactory --> ToolSet[工具集]
 
     Agent --> MemoryMgr[记忆系统]
     subgraph MemSys
