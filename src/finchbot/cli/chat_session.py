@@ -10,7 +10,7 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import typer
 from langchain_core.messages import BaseMessage
@@ -29,7 +29,10 @@ from rich.text import Text
 from finchbot.agent import get_default_workspace
 from finchbot.config import load_config
 from finchbot.i18n import t
-from finchbot.sessions import SessionMetadataStore
+from finchbot.sessions import get_session_store
+
+if TYPE_CHECKING:
+    from finchbot.sessions.metadata import SessionMetadataStore
 
 console = Console()
 
@@ -832,7 +835,7 @@ async def _run_chat_session_async(
     history_file.parent.mkdir(parents=True, exist_ok=True)
 
     console.print(f"\n[bold cyan]{t('cli.chat.title')}[/bold cyan]")
-    session_store = SessionMetadataStore(ws_path)
+    session_store = get_session_store(ws_path)
     if not session_store.session_exists(session_id):
         session_store.create_session(session_id, title=session_id)
 
@@ -1097,11 +1100,12 @@ def _get_last_active_session(workspace: Path) -> str:
     Returns:
         最近活跃的会话 ID，如果没有会话则生成新的会话 ID
     """
+    from finchbot.sessions import get_session_store
+
+    store = get_session_store(workspace)
+
     db_path = workspace / "sessions_metadata.db"
     if not db_path.exists():
-        from finchbot.sessions import SessionMetadataStore
-
-        store = SessionMetadataStore(workspace)
         return store.get_next_session_id()
 
     with sqlite3.connect(str(db_path)) as conn:
@@ -1110,7 +1114,4 @@ def _get_last_active_session(workspace: Path) -> str:
         if row:
             return row[0]
 
-    from finchbot.sessions import SessionMetadataStore
-
-    store = SessionMetadataStore(workspace)
     return store.get_next_session_id()

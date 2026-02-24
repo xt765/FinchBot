@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from langchain_core.tools import BaseTool
 
 from finchbot.agent.skills import BUILTIN_SKILLS_DIR
-from finchbot.memory import MemoryManager
 from finchbot.tools import (
     EditFileTool,
     ExecTool,
@@ -50,12 +49,14 @@ class ToolFactory:
         Returns:
             工具列表.
         """
+        from finchbot.memory.global_services import GlobalServices
+
         allowed_read_dirs = [
             self.workspace,
             BUILTIN_SKILLS_DIR.parent,
         ]
 
-        memory_manager = MemoryManager(self.workspace, use_global_services=True)
+        memory_manager = GlobalServices.get_memory_manager(self.workspace)
 
         tools: list[BaseTool] = [
             ReadFileTool(allowed_dirs=allowed_read_dirs),

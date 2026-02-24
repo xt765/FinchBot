@@ -1,6 +1,6 @@
 """全局服务管理器.
 
-提供单例模式管理 EmbeddingService 和 VectorMemoryStore，
+提供单例模式管理 EmbeddingService、VectorMemoryStore 和 MemoryManager，
 避免每次会话都重新创建实例和加载模型。
 """
 
@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from finchbot.memory.manager import MemoryManager
     from finchbot.memory.services.embedding import EmbeddingService
     from finchbot.memory.storage.vector import VectorMemoryStore
 
@@ -21,12 +22,14 @@ class GlobalServices:
     使用类级别的单例模式，确保：
     1. EmbeddingService 只创建一次
     2. VectorMemoryStore 按 workspace 缓存
-    3. 线程安全的实例创建
+    3. MemoryManager 按 workspace 缓存
+    4. 线程安全的实例创建
     """
 
     _lock = threading.Lock()
     _embedding_service: EmbeddingService | None = None
     _vector_stores: dict[str, VectorMemoryStore] = {}
+    _memory_managers: dict[str, MemoryManager] = {}
     _initialized = False
 
     @classmethod
@@ -72,6 +75,28 @@ class GlobalServices:
             return cls._vector_stores[key]
 
     @classmethod
+    def get_memory_manager(cls, workspace: Path) -> MemoryManager:
+        """获取指定 workspace 的 MemoryManager 实例.
+
+        Args:
+            workspace: 工作目录路径。
+
+        Returns:
+            MemoryManager 实例（按 workspace 缓存）。
+        """
+        key = str(workspace.resolve())
+
+        if key in cls._memory_managers:
+            return cls._memory_managers[key]
+
+        with cls._lock:
+            if key not in cls._memory_managers:
+                from finchbot.memory.manager import MemoryManager
+
+                cls._memory_managers[key] = MemoryManager(workspace, use_global_services=True)
+            return cls._memory_managers[key]
+
+    @classmethod
     def is_initialized(cls) -> bool:
         """检查全局服务是否已初始化.
 
@@ -89,4 +114,5 @@ class GlobalServices:
         with cls._lock:
             cls._embedding_service = None
             cls._vector_stores.clear()
+            cls._memory_managers.clear()
             cls._initialized = False
