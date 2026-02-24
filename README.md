@@ -491,11 +491,11 @@ git clone https://github.com/xt765/finchbot.git
 
 cd finchbot
 
-# Install dependencies (embedding model will be downloaded automatically)
+# Install dependencies
 uv sync
 ```
 
-> **Note**: The embedding model (~95MB) will be automatically downloaded during installation. If the download fails, you can manually run `uv run finchbot models download` later.
+> **Note**: The embedding model (~95MB) will be automatically downloaded to the local cache when you run the application for the first time (e.g., `finchbot chat`). No manual intervention required.
 
 <details>
 <summary>Development Installation</summary>

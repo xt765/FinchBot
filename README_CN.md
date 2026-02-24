@@ -491,11 +491,11 @@ git clone https://github.com/xt765/finchbot.git
 
 cd finchbot
 
-# 安装依赖（嵌入模型会自动下载）
+# 安装依赖
 uv sync
 ```
 
-> **注意**：嵌入模型（约 95MB）会在安装时自动下载。如果下载失败，可以稍后手动运行 `uv run finchbot models download`。
+> **注意**：嵌入模型（约 95MB）会在首次运行时（如运行 `finchbot chat`）自动下载到本地。无需手动干预。
 
 <details>
 <summary>开发环境安装</summary>

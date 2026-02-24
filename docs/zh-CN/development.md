@@ -41,9 +41,9 @@ uv sync --extra dev
 ```
 
 > **说明**：
-> - `uv sync` 安装生产依赖 + 自动下载嵌入模型（~95MB）
+> - `uv sync` 安装生产依赖
 > - `--extra dev` 额外安装开发工具：pytest、ruff、basedpyright
-> - 模型下载到 `.models/fastembed/`，如失败可手动运行 `uv run finchbot models download`
+> - 嵌入模型（~95MB）会在首次运行时自动下载到 `.models/fastembed/`，无需手动干预。
 
 ## 测试
 
@@ -95,25 +95,14 @@ uv run basedpyright src
 - **`docs`**: 文档目录
 - **`.models`**: 本地模型缓存（自动生成）
 
-## 构建机制
+## 自动化机制
 
-FinchBot 使用 [hatchling](https://hatch.pypa.io/) 作为构建后端，并通过构建钩子在安装时自动下载嵌入模型：
+FinchBot 采用**运行时懒加载 (Runtime Lazy Loading)** 策略管理大文件依赖：
 
-```
-uv sync
-    ↓
-创建构建隔离环境
-    ↓
-安装构建依赖（hatchling + fastembed）
-    ↓
-执行 hatch_build.py 构建钩子
-    ↓
-检测并下载嵌入模型（如不存在）
-    ↓
-生成 wheel 并安装
-```
+1.  **安装阶段**: `uv sync` 仅安装 Python 依赖库，不下载模型。
+2.  **运行阶段**: 当用户执行 `finchbot chat` 时：
+    - 系统检测 `.models/fastembed` 目录。
+    - 如果模型不存在，自动选择最佳镜像（国内/国外）并下载。
+    - 下载完成后无缝进入应用。
 
-相关配置文件：
-- `pyproject.toml` - 构建配置
-- `uv.toml` - uv 特定配置（构建依赖）
-- `hatch_build.py` - 构建钩子实现
+这种设计避免了构建隔离带来的问题，并确保了国内用户的下载体验。

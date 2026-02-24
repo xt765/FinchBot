@@ -35,8 +35,7 @@ uv sync --all-extras
 
 > **Note**:
 > - `--all-extras` installs development dependencies (ruff, basedpyright, pytest, etc.)
-> - The embedding model (~95MB) is automatically downloaded during build to `.models/fastembed/`
-> - If model download fails, run `uv run finchbot models download` manually
+> - The embedding model (~95MB) will be automatically downloaded to `.models/fastembed/` on first run. No manual action required.
 
 ## Testing
 
@@ -88,25 +87,14 @@ uv run basedpyright src
 - **`docs`**: Documentation
 - **`.models`**: Local model cache (auto-generated)
 
-## Build Mechanism
+## Automation Mechanism
 
-FinchBot uses [hatchling](https://hatch.pypa.io/) as the build backend, with a build hook to automatically download the embedding model during installation:
+FinchBot uses a **Runtime Lazy Loading** strategy for large file dependencies:
 
-```
-uv sync
-    ↓
-Create build isolation environment
-    ↓
-Install build dependencies (hatchling + fastembed)
-    ↓
-Execute hatch_build.py build hook
-    ↓
-Detect and download embedding model (if not exists)
-    ↓
-Generate wheel and install
-```
+1.  **Installation Phase**: `uv sync` only installs Python dependencies, skipping model downloads.
+2.  **Runtime Phase**: When the user executes `finchbot chat`:
+    - The system checks the `.models/fastembed` directory.
+    - If the model is missing, it automatically selects the best mirror (Domestic/International) and downloads it.
+    - Once downloaded, it seamlessly enters the application.
 
-Related configuration files:
-- `pyproject.toml` - Build configuration
-- `uv.toml` - UV-specific configuration (build dependencies)
-- `hatch_build.py` - Build hook implementation
+This design avoids issues with build isolation and ensures a smooth download experience for users worldwide.

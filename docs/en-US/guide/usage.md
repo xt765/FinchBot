@@ -224,13 +224,15 @@ export TAVILY_API_KEY="tvly-..."
 
 ### Automatic Download
 
-The embedding model is automatically downloaded to `.models/fastembed/` during `uv sync`.
+FinchBot uses a **runtime automatic download** mechanism.
 
-> **Note**: The model is ~95MB and will be downloaded from a mirror source during first installation. If download fails, run the command below manually.
+When you run `finchbot chat` or other features requiring the embedding model for the first time, the system automatically checks for the model. If missing, it will automatically download it from the best mirror source to the `.models/fastembed/` directory.
+
+> **Note**: The model is ~95MB. No manual intervention is needed; just wait a moment during the first startup.
 
 ### Manual Download
 
-If automatic download fails, you can manually download the embedding model:
+If you wish to download the model in advance (e.g., before deploying to an offline environment), you can run:
 
 ```bash
 finchbot models download
