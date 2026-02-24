@@ -96,8 +96,8 @@ FinchBot supports multiple messaging platforms with a unified routing architectu
 |  Discord   | Bot API           | Supported |
 |  DingTalk  | Webhook           | Supported |
 |   Feishu   | Bot API           | Supported |
-|  WeChat    | Enterprise WeChat | Planned   |
-|   Email    | SMTP/IMAP         | Planned   |
+|  WeChat    | Enterprise WeChat | Supported |
+|   Email    | SMTP/IMAP         | Supported |
 
 ### Web Interface (Beta)
 

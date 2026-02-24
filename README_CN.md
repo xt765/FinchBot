@@ -96,8 +96,8 @@ FinchBot 支持多种消息接入方式，统一的消息路由架构：
 |  Discord  | Bot API          | 支持   |
 |   钉钉    | Webhook          | 支持   |
 |   飞书    | Bot API          | 支持   |
-|   微信    | 企业微信         | 计划中 |
-|   邮件    | SMTP/IMAP        | 计划中 |
+|   微信    | 企业微信         | 支持   |
+|   邮件    | SMTP/IMAP        | 支持   |
 
 ### Web 界面 (Beta)
 
