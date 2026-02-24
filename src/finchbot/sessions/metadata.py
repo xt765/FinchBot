@@ -11,28 +11,6 @@ from typing import Any
 
 from loguru import logger
 
-_session_stores: dict[str, "SessionMetadataStore"] = {}
-
-
-def get_session_store(workspace: Path) -> "SessionMetadataStore":
-    """获取 SessionMetadataStore 单例.
-
-    Args:
-        workspace: 工作目录路径。
-
-    Returns:
-        SessionMetadataStore 实例。
-    """
-    key = str(workspace.resolve())
-    if key not in _session_stores:
-        _session_stores[key] = SessionMetadataStore(workspace)
-    return _session_stores[key]
-
-
-def reset_session_store_cache() -> None:
-    """重置 SessionMetadataStore 缓存。"""
-    _session_stores.clear()
-
 
 @dataclass
 class SessionMetadata:

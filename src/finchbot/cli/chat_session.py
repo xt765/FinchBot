@@ -10,7 +10,7 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import typer
 from langchain_core.messages import BaseMessage
@@ -26,13 +26,9 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
-from finchbot.agent import get_default_workspace
 from finchbot.config import load_config
 from finchbot.i18n import t
-from finchbot.sessions import get_session_store
-
-if TYPE_CHECKING:
-    from finchbot.sessions.metadata import SessionMetadataStore
+from finchbot.sessions import SessionMetadataStore
 
 console = Console()
 
@@ -812,15 +808,21 @@ async def _run_chat_session_async(
 
     if detected_model:
         use_model = detected_model
+        console.print(f"[dim]{t('cli.chat.auto_detected_model').format(use_model)}[/dim]")
 
     if not api_key:
         console.print(f"[red]{t('cli.error_no_api_key')}[/red]")
         console.print(t("cli.error_config_hint"))
         raise typer.Exit(1)
 
-    ws_path = Path(workspace).expanduser() if workspace else get_default_workspace()
+    if workspace:
+        ws_path = Path(workspace).expanduser()
+    else:
+        from finchbot.agent import get_default_workspace
 
-    console.print(f"[dim]{t('cli.chat.loading_model')}[/dim]", end="\r")
+        ws_path = get_default_workspace()
+
+    from finchbot.agent.factory import AgentFactory
 
     chat_model = create_chat_model(
         model=use_model,
@@ -829,13 +831,11 @@ async def _run_chat_session_async(
         temperature=config_obj.agents.defaults.temperature,
     )
 
-    console.print(" " * 50, end="\r")
-
     history_file = Path.home() / ".finchbot" / "history" / "chat_history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
 
     console.print(f"\n[bold cyan]{t('cli.chat.title')}[/bold cyan]")
-    session_store = get_session_store(ws_path)
+    session_store = SessionMetadataStore(ws_path)
     if not session_store.session_exists(session_id):
         session_store.create_session(session_id, title=session_id)
 
@@ -851,8 +851,6 @@ async def _run_chat_session_async(
 
     console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
     console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
-
-    from finchbot.agent.factory import AgentFactory
 
     agent, checkpointer, tools = await AgentFactory.create_for_cli(
         session_id=session_id,
@@ -1100,12 +1098,11 @@ def _get_last_active_session(workspace: Path) -> str:
     Returns:
         最近活跃的会话 ID，如果没有会话则生成新的会话 ID
     """
-    from finchbot.sessions import get_session_store
-
-    store = get_session_store(workspace)
-
     db_path = workspace / "sessions_metadata.db"
     if not db_path.exists():
+        from finchbot.sessions import SessionMetadataStore
+
+        store = SessionMetadataStore(workspace)
         return store.get_next_session_id()
 
     with sqlite3.connect(str(db_path)) as conn:
@@ -1114,4 +1111,7 @@ def _get_last_active_session(workspace: Path) -> str:
         if row:
             return row[0]
 
+    from finchbot.sessions import SessionMetadataStore
+
+    store = SessionMetadataStore(workspace)
     return store.get_next_session_id()

@@ -49,7 +49,6 @@ class MemoryManager:
         vector_store: VectorMemoryStore | None = None,
         retrieval_service: RetrievalService | None = None,
         embedding_service: EmbeddingService | None = None,
-        use_global_services: bool = True,
     ) -> None:
         """初始化记忆管理器.
 
@@ -59,42 +58,39 @@ class MemoryManager:
             vector_store: 可选的向量存储实例。
             retrieval_service: 可选的检索服务实例。
             embedding_service: 可选的 Embedding 服务实例。
-            use_global_services: 是否使用全局服务单例（默认 True，可显著提升启动速度）。
         """
         self.workspace = workspace
         self.memory_dir = workspace / "memory"
         self.memory_dir.mkdir(parents=True, exist_ok=True)
 
-        if use_global_services and embedding_service is None and vector_store is None:
-            from finchbot.memory.global_services import GlobalServices
-
-            self.embedding_service = GlobalServices.get_embedding_service()
-            self.vector_store = GlobalServices.get_vector_store(workspace)
-        else:
-            self.embedding_service = embedding_service or EmbeddingService()
-            self.vector_store = vector_store or VectorMemoryStore(
-                self.workspace, self.embedding_service
-            )
-
+        # 1. 初始化服务层
+        self.embedding_service = embedding_service or EmbeddingService()
         self.importance_scorer = ImportanceScorer()
 
+        # 2. 初始化存储层
         self.sqlite_store = sqlite_store or SQLiteStore(self.memory_dir / "memory.db")
+        self.vector_store = vector_store or VectorMemoryStore(
+            self.workspace, self.embedding_service
+        )
 
+        # 3. 初始化分类服务 (依赖 SQLite 和 Embedding)
         self.classification_service = ClassificationService(
             self.sqlite_store, self.embedding_service
         )
 
+        # 4. 初始化检索服务
         self.retrieval_service = retrieval_service or RetrievalService(
             self.sqlite_store, self.vector_store
         )
 
+        # 5. 初始化同步管理器
         self.sync_manager = DataSyncManager(
             sqlite_store=self.sqlite_store,
             vector_store=self.vector_store,
             max_retries=DEFAULT_MAX_RETRIES,
         )
 
-        logger.debug(f"MemoryManager initialized at {self.workspace}")
+        logger.info(f"MemoryManager initialized at {self.workspace}")
 
     def remember(
         self,

@@ -10,6 +10,7 @@
 
 import json
 import threading
+import time
 from typing import Any
 
 from loguru import logger
@@ -76,12 +77,20 @@ class ClassificationService:
 
         self._cache_loading = True
         try:
-            embeddings = self.embedding_service.get_embeddings()
+            # 等待 embedding 服务就绪
+            embeddings = None
+            wait_start = time.time()
+            while time.time() - wait_start < 10.0:
+                embeddings = self.embedding_service.get_embeddings()
+                if embeddings:
+                    break
+                time.sleep(0.2)
 
             if not embeddings:
                 logger.debug("Embedding service not available, skipping semantic cache")
                 return
 
+            # 重新计算分类 embedding
             new_embeddings = {}
             for category_id, info in self._categories.items():
                 description = info.get("description")
@@ -90,14 +99,14 @@ class ClassificationService:
                         embedding = embeddings.embed_query(description)
                         new_embeddings[category_id] = embedding
                     except Exception as e:
-                        logger.debug(f"Failed to embed category {category_id}: {e}")
+                        logger.warning(f"Failed to embed category {category_id}: {e}")
 
             self._category_embeddings = new_embeddings
             self._cache_loaded = True
-            logger.debug(f"Classification cache refreshed: {len(new_embeddings)} embeddings")
+            logger.info(f"Classification cache refreshed: {len(new_embeddings)} embeddings")
 
         except Exception as e:
-            logger.debug(f"Failed to refresh classification cache: {e}")
+            logger.error(f"Failed to refresh classification cache: {e}")
         finally:
             self._cache_loading = False
 

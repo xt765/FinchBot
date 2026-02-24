@@ -162,6 +162,15 @@ class EmbeddingService:
         try:
             from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 
+            # 确保网络检查完成
+            if not self._network_checked:
+                import time
+
+                wait_start = time.time()
+                while not self._network_checked and time.time() - wait_start < 3.0:
+                    time.sleep(0.05)
+
+            # 设置镜像
             if "HF_ENDPOINT" not in os.environ and self._mirror_url:
                 os.environ["HF_ENDPOINT"] = self._mirror_url
                 logger.debug(f"Using mirror: {self._mirror_name} ({self._mirror_url})")
@@ -178,10 +187,10 @@ class EmbeddingService:
             return embeddings
 
         except ImportError:
-            logger.debug("FastEmbed not available. Install with: uv add fastembed")
+            logger.warning("FastEmbed not available. Install with: uv add fastembed")
             return None
         except Exception as e:
-            logger.debug(f"Failed to load FastEmbed model: {e}")
+            logger.warning(f"Failed to load FastEmbed model: {e}")
             return None
 
     def get_embeddings(self) -> Optional["FastEmbedEmbeddings"]:

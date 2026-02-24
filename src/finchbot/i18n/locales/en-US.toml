@@ -144,7 +144,6 @@ workspace_option = "Workspace directory"
 markdown_option = "Render AI response as Markdown"
 thinking = "Thinking"
 ai = "AI"
-loading_model = "Loading model..."
 
 [cli.history]
 title = "Conversation History:"

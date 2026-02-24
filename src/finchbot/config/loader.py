@@ -6,8 +6,6 @@ from typing import Any
 
 from finchbot.config.schema import Config, ProviderConfig
 
-_config_cache: Config | None = None
-
 
 def get_config_path() -> Path:
     """获取默认配置文件路径.
@@ -16,15 +14,6 @@ def get_config_path() -> Path:
         默认配置文件路径。
     """
     return Path.home() / ".finchbot" / "config.json"
-
-
-def reset_config_cache() -> None:
-    """重置配置缓存.
-
-    用于测试或需要强制重新加载配置的场景。
-    """
-    global _config_cache
-    _config_cache = None
 
 
 def _auto_detect_default_model() -> str | None:
@@ -85,21 +74,15 @@ def _load_providers_from_env() -> dict[str, ProviderConfig]:
     return providers
 
 
-def load_config(config_path: Path | None = None, use_cache: bool = True) -> Config:
+def load_config(config_path: Path | None = None) -> Config:
     """从文件加载配置或创建默认配置.
 
     Args:
         config_path: 可选的配置文件路径，未提供则使用默认路径。
-        use_cache: 是否使用缓存（默认 True）。
 
     Returns:
         加载的配置对象。
     """
-    global _config_cache
-
-    if use_cache and _config_cache is not None:
-        return _config_cache
-
     from finchbot.i18n.detector import detect_system_language
 
     path = config_path or get_config_path()
@@ -114,10 +97,12 @@ def load_config(config_path: Path | None = None, use_cache: bool = True) -> Conf
             print(f"警告: 无法从 {path} 加载配置: {e}")
             print("使用默认配置。")
             config = Config()
+            # 配置文件损坏，检测系统语言
             config.language = detect_system_language()
             config.language_set_by_user = False
     else:
         config = Config()
+        # 新配置，检测系统语言和默认模型
         config.language = detect_system_language()
         config.language_set_by_user = False
         detected_model = _auto_detect_default_model()
@@ -125,25 +110,28 @@ def load_config(config_path: Path | None = None, use_cache: bool = True) -> Conf
             config.default_model = detected_model
         config.default_model_set_by_user = False
 
+    # 如果语言未被用户设置过，尝试检测系统语言
     if not config.language_set_by_user:
         detected_lang = detect_system_language()
         if detected_lang != config.language:
             config.language = detected_lang
 
+    # 从环境变量加载提供商配置并合并
     env_providers = _load_providers_from_env()
     for provider_name, provider_config in env_providers.items():
+        # 环境变量优先级高于配置文件
         if provider_name not in config.providers.model_fields:
+            # 自定义 provider
             config.providers.custom[provider_name] = provider_config
         else:
+            # 预设 provider
             setattr(config.providers, provider_name, provider_config)
 
+    # 如果默认模型未被用户设置过，尝试自动检测
     if not config.default_model_set_by_user:
         detected_model = _auto_detect_default_model()
         if detected_model and detected_model != config.default_model:
             config.default_model = detected_model
-
-    if use_cache:
-        _config_cache = config
 
     return config
 
