@@ -48,38 +48,31 @@
 ### 设计哲学
 
 ```mermaid
-graph TD
-    %% 设计哲学节点
-    Privacy[隐私优先]
-    Modularity[模块化]
-    Dev_Experience[开发者友好]
-    Stability[生产级稳定]
-    Out_of_Box[开箱即用]
+graph BT
+    %% 样式定义
+    classDef roof fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef pillar fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1;
+    classDef base fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    %% 细节
-    Privacy --> Local_Embedding(本地 Embedding)
-    Privacy --> No_Cloud_Upload(数据不上云)
-    
-    Modularity --> Factory_Pattern(工厂模式)
-    Modularity --> Decoupled(组件解耦)
-    
-    Dev_Experience --> Type_Safety(类型安全)
-    Dev_Experience --> Docs(文档完善)
-    
-    Stability --> Thread_Safe(双重检查锁)
-    Stability --> Retry(自动重试)
-    Stability --> Timeout(超时控制)
-    
-    Out_of_Box --> Zero_Config(零配置启动)
-    Out_of_Box --> Auto_Fallback(自动降级)
-    Out_of_Box --> Rich_CLI(富文本界面)
+    %% 顶层
+    Roof("🦅 <b>FinchBot Framework</b><br/>轻量 • 灵活 • 无限扩展"):::roof
 
-    %% 样式
-    classDef main fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef sub fill:#fff9c4,stroke:#fbc02d,stroke-width:1px;
-    
-    class Privacy,Modularity,Dev_Experience,Stability,Out_of_Box main
-    class Local_Embedding,No_Cloud_Upload,Factory_Pattern,Decoupled,Type_Safety,Docs,Thread_Safe,Retry,Timeout,Zero_Config,Auto_Fallback,Rich_CLI sub
+    %% 支柱
+    subgraph Pillars [核心哲学]
+        direction LR
+        P("🛡️ <b>隐私优先</b><br/>本地 Embedding<br/>数据不上云"):::pillar
+        M("🧩 <b>模块化</b><br/>工厂模式<br/>组件解耦"):::pillar
+        D("❤️ <b>开发者友好</b><br/>类型安全<br/>文档完善"):::pillar
+        S("⚙️ <b>生产级稳定</b><br/>双重锁机制<br/>自动重试"):::pillar
+        O("📦 <b>开箱即用</b><br/>零配置启动<br/>自动降级"):::pillar
+    end
+
+    %% 底层
+    Base("🏗️ <b>技术基石</b><br/>LangChain v1.2 • LangGraph v1.0 • Python 3.13"):::base
+
+    %% 连接
+    Base === P & M & D & S & O
+    P & M & D & S & O === Roof
 ```
 
 ### 开箱即用体验
