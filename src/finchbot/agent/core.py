@@ -6,11 +6,12 @@
 
 import platform
 import threading
-from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Sequence
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
+import aiosqlite
 from langchain.agents import create_agent
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
@@ -18,7 +19,6 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph  # type: ignore[attr-defined]
 from loguru import logger
-import aiosqlite
 
 from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
@@ -170,8 +170,8 @@ def get_default_workspace() -> Path:
     return workspace
 
 
-@contextmanager
-async def get_sqlite_checkpointer(workspace: Path) -> Iterator[AsyncSqliteSaver]:
+@asynccontextmanager
+async def get_sqlite_checkpointer(workspace: Path) -> AsyncIterator[AsyncSqliteSaver]:
     """获取 SQLite Checkpointer 上下文管理器.
 
     Args:
