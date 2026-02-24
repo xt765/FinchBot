@@ -90,14 +90,7 @@ graph BT
 
 FinchBot supports multiple messaging platforms with a unified routing architecture:
 
-|  Platform  | Protocol/Method   | Status    |
-| :--------: | :---------------- | :-------- |
-|    Web     | WebSocket         | Supported |
-|  Discord   | Bot API           | Supported |
-|  DingTalk  | Webhook           | Supported |
-|   Feishu   | Bot API           | Supported |
-|  WeChat    | Enterprise WeChat | Supported |
-|   Email    | SMTP/IMAP         | Supported |
+**Web** (WebSocket) • **Discord** (Bot API) • **DingTalk** (Webhook) • **Feishu** (Bot API) • **WeChat** (Enterprise) • **Email** (SMTP/IMAP)
 
 ### Web Interface (Beta)
 

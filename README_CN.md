@@ -90,14 +90,7 @@ graph BT
 
 FinchBot 支持多种消息接入方式，统一的消息路由架构：
 
-|   平台    | 协议/方式        | 状态   |
-| :-------: | :--------------- | :----- |
-|   Web     | WebSocket        | 支持   |
-|  Discord  | Bot API          | 支持   |
-|   钉钉    | Webhook          | 支持   |
-|   飞书    | Bot API          | 支持   |
-|   微信    | 企业微信         | 支持   |
-|   邮件    | SMTP/IMAP        | 支持   |
+**Web** (WebSocket) • **Discord** (Bot API) • **钉钉** (Webhook) • **飞书** (Bot API) • **微信** (企业微信) • **邮件** (SMTP/IMAP)
 
 ### Web 界面 (Beta)
 
