@@ -100,10 +100,11 @@ FinchBot 采用灵活的层级配置系统，支持通过 **配置文件** 和 *
 
 ### 搜索工具
 
-| 工具 | API Key 变量 |
-| :--- | :--- |
-| Tavily | `TAVILY_API_KEY` |
-| Brave | `BRAVE_API_KEY` |
+| 工具 | API Key 变量 | 说明 |
+| :--- | :--- | :--- |
+| Tavily | `TAVILY_API_KEY` | 质量最佳，需要 API Key |
+| Brave | `BRAVE_API_KEY` | 免费额度大，需要 API Key |
+| DuckDuckGo | - | 无需 API Key (作为备选方案) |
 
 ### 通用配置
 

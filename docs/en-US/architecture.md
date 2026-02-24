@@ -334,7 +334,7 @@ FinchBot's web search tool features a clever **three-engine automatic fallback m
 |:---:|:---:|:---:|:---|
 | 1 | **Tavily** | Required | Best quality, AI-optimized, deep search |
 | 2 | **Brave Search** | Required | Large free tier, privacy-friendly |
-| 3 | **DuckDuckGo** | Not required | Always available, zero config |
+| 3 | **DuckDuckGo** | Not required | Always available as fallback |
 
 **How it works**:
 1. If `TAVILY_API_KEY` is set → Use Tavily (best quality)

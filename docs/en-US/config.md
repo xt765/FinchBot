@@ -100,10 +100,11 @@ Nested configuration uses double underscores `__` for separation (Pydantic Setti
 
 ### Search Tools
 
-| Tool | API Key Variable |
-|------|------------------|
-| Tavily | `TAVILY_API_KEY` |
-| Brave | `BRAVE_API_KEY` |
+| Tool | API Key Variable | Note |
+|------|------------------|------|
+| Tavily | `TAVILY_API_KEY` | Best quality, requires API Key |
+| Brave | `BRAVE_API_KEY` | Free tier, requires API Key |
+| DuckDuckGo | - | No API Key required (Fallback) |
 
 ### General Configuration
 
