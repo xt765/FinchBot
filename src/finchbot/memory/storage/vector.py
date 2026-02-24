@@ -119,17 +119,24 @@ class VectorMemoryStore:
             return
 
         try:
+            import chromadb
             from langchain_chroma import Chroma
 
+            client = chromadb.PersistentClient(path=str(self.vector_dir))
+
+            # 显式获取或创建默认 collection
+            # 这一步是为了确保 tenant/database 初始化正确
+            client.get_or_create_collection("langchain")
+
             self._vectorstore = Chroma(
-                persist_directory=str(self.vector_dir),
+                client=client,
                 embedding_function=self._embeddings,
                 collection_metadata={"hnsw:space": "l2"},  # 显式指定 L2 距离
             )
             logger.debug("Vector store initialized with L2 distance metric")
         except ImportError:
             logger.warning(
-                "langchain-chroma not available. Install with: uv add langchain-chroma"
+                "langchain-chroma or chromadb not available. Install with: uv add langchain-chroma chromadb"
             )
             self._vectorstore = None
         except Exception as e:

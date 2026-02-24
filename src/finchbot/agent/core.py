@@ -26,13 +26,16 @@ _default_tools_registered: bool = False
 _tools_registration_lock = threading.Lock()
 
 
-def _register_default_tools() -> None:
+def _register_default_tools(workspace: Path) -> None:
     """注册默认工具到全局工具注册表.
 
     自动发现并注册所有 FinchBot 内置工具。
     使用懒加载模式，只在首次调用时注册。
 
     使用线程锁确保并发安全。
+
+    Args:
+        workspace: 工作目录路径.
     """
     global _default_tools_registered
 
@@ -44,20 +47,9 @@ def _register_default_tools() -> None:
         if _default_tools_registered:
             return
 
-        from finchbot.tools import (
-            EditFileTool,
-            ExecTool,
-            ForgetTool,
-            ListDirTool,
-            ReadFileTool,
-            RecallTool,
-            RememberTool,
-            SessionTitleTool,
-            WebExtractTool,
-            WebSearchTool,
-            WriteFileTool,
-            get_global_registry,
-        )
+        from finchbot.config import load_config
+        from finchbot.tools import get_global_registry
+        from finchbot.tools.factory import ToolFactory
 
         registry = get_global_registry()
 
@@ -67,35 +59,28 @@ def _register_default_tools() -> None:
             _default_tools_registered = True
             return
 
-        tools = [
-            ReadFileTool(),
-            WriteFileTool(),
-            EditFileTool(),
-            ListDirTool(),
-            ExecTool(),
-            WebSearchTool(),
-            WebExtractTool(),
-            RememberTool(),
-            RecallTool(),
-            ForgetTool(),
-            SessionTitleTool(),
-        ]
+        try:
+            config = load_config()
+            factory = ToolFactory(config, workspace)
+            tools = factory.create_default_tools()
 
-        registered_count = 0
-        for tool in tools:
-            try:
-                # 检查工具是否已存在，避免重复注册
-                if registry.has(tool.name):
-                    logger.debug(f"工具 '{tool.name}' 已存在，跳过注册")
-                    continue
-                registry.register(tool)
-                registered_count += 1
-                logger.debug(f"工具已注册: {tool.name}")
-            except Exception as e:
-                logger.error(f"注册工具失败 {tool.name}: {e}")
+            registered_count = 0
+            for tool in tools:
+                try:
+                    # 检查工具是否已存在，避免重复注册
+                    if registry.has(tool.name):
+                        logger.debug(f"工具 '{tool.name}' 已存在，跳过注册")
+                        continue
+                    registry.register(tool)
+                    registered_count += 1
+                    logger.debug(f"工具已注册: {tool.name}")
+                except Exception as e:
+                    logger.error(f"注册工具失败 {tool.name}: {e}")
 
-        _default_tools_registered = True
-        logger.info(f"默认工具注册完成: {registered_count}/{len(tools)} 个工具")
+            _default_tools_registered = True
+            logger.info(f"默认工具注册完成: {registered_count}/{len(tools)} 个工具")
+        except Exception as e:
+            logger.error(f"创建默认工具失败: {e}")
 
 
 def _create_workspace_templates(workspace: Path) -> None:
@@ -148,59 +133,19 @@ def build_system_prompt(
 
     prompt_parts = []
 
-    # 加载 SYSTEM.md
-    system_md = workspace / "SYSTEM.md"
-    if system_md.exists():
-        try:
-            content = system_md.read_text(encoding="utf-8")
-            if content.strip():
-                prompt_parts.append(content)
-        except Exception as e:
-            logger.warning(f"读取 SYSTEM.md 失败: {e}")
-
-    # 加载 MEMORY_GUIDE.md
-    memory_guide_md = workspace / "MEMORY_GUIDE.md"
-    if memory_guide_md.exists():
-        try:
-            content = memory_guide_md.read_text(encoding="utf-8")
-            if content.strip():
-                prompt_parts.append(content)
-        except Exception as e:
-            logger.warning(f"读取 MEMORY_GUIDE.md 失败: {e}")
-
-    # 加载 SOUL.md
-    soul_md = workspace / "SOUL.md"
-    if soul_md.exists():
-        try:
-            content = soul_md.read_text(encoding="utf-8")
-            if content.strip():
-                prompt_parts.append(content)
-        except Exception as e:
-            logger.warning(f"读取 SOUL.md 失败: {e}")
-
-    # 加载 SOUL.md
-    agent_config_md = workspace / "AGENT_CONFIG.md"
-    if soul_md.exists():
-        try:
-            content = agent_config_md.read_text(encoding="utf-8")
-            if content.strip():
-                prompt_parts.append(content)
-        except Exception as e:
-            logger.warning(f"读取 AGENT_CONFIG.md 失败: {e}")
-
-    # 添加运行时信息
-    prompt_parts.append(f"## {t('agent.current_time')}\n{now}")
-    prompt_parts.append(f"## {t('agent.runtime')}\n{runtime}")
-    prompt_parts.append(f"## {t('agent.workspace')}\n{workspace}")
-
     # 构建上下文（Bootstrap 文件和技能）
     context_builder = ContextBuilder(workspace)
     bootstrap_and_skills = context_builder.build_system_prompt(use_cache=use_cache)
     if bootstrap_and_skills:
         prompt_parts.append(bootstrap_and_skills)
 
+    # 添加运行时信息
+    prompt_parts.append(f"## {t('agent.current_time')}\n{now}")
+    prompt_parts.append(f"## {t('agent.runtime')}\n{runtime}")
+    prompt_parts.append(f"## {t('agent.workspace')}\n{workspace}")
+
     # 确保默认工具已注册（懒加载，只在首次调用时注册）
-    _register_default_tools()
+    _register_default_tools(workspace)
 
     # 生成工具文档（从 ToolRegistry 动态发现）
     tools_generator = ToolsGenerator(workspace)

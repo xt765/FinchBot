@@ -594,87 +594,6 @@ def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | N
     return None, None, None, None
 
 
-def _get_tavily_key(config_obj: Any) -> str | None:
-    """获取 Tavily API key.
-
-    优先级：环境变量 > 配置文件
-
-    Args:
-        config_obj: 配置对象
-
-    Returns:
-        API key 或 None
-    """
-    env_key = os.environ.get("TAVILY_API_KEY")
-    if env_key:
-        return env_key
-
-    if hasattr(config_obj, "tools") and hasattr(config_obj.tools, "web"):
-        return config_obj.tools.web.search.api_key
-    return None
-
-
-def _setup_chat_tools(config_obj: Any, ws_path: Path, session_id: str) -> tuple[list, bool]:
-    """设置聊天工具列表.
-
-    Args:
-        config_obj: 配置对象
-        ws_path: 工作目录路径
-        session_id: 会话 ID
-
-    Returns:
-        (tools, web_enabled) 元组
-    """
-    from finchbot.agent.skills import BUILTIN_SKILLS_DIR
-    from finchbot.memory import MemoryManager
-    from finchbot.tools import (
-        EditFileTool,
-        ExecTool,
-        ForgetTool,
-        ListDirTool,
-        ReadFileTool,
-        RecallTool,
-        RememberTool,
-        SessionTitleTool,
-        WebExtractTool,
-        WebSearchTool,
-        WriteFileTool,
-    )
-
-    allowed_read_dirs = [
-        ws_path,
-        BUILTIN_SKILLS_DIR.parent,
-    ]
-
-    memory_manager = MemoryManager(ws_path)
-
-    tools = [
-        ReadFileTool(allowed_dirs=allowed_read_dirs),
-        WriteFileTool(allowed_dirs=[ws_path]),
-        EditFileTool(allowed_dirs=[ws_path]),
-        ListDirTool(allowed_dirs=allowed_read_dirs),
-        RememberTool(workspace=str(ws_path), memory_manager=memory_manager),
-        RecallTool(workspace=str(ws_path), memory_manager=memory_manager),
-        ForgetTool(workspace=str(ws_path), memory_manager=memory_manager),
-        SessionTitleTool(workspace=str(ws_path), session_id=session_id),
-        ExecTool(timeout=config_obj.tools.exec.timeout),
-        WebExtractTool(),
-    ]
-
-    tavily_key = _get_tavily_key(config_obj)
-    brave_key = config_obj.tools.web.search.brave_api_key
-    web_enabled = False
-    if tavily_key or brave_key:
-        tools.append(
-            WebSearchTool(
-                tavily_api_key=tavily_key,
-                brave_api_key=brave_key,
-                max_results=config_obj.tools.web.search.max_results,
-            )
-        )
-        web_enabled = True
-
-    return tools, web_enabled
 
 
 def _run_chat_session(
@@ -698,7 +617,6 @@ def _run_chat_session(
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.patch_stdout import patch_stdout
 
-    from finchbot.agent import create_finch_agent
     from finchbot.providers import create_chat_model
 
     config_obj = load_config()
@@ -721,7 +639,7 @@ def _run_chat_session(
 
         ws_path = get_default_workspace()
 
-    tools, web_enabled = _setup_chat_tools(config_obj, ws_path, session_id)
+    from finchbot.agent.factory import AgentFactory
 
     chat_model = create_chat_model(
         model=use_model,
@@ -750,18 +668,20 @@ def _run_chat_session(
 
     console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
     console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
+
+    agent, checkpointer, tools = AgentFactory.create_for_cli(
+        session_id=session_id,
+        workspace=ws_path,
+        model=chat_model,
+        config=config_obj,
+    )
+
+    web_enabled = any(t.name == "web_search" for t in tools)
     web_status = (
         t("cli.chat.web_search_enabled") if web_enabled else t("cli.chat.web_search_disabled")
     )
     console.print(f"[dim]{web_status}[/dim]")
     console.print(f"[dim]{t('cli.chat.type_to_quit')}[/dim]\n")
-
-    agent, checkpointer = create_finch_agent(
-        model=chat_model,
-        workspace=ws_path,
-        tools=tools,
-        use_persistent=True,
-    )
 
     config = {"configurable": {"thread_id": session_id}}
     current_state = agent.get_state(config)

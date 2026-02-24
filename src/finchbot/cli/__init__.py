@@ -12,7 +12,6 @@ from finchbot.cli.chat_session import (
     GOODBYE_MESSAGE,
     _get_last_active_session,
     _run_chat_session,
-    _setup_chat_tools,
 )
 from finchbot.cli.config_manager import (
     ConfigManager,
@@ -55,6 +54,5 @@ __all__ = [
     "EXIT_COMMANDS",
     "GOODBYE_MESSAGE",
     "_run_chat_session",
-    "_setup_chat_tools",
     "_get_last_active_session",
 ]
