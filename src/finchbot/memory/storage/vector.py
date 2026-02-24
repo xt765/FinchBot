@@ -54,37 +54,9 @@ class VectorMemoryStore:
         self._vectorstore: Chroma | None = None
         self._initialized = False
         self._initializing = False
+        self._init_error: str | None = None
 
-        # 延迟初始化（后台线程）
         self._start_lazy_init()
-
-    def _start_lazy_init(self) -> None:
-        """启动后台初始化线程."""
-        thread = threading.Thread(target=self._lazy_init, daemon=True)
-        thread.start()
-
-    def _lazy_init(self) -> None:
-        """延迟初始化向量存储."""
-        if self._initializing or self._initialized:
-            return
-
-        self._initializing = True
-        try:
-            # 获取 embedding（这会触发模型加载）
-            self._embeddings = self._embedding_service.get_embeddings()
-            if not self._embeddings:
-                logger.warning(
-                    "No embedding backend available. Install fastembed: uv add fastembed"
-                )
-                return
-
-            self._init_vectorstore()
-            self._initialized = True
-            logger.debug("VectorMemoryStore initialized successfully")
-        except Exception as e:
-            logger.warning(f"Failed to initialize VectorMemoryStore: {e}")
-        finally:
-            self._initializing = False
 
     def _ensure_initialized(self, timeout: float = 30.0) -> bool:
         """确保初始化完成（阻塞等待）.
@@ -99,15 +71,42 @@ class VectorMemoryStore:
             return True
 
         if not self._initializing and not self._initialized:
-            # 如果还没开始初始化，启动它
-            self._lazy_init()
+            self._start_lazy_init()
 
-        # 等待初始化完成
         start = time.time()
         while self._initializing and time.time() - start < timeout:
             time.sleep(0.05)
 
         return self._initialized
+
+    def _start_lazy_init(self) -> None:
+        """启动后台初始化线程."""
+        if self._initializing or self._initialized:
+            return
+        self._initializing = True
+        thread = threading.Thread(target=self._lazy_init, daemon=True)
+        thread.start()
+
+    def _lazy_init(self) -> None:
+        """延迟初始化向量存储."""
+        try:
+            self._embeddings = self._embedding_service.get_embeddings()
+            if not self._embeddings:
+                self._init_error = (
+                    "No embedding backend available. Install fastembed: uv add fastembed"
+                )
+                logger.debug(self._init_error)
+                return
+
+            self._init_vectorstore()
+            if self._vectorstore:
+                self._initialized = True
+                logger.debug("VectorMemoryStore initialized successfully")
+        except Exception as e:
+            self._init_error = str(e)
+            logger.debug(f"VectorMemoryStore initialization skipped: {e}")
+        finally:
+            self._initializing = False
 
     def _init_vectorstore(self) -> None:
         """初始化向量存储.
@@ -120,27 +119,52 @@ class VectorMemoryStore:
 
         try:
             import chromadb
+            from chromadb.config import Settings
             from langchain_chroma import Chroma
 
-            client = chromadb.PersistentClient(path=str(self.vector_dir))
+            max_retries = 3
+            last_error = None
 
-            # 显式获取或创建默认 collection
-            # 这一步是为了确保 tenant/database 初始化正确
-            client.get_or_create_collection("langchain")
+            for attempt in range(max_retries):
+                try:
+                    settings = Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                    )
 
-            self._vectorstore = Chroma(
-                client=client,
-                embedding_function=self._embeddings,
-                collection_metadata={"hnsw:space": "l2"},  # 显式指定 L2 距离
-            )
-            logger.debug("Vector store initialized with L2 distance metric")
+                    client = chromadb.PersistentClient(
+                        path=str(self.vector_dir),
+                        settings=settings,
+                    )
+
+                    client.get_or_create_collection(
+                        name="langchain",
+                        metadata={"hnsw:space": "l2"},
+                    )
+
+                    self._vectorstore = Chroma(
+                        client=client,
+                        embedding_function=self._embeddings,
+                        collection_metadata={"hnsw:space": "l2"},
+                    )
+                    logger.debug("Vector store initialized with L2 distance metric")
+                    return
+
+                except Exception as e:
+                    last_error = e
+                    logger.debug(f"ChromaDB init attempt {attempt + 1} failed: {e}")
+                    if attempt < max_retries - 1:
+                        time.sleep(0.5 * (attempt + 1))
+
+            raise last_error if last_error else Exception("Unknown error")
+
         except ImportError:
-            logger.warning(
-                "langchain-chroma or chromadb not available. Install with: uv add langchain-chroma chromadb"
-            )
+            self._init_error = "langchain-chroma or chromadb not available"
+            logger.debug(self._init_error)
             self._vectorstore = None
         except Exception as e:
-            logger.warning(f"Failed to init vector store: {e}")
+            self._init_error = str(e)
+            logger.debug(f"Vector store init skipped: {e}")
             self._vectorstore = None
 
     @property
