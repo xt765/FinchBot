@@ -55,9 +55,8 @@ class ToolFactory:
             BUILTIN_SKILLS_DIR.parent,
         ]
 
-        memory_manager = MemoryManager(self.workspace)
+        memory_manager = MemoryManager(self.workspace, use_global_services=True)
 
-        # 基础文件系统工具
         tools: list[BaseTool] = [
             ReadFileTool(allowed_dirs=allowed_read_dirs),
             WriteFileTool(allowed_dirs=[self.workspace]),
@@ -65,26 +64,23 @@ class ToolFactory:
             ListDirTool(allowed_dirs=allowed_read_dirs),
         ]
 
-        # 记忆工具
-        tools.extend([
-            RememberTool(workspace=str(self.workspace), memory_manager=memory_manager),
-            RecallTool(workspace=str(self.workspace), memory_manager=memory_manager),
-            ForgetTool(workspace=str(self.workspace), memory_manager=memory_manager),
-        ])
+        tools.extend(
+            [
+                RememberTool(workspace=str(self.workspace), memory_manager=memory_manager),
+                RecallTool(workspace=str(self.workspace), memory_manager=memory_manager),
+                ForgetTool(workspace=str(self.workspace), memory_manager=memory_manager),
+            ]
+        )
 
-        # 会话工具
         tools.append(SessionTitleTool(workspace=str(self.workspace), session_id=self.session_id))
 
-        # 执行工具
         exec_timeout = 60
         if hasattr(self.config, "tools") and hasattr(self.config.tools, "exec"):
             exec_timeout = self.config.tools.exec.timeout
         tools.append(ExecTool(timeout=exec_timeout))
 
-        # 网页提取工具
         tools.append(WebExtractTool())
 
-        # 网页搜索工具
         web_search_tool = self._create_web_search_tool()
         if web_search_tool:
             tools.append(web_search_tool)

@@ -7,22 +7,39 @@ import locale
 import os
 import platform
 
+_detected_language: str | None = None
+
 
 def detect_system_language() -> str:
     """检测系统语言.
 
     支持 Windows、macOS 和 Linux。
+    使用缓存避免重复检测。
 
     Returns:
         检测到的语言代码，如 "zh-CN"、"en-US"。
     """
+    global _detected_language
+
+    if _detected_language is not None:
+        return _detected_language
+
     system = platform.system()
 
     if system == "Windows":
-        return _detect_windows_language()
-    if system == "Darwin":
-        return _detect_macos_language()
-    return _detect_linux_language()
+        _detected_language = _detect_windows_language()
+    elif system == "Darwin":
+        _detected_language = _detect_macos_language()
+    else:
+        _detected_language = _detect_linux_language()
+
+    return _detected_language
+
+
+def reset_language_cache() -> None:
+    """重置语言检测缓存."""
+    global _detected_language
+    _detected_language = None
 
 
 def _detect_windows_language() -> str:
