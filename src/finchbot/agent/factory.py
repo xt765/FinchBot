@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -39,7 +40,9 @@ class AgentFactory:
         """
         # 1. 准备工具
         tool_factory = ToolFactory(config, workspace, session_id)
-        tools = tool_factory.create_default_tools()
+        
+        loop = asyncio.get_running_loop()
+        tools = await loop.run_in_executor(None, tool_factory.create_default_tools)
 
         # 2. 创建 Agent
         agent, checkpointer = await create_finch_agent(

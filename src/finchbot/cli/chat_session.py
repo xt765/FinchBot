@@ -802,6 +802,8 @@ async def _run_chat_session_async(
 
     from finchbot.providers import create_chat_model
 
+    loop = asyncio.get_running_loop()
+
     config_obj = load_config()
     use_model = model or config_obj.default_model
     api_key, api_base, detected_model = _get_llm_config(use_model, config_obj)
@@ -820,26 +822,36 @@ async def _run_chat_session_async(
     else:
         from finchbot.agent import get_default_workspace
 
-        ws_path = get_default_workspace()
+        # get_default_workspace can be slow (file I/O), move to thread pool
+        ws_path = await loop.run_in_executor(None, get_default_workspace)
 
     from finchbot.agent.factory import AgentFactory
+    from functools import partial
 
-    chat_model = create_chat_model(
-        model=use_model,
-        api_key=api_key,
-        api_base=api_base,
-        temperature=config_obj.agents.defaults.temperature,
+    # create_chat_model can be very slow (tiktoken loading etc.), move to thread pool
+    chat_model = await loop.run_in_executor(
+        None,
+        partial(
+            create_chat_model,
+            model=use_model,
+            api_key=api_key,
+            api_base=api_base,
+            temperature=config_obj.agents.defaults.temperature,
+        )
     )
 
     history_file = Path.home() / ".finchbot" / "history" / "chat_history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
 
     console.print(f"\n[bold cyan]{t('cli.chat.title')}[/bold cyan]")
-    session_store = SessionMetadataStore(ws_path)
-    if not session_store.session_exists(session_id):
-        session_store.create_session(session_id, title=session_id)
+    
+    # Session store init involves SQLite connection, move to thread pool
+    session_store = await loop.run_in_executor(None, SessionMetadataStore, ws_path)
+    
+    if not await loop.run_in_executor(None, session_store.session_exists, session_id):
+        await loop.run_in_executor(None, partial(session_store.create_session, session_id, title=session_id))
 
-    current_session = session_store.get_session(session_id)
+    current_session = await loop.run_in_executor(None, session_store.get_session, session_id)
     session_title = current_session.title if current_session else None
     if session_title == session_id:
         session_title = None

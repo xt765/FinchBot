@@ -75,3 +75,6 @@ scripts/
 
 # 模型缓存（可单独打包分发）
 .models/
+
+# 测试
+workspace_test/

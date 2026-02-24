@@ -4,6 +4,7 @@
 支持对话持久化存储和动态工具注册。
 """
 
+import asyncio
 import platform
 import threading
 from collections.abc import AsyncIterator, Sequence
@@ -84,6 +85,41 @@ def _register_default_tools(workspace: Path) -> None:
             logger.error(f"创建默认工具失败: {e}")
 
 
+def _register_provided_tools(tools: Sequence[BaseTool]) -> None:
+    """注册提供的工具到全局工具注册表.
+
+    Args:
+        tools: 要注册的工具列表.
+    """
+    global _default_tools_registered
+
+    if _default_tools_registered:
+        return
+
+    with _tools_registration_lock:
+        if _default_tools_registered:
+            return
+
+        from finchbot.tools import get_global_registry
+
+        registry = get_global_registry()
+
+        registered_count = 0
+        for tool in tools:
+            try:
+                if registry.has(tool.name):
+                    logger.debug(f"工具 '{tool.name}' 已存在，跳过注册")
+                    continue
+                registry.register(tool)
+                registered_count += 1
+                logger.debug(f"工具已注册: {tool.name}")
+            except Exception as e:
+                logger.error(f"注册工具失败 {tool.name}: {e}")
+
+        _default_tools_registered = True
+        logger.info(f"提供的工具注册完成: {registered_count}/{len(tools)} 个工具")
+
+
 def _create_workspace_templates(workspace: Path) -> None:
     """创建默认工作区模板文件.
 
@@ -115,6 +151,7 @@ def _create_workspace_templates(workspace: Path) -> None:
 def build_system_prompt(
     workspace: Path,
     use_cache: bool = True,
+    tools: Sequence[BaseTool] | None = None,
 ) -> str:
     """构建系统提示.
 
@@ -123,6 +160,7 @@ def build_system_prompt(
     Args:
         workspace: 工作目录路径。
         use_cache: 是否使用缓存。
+        tools: 可选的工具列表，如果提供则直接注册，避免重新创建。
 
     Returns:
         系统提示字符串。
@@ -146,7 +184,10 @@ def build_system_prompt(
     prompt_parts.append(f"## {t('agent.workspace')}\n{workspace}")
 
     # 确保默认工具已注册（懒加载，只在首次调用时注册）
-    _register_default_tools(workspace)
+    if tools:
+        _register_provided_tools(tools)
+    else:
+        _register_default_tools(workspace)
 
     # 生成工具文档（从 ToolRegistry 动态发现）
     tools_generator = ToolsGenerator(workspace)
@@ -223,7 +264,9 @@ async def create_finch_agent(
     else:
         checkpointer = get_memory_checkpointer()
 
-    system_prompt = build_system_prompt(workspace)
+    # Move synchronous build_system_prompt to thread pool
+    loop = asyncio.get_running_loop()
+    system_prompt = await loop.run_in_executor(None, build_system_prompt, workspace, True, tools)
 
     agent = create_agent(
         model=model,
