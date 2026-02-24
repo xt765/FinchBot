@@ -86,9 +86,22 @@ graph BT
     P & M & D & S & O === Roof
 ```
 
+### Multi-Platform Messaging
+
+FinchBot supports multiple messaging platforms with a unified routing architecture:
+
+|  Platform  | Protocol/Method   | Status    |
+| :--------: | :---------------- | :-------- |
+|    Web     | WebSocket         | Supported |
+|  Discord   | Bot API           | Supported |
+|  DingTalk  | Webhook           | Supported |
+|   Feishu   | Bot API           | Supported |
+|  WeChat    | Enterprise WeChat | Planned   |
+|   Email    | SMTP/IMAP         | Planned   |
+
 ### Web Interface (Beta)
 
-FinchBot now provides a modern Web interface built with React + Vite + FastAPI.
+FinchBot provides a modern Web interface built with React + Vite + FastAPI:
 
 ```bash
 # Start the backend server
@@ -101,12 +114,13 @@ npm run dev
 ```
 
 The Web interface supports:
-
 - Real-time chat via WebSocket
 - Multi-session management (coming soon)
 - Rich text rendering
 
-**Three Commands to Get Started:**
+### Command Line Interface
+
+FinchBot provides a full-featured command line interface, three commands to get started:
 
 ```bash
 # Step 1: Configure API keys and default model
@@ -123,7 +137,6 @@ uv run finchbot chat
 | :-----------------------------: | :-------------------------------------------------------------------------------------------------------- |
 | **Environment Variables** | All configurations can be set via environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.) |
 |     **i18n Support**     | Built-in Chinese/English support, auto-detects system language                                            |
-|   **Multi-Platform**    | Support Web, Discord, DingTalk, Feishu, WeChat, Email and more                                         |
 |     **Auto Fallback**     | Web search automatically falls back through Tavily → Brave → DuckDuckGo                                 |
 
 ---
