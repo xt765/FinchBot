@@ -20,12 +20,11 @@ Tools are Python code used to perform actual operations (such as calling APIs, p
 
 ```mermaid
 flowchart LR
-    %% Style Definitions
     classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
 
-    A["1️⃣ Create Tool Class<br/>Inherit FinchTool"]:::step --> B["2️⃣ Define Parameters<br/>JSON Schema"]:::step
-    B --> C["3️⃣ Implement Logic<br/>_run / _arun"]:::step
-    C --> D["4️⃣ Register Tool<br/>Factory / Registry"]:::step
+    A["1. Create Tool Class<br/>Inherit FinchTool"]:::step --> B["2. Define Parameters<br/>JSON Schema"]:::step
+    B --> C["3. Implement Logic<br/>_run / _arun"]:::step
+    C --> D["4. Register Tool<br/>Factory / Registry"]:::step
 ```
 
 ### Step 1: Create Tool Class
@@ -150,7 +149,7 @@ sequenceDiagram
     S->>F: Create skills/translator/SKILL.md
     F-->>S: Success
     S-->>A: Return result
-    A-->>U: ✅ Translation skill created, ready to use!
+    A-->>U: Translation skill created, ready to use!
 ```
 
 > **Just tell the Agent what skill you want, and it will create it automatically!**
@@ -240,16 +239,15 @@ When user requests an analysis report, follow these structure and principles:
 
 ```mermaid
 flowchart TD
-    %% Style Definitions
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
-    A([🚀 Agent Startup]):::startEnd --> B[📂 Scan skills/ directory]:::process
+    A([Agent Startup]):::startEnd --> B[Scan skills/ directory]:::process
     B --> C{always: true?}:::decision
-    C -->|Yes| D[📝 Inject into System Prompt]:::process
-    C -->|No| E[📋 Add to available skills list]:::process
-    D --> F([✅ Skill Ready]):::startEnd
+    C -->|Yes| D[Inject into System Prompt]:::process
+    C -->|No| E[Add to available skills list]:::process
+    D --> F([Skill Ready]):::startEnd
     E --> F
 ```
 
@@ -339,7 +337,6 @@ PROVIDER_FACTORIES = {
 
 ```mermaid
 flowchart TB
-    %% Style Definitions
     classDef tool fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef skill fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 

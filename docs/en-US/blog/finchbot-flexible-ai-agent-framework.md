@@ -24,14 +24,14 @@
 > Welcome technical discussions and project cooperation!
 
 ---
-# FinchBot - A Truly Flexible AI Agent Framework
-![Banner](https://i-blog.csdnimg.cn/direct/89e72e3b66ff4adc8ab8aa90400385ef.png)
 
+# FinchBot - A Truly Flexible AI Agent Framework
+
+![Banner](https://i-blog.csdnimg.cn/direct/89e72e3b66ff4adc8ab8aa90400385ef.png)
 
 > Author: Xuantong 765 (xt765)
 > Project: [GitHub - FinchBot](https://github.com/xt765/finchbot)
 > Mirror: [Gitee - FinchBot](https://gitee.com/xt765/finchbot)
-
 
 ## Abstract
 
@@ -62,10 +62,10 @@ With so many AI Agent frameworks out there, you might ask: Why FinchBot?
 
 ```mermaid
 graph BT
-    %% Styles
-    classDef roof fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
-    classDef pillar fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1;
-    classDef base fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    %% Style Definitions
+    classDef roof fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#b71c1c,rx:10,ry:10;
+    classDef pillar fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:8,ry:8;
+    classDef base fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px,color:#1b5e20,rx:10,ry:10;
 
     %% Roof
     Roof("🦅 <b>FinchBot Framework</b><br/>Lightweight • Flexible • Extensible"):::roof
@@ -76,7 +76,7 @@ graph BT
         P("🛡️ <b>Privacy First</b><br/>Local Embedding<br/>No Cloud Upload"):::pillar
         M("🧩 <b>Modularity</b><br/>Factory Pattern<br/>Decoupled"):::pillar
         D("❤️ <b>Dev Friendly</b><br/>Type Safety<br/>Rich Docs"):::pillar
-        S("⚙️ <b>Stability</b><br/>Thread Safe<br/>Auto Retry"):::pillar
+        S("⚡ <b>Fast Startup</b><br/>Fully Async<br/>Thread Pool"):::pillar
         O("📦 <b>Out of Box</b><br/>Zero Config<br/>Auto Fallback"):::pillar
     end
 
@@ -120,76 +120,132 @@ uv run finchbot chat
 
 FinchBot uses the Factory Pattern to enhance flexibility and maintainability.
 
-### 2.1 Core Components
+### 2.1 Overall Architecture
 
 ```mermaid
 graph TD
-    %% Styles
-    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef factory fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
-    classDef memory fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef tools fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
-    classDef user fill:#ffebee,stroke:#c62828,stroke-width:2px;
+    %% Style Definitions
+    classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef factoryLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef coreLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+    classDef memoryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef toolLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef channelLayer fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b;
+    classDef infraLayer fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#00695c;
 
-    %% User Layer
-    User([User]) --> CLI[CLI Interface]
-    class User user
-    class CLI user
+    %% User Interaction Layer
+    subgraph UserLayer [User Interaction Layer]
+        direction LR
+        CLI[🖥️ CLI Interface]
+        WebUI[🌐 Web Interface]
+        API[🔌 REST API]
+    end
+    class CLI,WebUI,API userLayer
+
+    %% Channel System
+    subgraph ChannelSystem [Channel System - Multi-Platform Messaging]
+        direction TB
+        Bus[📨 MessageBus]
+        CM[🎛️ ChannelManager]
+        
+        Bus <--> CM
+        
+        subgraph Channels [Platform Channels]
+            WebCh[Web]
+            DiscordCh[Discord]
+            DingTalkCh[DingTalk]
+            FeishuCh[Feishu]
+            WeChatCh[WeChat]
+            EmailCh[Email]
+        end
+        
+        CM <--> Channels
+    end
+    class Bus,CM channelLayer
+    class WebCh,DiscordCh,DingTalkCh,FeishuCh,WeChatCh,EmailCh channelLayer
 
     %% Factory Layer
-    subgraph Factory_Layer [Factory Layer]
-        AgentFactory[Agent Factory]
-        ToolFactory[Tool Factory]
+    subgraph FactoryLayer [Factory Layer - Component Assembly]
+        direction LR
+        AF[🏭 AgentFactory]
+        TF[🔧 ToolFactory]
     end
-    class AgentFactory,ToolFactory factory
+    class AF,TF factoryLayer
 
-    CLI --> AgentFactory
-    AgentFactory --> Agent
-    AgentFactory --> ToolFactory
-    ToolFactory --> ToolSet
-
-    %% Core Layer
-    subgraph Agent_Core [Agent Core]
-        Agent[Agent Brain]
-        ContextBuilder[Context Builder]
-        SystemPrompt[System Prompt]
+    %% Agent Core
+    subgraph AgentCore [Agent Core - Intelligence Engine]
+        direction TB
+        Agent[🧠 LangGraph Agent]
+        CB[📝 ContextBuilder]
+        SP[📄 System Prompt]
         
-        Agent --> ContextBuilder
-        ContextBuilder --> SystemPrompt
+        Agent --> CB
+        CB --> SP
     end
-    class Agent,ContextBuilder,SystemPrompt core
+    class Agent,CB,SP coreLayer
 
     %% Memory System
-    subgraph Memory_System [Memory System]
-        MemoryMgr[Memory Manager]
-        SQLite[(SQLite Storage)]
-        Vector[(Vector Store)]
-        Sync[Data Sync]
+    subgraph MemorySystem [Memory System - Dual-Layer Storage]
+        direction TB
+        MM[💾 MemoryManager]
         
-        MemoryMgr --> Retrieval[Retrieval Service]
-        MemoryMgr --> Classification[Classification]
-        Retrieval --> SQLite
-        Retrieval --> Vector
-        SQLite <--> Sync <--> Vector
+        subgraph Services [Service Layer]
+            RS[🔍 RetrievalService]
+            CS[📊 ClassificationService]
+            IS[⭐ ImportanceScorer]
+        end
+        
+        subgraph Storage [Storage Layer]
+            SQLite[(🗄️ SQLite)]
+            Vector[(🧮 VectorStore)]
+        end
+        
+        MM --> RS & CS & IS
+        RS --> SQLite & Vector
+        SQLite <--> Vector
     end
-    class MemoryMgr,SQLite,Vector,Sync,Retrieval,Classification memory
-
-    Agent --> MemoryMgr
+    class MM,RS,CS,IS,SQLite,Vector memoryLayer
 
     %% Tool Ecosystem
-    subgraph Tool_Ecosystem [Tool Ecosystem]
-        ToolSet[Tool Set]
-        ToolRegistry[Tool Registry]
+    subgraph ToolEcosystem [Tool Ecosystem - 11 Built-in Tools]
+        direction TB
+        TR[📋 ToolRegistry]
         
-        ToolSet --> ToolRegistry
-        ToolRegistry --> File[File Ops]
-        ToolRegistry --> Web[Web Search]
-        ToolRegistry --> Shell[Shell Exec]
-        ToolRegistry --> Custom[Custom Skills]
+        subgraph BuiltInTools [Built-in Tools]
+            FileTools[📁 File Ops]
+            WebTools[🌐 Network]
+            MemTools[💾 Memory]
+            SysTools[⚙️ System]
+        end
+        
+        TR --> BuiltInTools
     end
-    class ToolSet,ToolRegistry,File,Web,Shell,Custom tools
+    class TR,FileTools,WebTools,MemTools,SysTools toolLayer
 
-    Agent --> ToolSet
+    %% LLM Providers
+    subgraph LLMProviders [LLM Providers - Multi-Model Support]
+        direction LR
+        OpenAI[OpenAI]
+        Anthropic[Anthropic]
+        DeepSeek[DeepSeek]
+        Gemini[Gemini]
+        Groq[Groq]
+        Moonshot[Moonshot]
+    end
+    class OpenAI,Anthropic,DeepSeek,Gemini,Groq,Moonshot infraLayer
+
+    %% Connections
+    CLI & WebUI --> Bus
+    API --> AF
+    
+    Bus --> AF
+    AF --> Agent
+    AF --> TF
+    TF --> TR
+    
+    Agent <--> MM
+    Agent <--> TR
+    Agent --> OpenAI & Anthropic & DeepSeek & Gemini & Groq & Moonshot
 ```
 
 ### 2.2 Agent Factory
@@ -209,23 +265,6 @@ agent, checkpointer, tools = AgentFactory.create_for_cli(
 ### 2.3 Tool Factory
 
 `ToolFactory` manages tool instantiation, handling dependencies and fallback logic.
-
-Example: **Web Search Auto-Fallback** implementation:
-
-```python
-# ToolFactory logic
-def _create_web_search_tool(self):
-    # 1. Try Tavily (Best Quality)
-    if self.config.tavily_api_key:
-        return WebSearchTool(engine="tavily", ...)
-    
-    # 2. Try Brave (Privacy)
-    if self.config.brave_api_key:
-        return WebSearchTool(engine="brave", ...)
-        
-    # 3. Default DuckDuckGo (No Key)
-    return WebSearchTool(engine="duckduckgo", ...)
-```
 
 ---
 
@@ -247,34 +286,41 @@ FinchBot implements advanced **dual-layer memory** to solve context limits and f
 
 ```mermaid
 flowchart TB
-    subgraph Business[Business Layer]
-        MM[MemoryManager]
+    %% Style Definitions
+    classDef businessLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef serviceLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef storageLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Business [Business Layer]
+        MM[💾 MemoryManager<br/>remember/recall/forget]
     end
-  
-    subgraph Storage[Storage Layer]
-        SQLite[SQLiteStore<br/>Source of Truth]
-        Vector[VectorMemoryStore<br/>Semantic Retrieval]
+    class MM businessLayer
+
+    subgraph Services [Service Layer]
+        RS[🔍 RetrievalService<br/>Hybrid Retrieval + RRF]
+        CS[📊 ClassificationService<br/>Auto Classification]
+        IS[⭐ ImportanceScorer<br/>Importance Scoring]
+        ES[🧮 EmbeddingService<br/>FastEmbed Local]
     end
-  
-    subgraph Services[Service Layer]
-        RS[RetrievalService<br/>Hybrid Retrieval]
-        CS[ClassificationService<br/>Auto Classification]
-        IS[ImportanceScorer<br/>Importance Scoring]
-        DS[DataSyncManager<br/>Data Sync]
+    class RS,CS,IS,ES serviceLayer
+
+    subgraph Storage [Storage Layer]
+        direction LR
+        SQLite[(🗄️ SQLiteStore<br/>Source of Truth<br/>Precise Query)]
+        Vector[(🧮 VectorStore<br/>ChromaDB<br/>Semantic Search)]
+        DS[🔄 DataSyncManager<br/>Incremental Sync]
     end
-  
-    MM --> RS
-    MM --> CS
-    MM --> IS
-  
-    RS --> SQLite
-    RS --> Vector
-  
+    class SQLite,Vector,DS storageLayer
+
+    %% Connections
+    MM --> RS & CS & IS
+    RS --> SQLite & Vector
+    CS --> SQLite
+    IS --> SQLite
+    ES --> Vector
+    
     SQLite <--> DS <--> Vector
 ```
-
-1. **Structured Layer (SQLite)**: Source of Truth, stores full text, metadata, classification.
-2. **Semantic Layer (Vector Store)**: ChromaDB + FastEmbed, enables fuzzy search.
 
 ### 3.3 Hybrid Retrieval Strategy
 
@@ -313,24 +359,31 @@ FinchBot uses a **file system + modular assembly** approach for prompts.
 
 ```mermaid
 flowchart TD
-    A[Agent Startup] --> B[Load Bootstrap Files]
-    B --> C[SYSTEM.md]
-    B --> D[MEMORY_GUIDE.md]
-    B --> E[SOUL.md]
-    B --> F[AGENT_CONFIG.md]
-  
-    C --> G[Assemble Prompt]
+    %% Style Definitions
+    classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef file fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    A([🚀 Agent Startup]):::startEnd --> B[📂 Load Bootstrap Files]:::process
+    
+    B --> C[SYSTEM.md]:::file
+    B --> D[MEMORY_GUIDE.md]:::file
+    B --> E[SOUL.md]:::file
+    B --> F[AGENT_CONFIG.md]:::file
+
+    C --> G[🔧 Assemble Prompt]:::process
     D --> G
     E --> G
     F --> G
-  
-    G --> H[Load Always-on Skills]
-    H --> I[Build Skill Summary XML]
-    I --> J[Generate Tool Docs]
-    J --> K[Inject Runtime Info]
-    K --> L[Complete System Prompt]
-  
-    L --> M[Send to LLM]
+
+    G --> H[📚 Load Always-on Skills]:::process
+    H --> I[🏗️ Build Skill Summary XML]:::process
+    I --> J[📋 Generate Tool Docs]:::process
+    J --> K[⚙️ Inject Runtime Info]:::process
+    K --> L[📝 Complete System Prompt]:::output
+
+    L --> M([📤 Send to LLM]):::startEnd
 ```
 
 ---
@@ -342,6 +395,30 @@ flowchart TD
 Tools connect the Agent to the world. FinchBot provides 11 built-in tools.
 
 #### Web Search: Three-Engine Fallback
+
+```mermaid
+flowchart TD
+    %% Style Definitions
+    classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef fallback fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+
+    Start[🔍 Web Search Request]:::check
+    
+    Check1{TAVILY_API_KEY<br/>Set?}:::check
+    Tavily[🚀 Tavily<br/>Best Quality<br/>AI-Optimized]:::engine
+    
+    Check2{BRAVE_API_KEY<br/>Set?}:::check
+    Brave[🦁 Brave Search<br/>Privacy Friendly<br/>Large Free Tier]:::engine
+    
+    DDG[🦆 DuckDuckGo<br/>Zero Config<br/>Always Available]:::fallback
+
+    Start --> Check1
+    Check1 -->|Yes| Tavily
+    Check1 -->|No| Check2
+    Check2 -->|Yes| Brave
+    Check2 -->|No| DDG
+```
 
 | Priority | Engine | API Key | Features |
 | :---: | :---: | :---: | :--- |
@@ -368,57 +445,135 @@ Agent: Okay, creating translation skill...
 
 ---
 
-## 6. LangChain 1.2 Practice
+## 6. Web Interface & Docker Deployment
 
-FinchBot is built on the latest stack.
+### 6.1 Web Interface (Beta)
 
-### 6.1 Agent Creation
+FinchBot now provides a modern Web interface built with React + Vite + FastAPI.
 
-```python
-from langchain.agents import create_agent
-from langgraph.checkpoint.sqlite import SqliteSaver
+```mermaid
+flowchart TB
+    %% Style Definitions
+    classDef backend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef user fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
-def create_finch_agent(
-    model: BaseChatModel,
-    workspace: Path,
-    tools: Sequence[BaseTool] | None = None,
-    use_persistent: bool = True,
-) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
-  
-    # 1. Initialize checkpoint
-    if use_persistent:
-        checkpointer = SqliteSaver.from_conn_string(str(db_path))
-    else:
-        checkpointer = MemorySaver()
-  
-    # 2. Build system prompt
-    system_prompt = build_system_prompt(workspace)
-  
-    # 3. Create Agent
-    agent = create_agent(
-        model=model,
-        tools=list(tools) if tools else None,
-        system_prompt=system_prompt,
-        checkpointer=checkpointer,
-    )
-  
-    return agent, checkpointer
+    subgraph Backend [Backend Service]
+        API[FastAPI<br/>:8000]:::backend
+        WS[WebSocket<br/>Real-time]:::backend
+    end
+
+    subgraph Frontend [Frontend Interface]
+        React[React + Vite<br/>:5173]:::frontend
+        MD[Markdown Rendering]:::frontend
+    end
+
+    U[👤 User]:::user --> React
+    React <--> WS
+    WS <--> API
+
+    API --> React
+    React --> MD
+    MD --> U
 ```
 
-### 6.2 Supported Providers
+**How to Start**:
 
-| Provider | Models | Features |
-| :---: | :--- | :--- |
-| OpenAI | GPT-5, O3-mini | Best capability |
-| Anthropic | Claude Sonnet 4.5 | Safety, long context |
-| DeepSeek | DeepSeek Chat | Cost-effective |
-| Gemini | Gemini 2.5 Flash | Google's latest |
-| Groq | Llama 4 | Ultra-fast |
-| Moonshot | Kimi K1.5 | Long context |
+```bash
+# Start backend server
+uv run finchbot serve
+
+# In another terminal, start frontend
+cd web
+npm install
+npm run dev
+```
+
+Web Interface Features:
+- Real-time streaming output
+- Markdown rich text rendering
+- Code highlighting
+- Auto-loading history
+
+### 6.2 Docker Deployment
+
+FinchBot provides complete Docker support with one-click deployment:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/xt765/finchbot.git
+cd finchbot
+
+# 2. Configure environment variables
+cp .env.example .env
+# Edit .env file and add your API keys
+
+# 3. Build and start
+docker-compose up -d
+
+# 4. Access the service
+# Web UI: http://localhost:8000
+```
+
+**docker-compose.yml Configuration**:
+
+```yaml
+services:
+  finchbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finchbot
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - FINCHBOT_LANGUAGE=en-US
+    volumes:
+      - finchbot_workspace:/root/.finchbot/workspace
+      - finchbot_models:/root/.cache/huggingface
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  finchbot_workspace:
+  finchbot_models:
+```
+
+**Docker Deployment Features**:
+
+| Feature | Description |
+| :-----: | :---------- |
+| **One-command Deploy** | `docker-compose up -d` |
+| **Persistent Storage** | Workspace and model cache via volumes |
+| **Health Check** | Built-in container health monitoring |
+| **Multi-arch Support** | Works on x86_64 and ARM64 |
 
 ---
 
-## 7. Summary
+## 7. LangChain 1.2 Practice
+
+FinchBot is built on the latest stack.
+
+### 7.1 Supported Providers
+
+| Provider | Models | Features |
+| :---: | :--- | :--- |
+| OpenAI | GPT-5, GPT-5.2, O3-mini | Best capability |
+| Anthropic | Claude Sonnet 4.5, Opus 4.6 | Safety, long context |
+| DeepSeek | DeepSeek Chat, Reasoner | Cost-effective |
+| Gemini | Gemini 2.5 Flash | Google's latest |
+| Groq | Llama 4 Scout/Maverick | Ultra-fast |
+| Moonshot | Kimi K1.5/K2.5 | Long context |
+
+---
+
+## 8. Summary
 
 FinchBot is a thoughtfully designed Agent framework:
 
@@ -430,6 +585,7 @@ FinchBot is a thoughtfully designed Agent framework:
 | **Tools** | Registry pattern, thread safe, auto fallback |
 | **Skills** | Markdown definition, auto-create |
 | **Stack** | LangChain v1.2, LangGraph v1.0 |
+| **Deployment** | CLI / Web Interface / Docker |
 | **Experience** | Env vars, Rich CLI, i18n |
 
 If you are looking for a framework that is:
@@ -440,6 +596,7 @@ If you are looking for a framework that is:
 * ✅ Flexible & Extensible
 * ✅ Modern Architecture
 * ✅ Out of the Box
+* ✅ Multiple Deployment Options
 
 FinchBot is worth a try.
 
@@ -447,7 +604,7 @@ FinchBot is worth a try.
 
 ## Links
 
-* 📦 **Project**: [GitHub - FinchBot](https://github.com/xt765/finchbot)
+* 📦 **Project**: [GitHub - FinchBot](https://github.com/xt765/finchbot) | [Gitee - FinchBot](https://gitee.com/xt765/finchbot)
 * 📖 **Docs**: [FinchBot Docs](https://github.com/xt765/finchbot/tree/main/docs)
 * 💬 **Issues**: [GitHub Issues](https://github.com/xt765/finchbot/issues)
 

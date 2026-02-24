@@ -20,12 +20,11 @@ FinchBot 提供了强大的扩展能力，允许开发者通过 **添加新工�
 
 ```mermaid
 flowchart LR
-    %% 样式定义
     classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
 
-    A["1️⃣ 创建工具类<br/>继承 FinchTool"]:::step --> B["2️⃣ 定义参数<br/>JSON Schema"]:::step
-    B --> C["3️⃣ 实现逻辑<br/>_run / _arun"]:::step
-    C --> D["4️⃣ 注册工具<br/>Factory / Registry"]:::step
+    A["1. 创建工具类<br/>继承 FinchTool"]:::step --> B["2. 定义参数<br/>JSON Schema"]:::step
+    B --> C["3. 实现逻辑<br/>_run / _arun"]:::step
+    C --> D["4. 注册工具<br/>Factory / Registry"]:::step
 ```
 
 ### 步骤 1: 创建工具类
@@ -150,7 +149,7 @@ sequenceDiagram
     S->>F: 创建 skills/translator/SKILL.md
     F-->>S: 创建成功
     S-->>A: 返回结果
-    A-->>U: ✅ 已创建翻译技能，可以直接使用！
+    A-->>U: 已创建翻译技能，可以直接使用！
 ```
 
 > **只需告诉 Agent 你想要什么技能，Agent 就会自动创建好！**
@@ -240,16 +239,15 @@ metadata:
 
 ```mermaid
 flowchart TD
-    %% 样式定义
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
-    A([🚀 Agent 启动]):::startEnd --> B[📂 扫描 skills/ 目录]:::process
+    A([Agent 启动]):::startEnd --> B[扫描 skills/ 目录]:::process
     B --> C{always: true?}:::decision
-    C -->|是| D[📝 直接注入 System Prompt]:::process
-    C -->|否| E[📋 添加到可用技能列表]:::process
-    D --> F([✅ 技能就绪]):::startEnd
+    C -->|是| D[直接注入 System Prompt]:::process
+    C -->|否| E[添加到可用技能列表]:::process
+    D --> F([技能就绪]):::startEnd
     E --> F
 ```
 
@@ -339,7 +337,6 @@ PROVIDER_FACTORIES = {
 
 ```mermaid
 flowchart TB
-    %% 样式定义
     classDef tool fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef skill fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 

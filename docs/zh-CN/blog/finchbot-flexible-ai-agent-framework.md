@@ -62,28 +62,23 @@ FinchBot (雀翎) 是一个轻量级、模块化的 AI Agent 框架，基于 **L
 
 ```mermaid
 graph BT
-    %% 样式定义
-    classDef roof fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
-    classDef pillar fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1;
-    classDef base fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef roof fill:#ffebee,stroke:#c62828,stroke-width:3px,color:#b71c1c,rx:10,ry:10;
+    classDef pillar fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:8,ry:8;
+    classDef base fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px,color:#1b5e20,rx:10,ry:10;
 
-    %% 顶层
-    Roof("🦅 <b>FinchBot Framework</b><br/>轻量 • 灵活 • 无限扩展"):::roof
+    Roof("FinchBot Framework<br/>轻量 • 灵活 • 无限扩展"):::roof
 
-    %% 支柱
     subgraph Pillars [核心哲学]
         direction LR
-        P("🛡️ <b>隐私优先</b><br/>本地 Embedding<br/>数据不上云"):::pillar
-        M("🧩 <b>模块化</b><br/>工厂模式<br/>组件解耦"):::pillar
-        D("❤️ <b>开发者友好</b><br/>类型安全<br/>文档完善"):::pillar
-        S("⚙️ <b>生产级稳定</b><br/>双重锁机制<br/>自动重试"):::pillar
-        O("📦 <b>开箱即用</b><br/>零配置启动<br/>自动降级"):::pillar
+        P("隐私优先<br/>本地 Embedding<br/>数据不上云"):::pillar
+        M("模块化<br/>工厂模式<br/>组件解耦"):::pillar
+        D("开发者友好<br/>类型安全<br/>文档完善"):::pillar
+        S("极速启动<br/>全异步架构<br/>线程池并发"):::pillar
+        O("开箱即用<br/>零配置启动<br/>自动降级"):::pillar
     end
 
-    %% 底层
-    Base("🏗️ <b>技术基石</b><br/>LangChain v1.2 • LangGraph v1.0 • Python 3.13"):::base
+    Base("技术基石<br/>LangChain v1.2 • LangGraph v1.0 • Python 3.13"):::base
 
-    %% 连接
     Base === P & M & D & S & O
     P & M & D & S & O === Roof
 ```
@@ -120,76 +115,78 @@ uv run finchbot chat
 
 FinchBot 采用工厂模式 (Factory Pattern) 来提升系统的灵活性和可维护性。
 
-### 2.1 核心组件关系
+### 2.1 整体架构图
 
 ```mermaid
-graph TD
-    %% 样式定义
-    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef factory fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
-    classDef memory fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef tools fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
-    classDef user fill:#ffebee,stroke:#c62828,stroke-width:2px;
+graph TB
+    classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef channelLayer fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b;
+    classDef factoryLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef coreLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+    classDef memoryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef toolLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef infraLayer fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#00695c;
 
-    %% 用户交互层
-    User([用户]) --> CLI[命令行界面]
-    class User user
-    class CLI user
-
-    %% 工厂层
-    subgraph Factory_Layer [工厂层]
-        AgentFactory[Agent Factory]
-        ToolFactory[Tool Factory]
+    subgraph Layer1 [用户交互层]
+        CLI[CLI 界面]:::userLayer
+        WebUI[Web 界面]:::userLayer
+        API[REST API]:::userLayer
     end
-    class AgentFactory,ToolFactory factory
 
-    CLI --> AgentFactory
-    AgentFactory --> Agent
-    AgentFactory --> ToolFactory
-    ToolFactory --> ToolSet
-
-    %% 核心层
-    subgraph Agent_Core [Agent 核心]
-        Agent[Agent 大脑]
-        ContextBuilder[上下文构建器]
-        SystemPrompt[系统提示词]
-      
-        Agent --> ContextBuilder
-        ContextBuilder --> SystemPrompt
+    subgraph Layer2 [消息路由层]
+        Bus[MessageBus<br/>异步路由]:::channelLayer
+        CM[ChannelManager<br/>通道协调]:::channelLayer
     end
-    class Agent,ContextBuilder,SystemPrompt core
 
-    %% 记忆系统
-    subgraph Memory_System [记忆系统]
-        MemoryMgr[记忆管理器]
-        SQLite[(SQLite 存储)]
-        Vector[(向量存储)]
-        Sync[数据同步]
-      
-        MemoryMgr --> Retrieval[检索服务]
-        MemoryMgr --> Classification[自动分类]
-        Retrieval --> SQLite
-        Retrieval --> Vector
-        SQLite <--> Sync <--> Vector
+    subgraph Layer3 [工厂装配层]
+        AF[AgentFactory<br/>Agent 装配]:::factoryLayer
+        TF[ToolFactory<br/>工具创建]:::factoryLayer
     end
-    class MemoryMgr,SQLite,Vector,Sync,Retrieval,Classification memory
 
-    Agent --> MemoryMgr
-
-    %% 工具系统
-    subgraph Tool_Ecosystem [工具生态]
-        ToolSet[工具集]
-        ToolRegistry[工具注册表]
-      
-        ToolSet --> ToolRegistry
-        ToolRegistry --> File[文件操作]
-        ToolRegistry --> Web[网络搜索]
-        ToolRegistry --> Shell[Shell 执行]
-        ToolRegistry --> Custom[自定义技能]
+    subgraph Layer4 [智能引擎层]
+        Agent[LangGraph Agent<br/>决策引擎]:::coreLayer
+        CB[ContextBuilder<br/>上下文构建]:::coreLayer
     end
-    class ToolSet,ToolRegistry,File,Web,Shell,Custom tools
 
-    Agent --> ToolSet
+    subgraph Layer5 [能力支撑层]
+        MM[MemoryManager<br/>记忆管理]:::memoryLayer
+        TR[ToolRegistry<br/>工具注册]:::toolLayer
+    end
+
+    subgraph Layer6 [存储层]
+        SQLite[(SQLite<br/>真相源)]:::memoryLayer
+        Vector[(VectorStore<br/>语义检索)]:::memoryLayer
+    end
+
+    subgraph Layer7 [LLM 提供商]
+        OpenAI[OpenAI]:::infraLayer
+        Anthropic[Anthropic]:::infraLayer
+        DeepSeek[DeepSeek]:::infraLayer
+        Others[其他...]:::infraLayer
+    end
+
+    CLI --> Bus
+    WebUI --> Bus
+    API --> AF
+    
+    Bus --> CM
+    CM --> AF
+    
+    AF --> Agent
+    AF --> TF
+    TF --> TR
+    
+    Agent --> CB
+    Agent <--> MM
+    Agent <--> TR
+    Agent --> OpenAI
+    Agent --> Anthropic
+    Agent --> DeepSeek
+    Agent --> Others
+    
+    MM --> SQLite
+    MM --> Vector
+    SQLite <--> Vector
 ```
 
 ### 2.2 Agent Factory
@@ -209,23 +206,6 @@ agent, checkpointer, tools = AgentFactory.create_for_cli(
 ### 2.3 Tool Factory
 
 `ToolFactory` 集中管理所有工具的实例化逻辑。它不仅负责创建工具，还负责处理工具之间的依赖关系和自动降级逻辑。
-
-例如，**网页搜索工具的自动降级** 就是在工厂中实现的：
-
-```python
-# ToolFactory 内部逻辑
-def _create_web_search_tool(self):
-    # 1. 尝试使用 Tavily (最佳质量)
-    if self.config.tavily_api_key:
-        return WebSearchTool(engine="tavily", ...)
-  
-    # 2. 尝试使用 Brave (隐私优先)
-    if self.config.brave_api_key:
-        return WebSearchTool(engine="brave", ...)
-      
-    # 3. 默认使用 DuckDuckGo (无需 Key)
-    return WebSearchTool(engine="duckduckgo", ...)
-```
 
 ---
 
@@ -247,38 +227,45 @@ FinchBot 实现了先进的**双层记忆架构**，彻底解决了 LLM 上下�
 
 ```mermaid
 flowchart TB
-    subgraph Business[业务层]
-        MM[MemoryManager]
+    %% 样式定义
+    classDef businessLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef serviceLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef storageLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Business [业务层]
+        MM[💾 MemoryManager<br/>remember/recall/forget]
     end
-  
-    subgraph Storage[存储层]
-        SQLite[SQLiteStore<br/>真相源]
-        Vector[VectorMemoryStore<br/>语义检索]
+    class MM businessLayer
+
+    subgraph Services [服务层]
+        RS[🔍 RetrievalService<br/>混合检索 + RRF]
+        CS[📊 ClassificationService<br/>自动分类]
+        IS[⭐ ImportanceScorer<br/>重要性评分]
+        ES[🧮 EmbeddingService<br/>FastEmbed 本地]
     end
-  
-    subgraph Services[服务层]
-        RS[RetrievalService<br/>混合检索]
-        CS[ClassificationService<br/>自动分类]
-        IS[ImportanceScorer<br/>重要性评分]
-        DS[DataSyncManager<br/>数据同步]
+    class RS,CS,IS,ES serviceLayer
+
+    subgraph Storage [存储层]
+        direction LR
+        SQLite[(🗄️ SQLiteStore<br/>真相源<br/>精确查询)]
+        Vector[(🧮 VectorStore<br/>ChromaDB<br/>语义检索)]
+        DS[🔄 DataSyncManager<br/>增量同步]
     end
-  
-    MM --> RS
-    MM --> CS
-    MM --> IS
-  
-    RS --> SQLite
-    RS --> Vector
-  
+    class SQLite,Vector,DS storageLayer
+
+    %% 连接
+    MM --> RS & CS & IS
+    RS --> SQLite & Vector
+    CS --> SQLite
+    IS --> SQLite
+    ES --> Vector
+    
     SQLite <--> DS <--> Vector
 ```
 
-1. **结构化层 (SQLite)**: 事实来源 (Source of Truth)，存储完整文本、元数据、分类和重要性评分。
-2. **语义层 (Vector Store)**: 基于 ChromaDB + FastEmbed，提供模糊检索和联想能力。
-
 ### 3.3 混合检索策略
 
-FinchBot 采用**加权 RRF (Weighted Reciprocal Rank Fusion)** 策略，智能融合关键词检索和语义检索的结果。系统会根据查询类型（如事实型、概念型、模糊型）自动调整两者的权重，确保检索结果既准确又全面。
+FinchBot 采用**加权 RRF (Weighted Reciprocal Rank Fusion)** 策略，智能融合关键词检索和语义检索的结果。
 
 ```python
 class QueryType(StrEnum):
@@ -313,24 +300,31 @@ FinchBot 的提示词系统采用**文件系统 + 模块化组装**的设计，�
 
 ```mermaid
 flowchart TD
-    A[Agent 启动] --> B[加载 Bootstrap 文件]
-    B --> C[SYSTEM.md]
-    B --> D[MEMORY_GUIDE.md]
-    B --> E[SOUL.md]
-    B --> F[AGENT_CONFIG.md]
-  
-    C --> G[组装提示词]
+    %% 样式定义
+    classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef file fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    A([🚀 Agent 启动]):::startEnd --> B[📂 加载 Bootstrap 文件]:::process
+    
+    B --> C[SYSTEM.md]:::file
+    B --> D[MEMORY_GUIDE.md]:::file
+    B --> E[SOUL.md]:::file
+    B --> F[AGENT_CONFIG.md]:::file
+
+    C --> G[🔧 组装提示词]:::process
     D --> G
     E --> G
     F --> G
-  
-    G --> H[加载常驻技能]
-    H --> I[构建技能摘要 XML]
-    I --> J[生成工具文档]
-    J --> K[注入运行时信息]
-    K --> L[完整系统提示]
-  
-    L --> M[发送给 LLM]
+
+    G --> H[📚 加载常驻技能]:::process
+    H --> I[🏗️ 构建技能摘要 XML]:::process
+    I --> J[📋 生成工具文档]:::process
+    J --> K[⚙️ 注入运行时信息]:::process
+    K --> L[📝 完整系统提示]:::output
+
+    L --> M([📤 发送给 LLM]):::startEnd
 ```
 
 ---
@@ -345,15 +339,35 @@ FinchBot 的扩展性建立在两个层次上：**工具层 (Tool)** 和 **技�
 
 #### 网页搜索：三引擎降级设计
 
-FinchBot 的网页搜索工具采用巧妙的**三引擎自动降级机制**，兼顾灵活性和开箱即用体验：
+```mermaid
+flowchart TD
+    %% 样式定义
+    classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef fallback fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+
+    Start[🔍 网页搜索请求]:::check
+    
+    Check1{TAVILY_API_KEY<br/>已设置?}:::check
+    Tavily[🚀 Tavily<br/>质量最佳<br/>AI 优化]:::engine
+    
+    Check2{BRAVE_API_KEY<br/>已设置?}:::check
+    Brave[🦁 Brave Search<br/>隐私友好<br/>免费额度大]:::engine
+    
+    DDG[🦆 DuckDuckGo<br/>零配置<br/>始终可用]:::fallback
+
+    Start --> Check1
+    Check1 -->|是| Tavily
+    Check1 -->|否| Check2
+    Check2 -->|是| Brave
+    Check2 -->|否| DDG
+```
 
 | 优先级 |          引擎          | API Key | 特点                             |
 | :----: | :--------------------: | :-----: | :------------------------------- |
 |   1   |    **Tavily**    |  需要  | 质量最佳，专为 AI 优化，深度搜索 |
 |   2   | **Brave Search** |  需要  | 免费额度大，隐私友好             |
 |   3   |  **DuckDuckGo**  |  无需  | 始终可用，零配置                 |
-
-这个设计确保**即使没有任何 API Key 配置，网页搜索也能开箱即用**！
 
 ### 5.2 技能系统：用 Markdown 定义 Agent 能力
 
@@ -378,59 +392,122 @@ Agent: 好的，我来为你创建翻译技能...
 
 ---
 
-## 六、LangChain 1.2 架构实践
+## 六、Web 界面与 Docker 部署
+
+### 6.1 Web 界面 (Beta)
+
+FinchBot 现已提供基于 React + Vite + FastAPI 构建的现代化 Web 界面。
+
+```mermaid
+flowchart TB
+    %% 样式定义
+    classDef backend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef user fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    subgraph Backend [后端服务]
+        API[FastAPI<br/>:8000]:::backend
+        WS[WebSocket<br/>实时通信]:::backend
+    end
+
+    subgraph Frontend [前端界面]
+        React[React + Vite<br/>:5173]:::frontend
+        MD[Markdown 渲染]:::frontend
+    end
+
+    U[👤 用户]:::user --> React
+    React <--> WS
+    WS <--> API
+
+    API --> React
+    React --> MD
+    MD --> U
+```
+
+**启动方式**：
+
+```bash
+# 启动后端服务
+uv run finchbot serve
+
+# 在另一个终端启动前端
+cd web
+npm install
+npm run dev
+```
+
+Web 界面特性：
+- 实时流式输出
+- Markdown 富文本渲染
+- 代码高亮
+- 历史记录自动加载
+
+### 6.2 Docker 部署
+
+FinchBot 提供完整的 Docker 支持，支持一键部署：
+
+```bash
+# 1. 克隆仓库
+git clone https://gitee.com/xt765/finchbot.git
+cd finchbot
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，填入你的 API Key
+
+# 3. 构建并启动
+docker-compose up -d
+
+# 4. 访问服务
+# Web 界面: http://localhost:8000
+```
+
+**docker-compose.yml 配置**：
+
+```yaml
+services:
+  finchbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finchbot
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - FINCHBOT_LANGUAGE=zh-CN
+    volumes:
+      - finchbot_workspace:/root/.finchbot/workspace
+      - finchbot_models:/root/.cache/huggingface
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  finchbot_workspace:
+  finchbot_models:
+```
+
+**Docker 部署特性**：
+
+| 特性 | 说明 |
+| :--: | :--- |
+| **一键部署** | `docker-compose up -d` |
+| **持久化存储** | 工作区和模型缓存通过卷持久化 |
+| **健康检查** | 内置容器健康监控 |
+| **多架构支持** | 支持 x86_64 和 ARM64 |
+
+---
+
+## 七、LangChain 1.2 架构实践
 
 FinchBot 基于 **LangChain v1.2** 和 **LangGraph v1.0** 构建，采用最新的 Agent 架构。
 
-### 6.1 Agent 创建流程
-
-```python
-from langchain.agents import create_agent
-from langgraph.checkpoint.sqlite import SqliteSaver
-
-def create_finch_agent(
-    model: BaseChatModel,
-    workspace: Path,
-    tools: Sequence[BaseTool] | None = None,
-    use_persistent: bool = True,
-) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
-  
-    # 1. 初始化检查点（持久化状态）
-    if use_persistent:
-        checkpointer = SqliteSaver.from_conn_string(str(db_path))
-    else:
-        checkpointer = MemorySaver()
-  
-    # 2. 构建系统提示
-    system_prompt = build_system_prompt(workspace)
-  
-    # 3. 创建 Agent（使用 LangChain 官方 API）
-    agent = create_agent(
-        model=model,
-        tools=list(tools) if tools else None,
-        system_prompt=system_prompt,
-        checkpointer=checkpointer,
-    )
-  
-    return agent, checkpointer
-```
-
-### 6.2 LangGraph 状态管理
-
-```mermaid
-flowchart LR
-    A[用户输入] --> B[加载 Checkpoint]
-    B --> C[构建 Prompt]
-    C --> D[LLM 推理]
-    D --> E{需要工具?}
-    E -->|否| F[生成回复]
-    E -->|是| G[执行工具]
-    G --> D
-    F --> H[保存 Checkpoint]
-    H --> I[返回用户]
-```
-
-### 6.3 支持的 LLM 提供商
+### 7.1 支持的 LLM 提供商
 
 |  提供商  | 模型                        | 特点             |
 | :-------: | :-------------------------- | :--------------- |
@@ -443,7 +520,7 @@ flowchart LR
 
 ---
 
-## 七、总结
+## 八、总结
 
 FinchBot 不是一个简单的 LLM 封装，而是一个深思熟虑的 Agent 框架设计：
 
@@ -455,6 +532,7 @@ FinchBot 不是一个简单的 LLM 封装，而是一个深思熟虑的 Agent �
 |  **工具系统**  | 注册表模式，线程安全，11 个内置工具，三引擎降级 |
 |  **技能系统**  | Markdown 定义，Agent 自动创建，开箱即用         |
 |  **架构实践**  | LangChain v1.2，LangGraph v1.0                  |
+|  **部署方式**  | CLI / Web 界面 / Docker                         |
 |  **开箱即用**  | 环境变量配置，Rich CLI，i18n，自动降级          |
 
 如果你正在寻找一个：
@@ -465,6 +543,7 @@ FinchBot 不是一个简单的 LLM 封装，而是一个深思熟虑的 Agent �
 * ✅ 灵活扩展（技能 + 工具双层）
 * ✅ 最新架构（LangChain 1.2 + LangGraph）
 * ✅ 开箱即用（零配置启动，自动降级）
+* ✅ 多种部署（CLI / Web / Docker）
 
 的 AI Agent 框架，FinchBot 值得一试。
 
@@ -472,7 +551,7 @@ FinchBot 不是一个简单的 LLM 封装，而是一个深思熟虑的 Agent �
 
 ## 相关链接
 
-* 📦 **项目地址**: [GitHub - FinchBot](https://github.com/xt765/finchbot)
+* 📦 **项目地址**: [GitHub - FinchBot](https://github.com/xt765/finchbot) | [Gitee - FinchBot](https://gitee.com/xt765/finchbot)
 * 📖 **文档**: [FinchBot 文档](https://github.com/xt765/finchbot/tree/main/docs)
 * 💬 **问题反馈**: [GitHub Issues](https://github.com/xt765/finchbot/issues)
 

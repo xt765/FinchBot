@@ -19,12 +19,10 @@ uv run finchbot chat
 
 ```mermaid
 flowchart LR
-    %% 样式定义
     classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
-    classDef arrow fill:none,stroke:#1565c0,stroke-width:2px;
 
-    A["1️⃣ finchbot config<br/>配置 API 密钥"]:::step --> B["2️⃣ finchbot sessions<br/>管理会话"]:::step
-    B --> C["3️⃣ finchbot chat<br/>开始对话"]:::step
+    A["1. finchbot config<br/>配置 API 密钥"]:::step --> B["2. finchbot sessions<br/>管理会话"]:::step
+    B --> C["3. finchbot chat<br/>开始对话"]:::step
 ```
 
 | 命令 | 功能 | 说明 |
@@ -71,7 +69,6 @@ FinchBot 现已支持 Web 界面，提供更现代化的交互体验。
 
 ```mermaid
 flowchart TB
-    %% 样式定义
     classDef backend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef user fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
@@ -86,7 +83,7 @@ flowchart TB
         MD[Markdown 渲染]:::frontend
     end
 
-    U[👤 用户]:::user --> React
+    U[用户]:::user --> React
     React <--> WS
     WS <--> API
 
@@ -304,15 +301,14 @@ FinchBot 内置了 11 个工具，分为四大类：
 
 ```mermaid
 flowchart TB
-    %% 样式定义
     classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
     subgraph Tools [11 个内置工具]
-        File[📁 文件操作]:::category
-        Web[🌐 网络]:::category
-        Memory[💾 记忆]:::category
-        System[⚙️ 系统]:::category
+        File[文件操作]:::category
+        Web[网络]:::category
+        Memory[记忆]:::category
+        System[系统]:::category
     end
 
     File --> F1[read_file]:::tool

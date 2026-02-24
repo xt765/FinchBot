@@ -10,14 +10,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /root/.finchbot/workspace
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+RUN pip install --no-cache-dir uv
 
-COPY pyproject.toml uv.toml ./
+COPY pyproject.toml uv.toml README.md ./
+COPY src/ ./src/
 
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 ENV VIRTUAL_ENV="/opt/venv"
+ENV PYTHONPATH="/app/src"
 
 RUN uv pip install --no-cache -e .
 
@@ -30,7 +31,6 @@ WORKDIR /app
 COPY web/ ./web/
 RUN cd web && npm run build
 
-COPY src/ ./src/
 COPY langgraph.json ./
 
 ENV FINCHBOT_WORKSPACE=/root/.finchbot/workspace
@@ -43,4 +43,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["python", "-m", "finchbot.server.main"]
+CMD ["uvicorn", "finchbot.server.main:app", "--host", "0.0.0.0", "--port", "8000"]

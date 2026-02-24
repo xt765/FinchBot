@@ -59,9 +59,10 @@ Thumbs.db
 test_chroma_debug
 tests
 docs
-*.md
-!README.md
 LICENSE
 
 finchbot_workspace
 checkpoints.db*
+
+docker_daemon_config.json
+daemon.json

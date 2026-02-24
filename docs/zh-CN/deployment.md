@@ -45,67 +45,150 @@ uv run finchbot chat
 
 ## 2. Docker 部署
 
-FinchBot 尚未提供官方 Docker 镜像，但可以通过以下 `Dockerfile` 构建：
+FinchBot 提供完整的 Docker 支持，支持一键部署。
+
+### 快速开始
+
+```bash
+# 1. 克隆仓库
+git clone https://gitee.com/xt765/finchbot.git
+cd finchbot
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，填入你的 API Key
+
+# 3. 构建并启动
+docker-compose up -d
+
+# 4. 访问服务
+# Web 界面: http://localhost:8000
+# 健康检查: http://localhost:8000/health
+```
 
 ### Dockerfile
+
+项目根目录已包含生产级 `Dockerfile`：
 
 ```dockerfile
 FROM python:3.13-slim
 
 WORKDIR /app
 
-# 安装 uv
-RUN pip install uv
+# 安装系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 Python 包管理器
+RUN pip install --no-cache-dir uv
 
 # 复制项目文件
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.toml README.md ./
 COPY src/ ./src/
-COPY README.md ./
 
-# 安装依赖
-RUN uv sync --frozen
+# 创建虚拟环境并安装依赖
+RUN uv venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONPATH="/app/src"
+RUN uv pip install --no-cache -e .
 
-# 设置入口点
-ENTRYPOINT ["uv", "run", "finchbot"]
-CMD ["chat"]
-```
+# 构建前端
+COPY web/ ./web/
+RUN cd web && npm ci && npm run build
 
-### 构建并运行
+# 配置环境
+ENV STATIC_DIR=/app/web/dist
+EXPOSE 8000
 
-```bash
-# 构建镜像
-docker build -t finchbot .
-
-# 运行容器（交互模式）
-docker run -it \
-    -v ~/.finchbot:/root/.finchbot \
-    -e OPENAI_API_KEY=sk-... \
-    finchbot chat
-
-# 运行 Web 服务
-docker run -d \
-    -p 8000:8000 \
-    -v ~/.finchbot:/root/.finchbot \
-    -e OPENAI_API_KEY=sk-... \
-    finchbot serve
+# 启动服务
+CMD ["uvicorn", "finchbot.server.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ### Docker Compose
 
-```yaml
-version: '3.8'
+项目根目录已包含 `docker-compose.yml`：
 
+```yaml
 services:
   finchbot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finchbot
     ports:
       - "8000:8000"
-    volumes:
-      - ~/.finchbot:/root/.finchbot
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - FINCHBOT_LANGUAGE=zh-CN
-    command: serve
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - FINCHBOT_LANGUAGE=${FINCHBOT_LANGUAGE:-zh-CN}
+    volumes:
+      - finchbot_workspace:/root/.finchbot/workspace
+      - finchbot_models:/root/.cache/huggingface
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  finchbot_workspace:
+  finchbot_models:
+```
+
+### 常用命令
+
+```bash
+# 启动服务
+docker-compose up -d
+
+# 查看日志
+docker logs -f finchbot
+
+# 停止服务
+docker-compose down
+
+# 重新构建
+docker-compose up -d --build
+
+# 进入容器调试
+docker exec -it finchbot /bin/bash
+```
+
+### 环境变量配置
+
+| 变量名 | 说明 | 必填 |
+| :----- | :--- | :--: |
+| `OPENAI_API_KEY` | OpenAI API 密钥 | 二选一 |
+| `ANTHROPIC_API_KEY` | Anthropic API 密钥 | 二选一 |
+| `GOOGLE_API_KEY` | Google Gemini API 密钥 | 否 |
+| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | 否 |
+| `TAVILY_API_KEY` | Tavily 搜索 API 密钥 | 否 |
+| `FINCHBOT_LANGUAGE` | 界面语言 (zh-CN/en-US) | 否 |
+| `FINCHBOT_DEFAULT_MODEL` | 默认模型名称 | 否 |
+
+### 持久化存储
+
+Docker Compose 配置了两个持久化卷：
+
+| 卷名 | 路径 | 说明 |
+| :--- | :--- | :--- |
+| `finchbot_workspace` | `/root/.finchbot/workspace` | 会话数据、配置文件 |
+| `finchbot_models` | `/root/.cache/huggingface` | 嵌入模型缓存 |
+
+### 镜像加速（国内用户）
+
+如果拉取基础镜像较慢，可配置 Docker 镜像加速器：
+
+```json
+// Docker Desktop -> Settings -> Docker Engine
+{
+  "registry-mirrors": [
+    "https://dockerhub.icu",
+    "https://hub.rat.dev"
+  ]
+}
 ```
 
 ---
@@ -116,25 +199,24 @@ services:
 
 ```mermaid
 flowchart TB
-    %% 样式定义
     classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef appLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef dataLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
     subgraph Users [用户层]
-        U[👤 用户]:::userLayer
+        U[用户]:::userLayer
     end
 
     subgraph App [应用层]
-        LB[⚖️ 负载均衡]:::appLayer
-        API[🚀 API Server<br/>FastAPI]:::appLayer
-        Agent[🧠 Agent<br/>LangGraph]:::appLayer
+        LB[负载均衡]:::appLayer
+        API[API Server<br/>FastAPI]:::appLayer
+        Agent[Agent<br/>LangGraph]:::appLayer
     end
 
     subgraph Data [数据层]
-        PG[(🐘 PostgreSQL<br/>Checkpointer)]:::dataLayer
-        Vector[(🧮 Vector DB<br/>Pinecone/Milvus)]:::dataLayer
-        Redis[(⚡ Redis<br/>Cache)]:::dataLayer
+        PG[(PostgreSQL<br/>Checkpointer)]:::dataLayer
+        Vector[(Vector DB<br/>Pinecone/Milvus)]:::dataLayer
+        Redis[(Redis<br/>Cache)]:::dataLayer
     end
 
     U --> LB
@@ -188,7 +270,6 @@ logger.add(
 
 ```mermaid
 flowchart LR
-    %% 样式定义
     classDef secure fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef insecure fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
 

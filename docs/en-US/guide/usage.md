@@ -19,12 +19,10 @@ These three commands cover FinchBot's core workflow:
 
 ```mermaid
 flowchart LR
-    %% Style Definitions
     classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
-    classDef arrow fill:none,stroke:#1565c0,stroke-width:2px;
 
-    A["1️⃣ finchbot config<br/>Configure API Keys"]:::step --> B["2️⃣ finchbot sessions<br/>Manage Sessions"]:::step
-    B --> C["3️⃣ finchbot chat<br/>Start Chatting"]:::step
+    A["1. finchbot config<br/>Configure API Keys"]:::step --> B["2. finchbot sessions<br/>Manage Sessions"]:::step
+    B --> C["3. finchbot chat<br/>Start Chatting"]:::step
 ```
 
 | Command | Function | Description |
@@ -71,7 +69,6 @@ FinchBot now supports a modern Web interface.
 
 ```mermaid
 flowchart TB
-    %% Style Definitions
     classDef backend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef user fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
@@ -86,7 +83,7 @@ flowchart TB
         MD[Markdown Rendering]:::frontend
     end
 
-    U[👤 User]:::user --> React
+    U[User]:::user --> React
     React <--> WS
     WS <--> API
 
@@ -304,15 +301,14 @@ FinchBot includes 11 built-in tools across four categories:
 
 ```mermaid
 flowchart TB
-    %% Style Definitions
     classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
     subgraph Tools [11 Built-in Tools]
-        File[📁 File Operations]:::category
-        Web[🌐 Network]:::category
-        Memory[💾 Memory]:::category
-        System[⚙️ System]:::category
+        File[File Operations]:::category
+        Web[Network]:::category
+        Memory[Memory]:::category
+        System[System]:::category
     end
 
     File --> F1[read_file]:::tool

@@ -24,129 +24,75 @@ FinchBot 采用 **LangChain v1.2** + **LangGraph v1.0** 构建，是一个具备
 ### 1.1 整体架构图
 
 ```mermaid
-graph TD
-    %% 样式定义
+graph TB
     classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef channelLayer fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b;
     classDef factoryLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef coreLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
     classDef memoryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef toolLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
-    classDef channelLayer fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b;
     classDef infraLayer fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#00695c;
 
-    %% 用户交互层
-    subgraph UserLayer [用户交互层]
-        direction LR
-        CLI[🖥️ CLI 界面]
-        WebUI[🌐 Web 界面]
-        API[🔌 REST API]
+    subgraph Layer1 [用户交互层]
+        CLI[CLI 界面]:::userLayer
+        WebUI[Web 界面]:::userLayer
+        API[REST API]:::userLayer
     end
-    class CLI,WebUI,API userLayer
 
-    %% 通道系统
-    subgraph ChannelSystem [通道系统 - 多平台消息]
-        direction TB
-        Bus[📨 MessageBus<br/>异步路由器]
-        CM[🎛️ ChannelManager]
-        
-        Bus <--> CM
-        
-        subgraph Channels [平台通道]
-            WebCh[Web]
-            DiscordCh[Discord]
-            DingTalkCh[钉钉]
-            FeishuCh[飞书]
-            WeChatCh[微信]
-            EmailCh[邮件]
-        end
-        
-        CM <--> Channels
+    subgraph Layer2 [消息路由层]
+        Bus[MessageBus<br/>异步路由]:::channelLayer
+        CM[ChannelManager<br/>通道协调]:::channelLayer
     end
-    class Bus,CM channelLayer
-    class WebCh,DiscordCh,DingTalkCh,FeishuCh,WeChatCh,EmailCh channelLayer
 
-    %% 工厂层
-    subgraph FactoryLayer [工厂层 - 组件装配]
-        direction LR
-        AF[🏭 AgentFactory<br/>Agent 装配]
-        TF[🔧 ToolFactory<br/>工具创建]
+    subgraph Layer3 [工厂装配层]
+        AF[AgentFactory<br/>Agent 装配]:::factoryLayer
+        TF[ToolFactory<br/>工具创建]:::factoryLayer
     end
-    class AF,TF factoryLayer
 
-    %% Agent 核心
-    subgraph AgentCore [Agent 核心 - 智能引擎]
-        direction TB
-        Agent[🧠 LangGraph Agent]
-        CB[📝 ContextBuilder]
-        SP[📄 系统提示词]
-        
-        Agent --> CB
-        CB --> SP
+    subgraph Layer4 [智能引擎层]
+        Agent[LangGraph Agent<br/>决策引擎]:::coreLayer
+        CB[ContextBuilder<br/>上下文构建]:::coreLayer
     end
-    class Agent,CB,SP coreLayer
 
-    %% 记忆系统
-    subgraph MemorySystem [记忆系统 - 双层存储]
-        direction TB
-        MM[💾 MemoryManager]
-        
-        subgraph Services [服务层]
-            RS[🔍 RetrievalService]
-            CS[📊 ClassificationService]
-            IS[⭐ ImportanceScorer]
-        end
-        
-        subgraph Storage [存储层]
-            SQLite[(🗄️ SQLite<br/>真相源)]
-            Vector[(🧮 VectorStore<br/>语义检索)]
-        end
-        
-        MM --> RS & CS & IS
-        RS --> SQLite & Vector
-        SQLite <--> Vector
+    subgraph Layer5 [能力支撑层]
+        MM[MemoryManager<br/>记忆管理]:::memoryLayer
+        TR[ToolRegistry<br/>工具注册]:::toolLayer
     end
-    class MM,RS,CS,IS,SQLite,Vector memoryLayer
 
-    %% 工具生态
-    subgraph ToolEcosystem [工具生态 - 11 个内置工具]
-        direction TB
-        TR[📋 ToolRegistry]
-        
-        subgraph BuiltInTools [内置工具]
-            FileTools[📁 文件操作<br/>read/write/edit/list]
-            WebTools[🌐 网络<br/>search/extract]
-            MemTools[💾 记忆<br/>remember/recall/forget]
-            SysTools[⚙️ 系统<br/>exec/session_title]
-        end
-        
-        TR --> BuiltInTools
+    subgraph Layer6 [存储层]
+        SQLite[(SQLite<br/>真相源)]:::memoryLayer
+        Vector[(VectorStore<br/>语义检索)]:::memoryLayer
     end
-    class TR,FileTools,WebTools,MemTools,SysTools toolLayer
 
-    %% LLM 提供商
-    subgraph LLMProviders [LLM 提供商 - 多模型支持]
-        direction LR
-        OpenAI[OpenAI]
-        Anthropic[Anthropic]
-        DeepSeek[DeepSeek]
-        Gemini[Gemini]
-        Groq[Groq]
-        Moonshot[Moonshot]
+    subgraph Layer7 [LLM 提供商]
+        OpenAI[OpenAI]:::infraLayer
+        Anthropic[Anthropic]:::infraLayer
+        DeepSeek[DeepSeek]:::infraLayer
+        Others[其他...]:::infraLayer
     end
-    class OpenAI,Anthropic,DeepSeek,Gemini,Groq,Moonshot infraLayer
 
-    %% 连接
-    CLI & WebUI --> Bus
+    CLI --> Bus
+    WebUI --> Bus
     API --> AF
     
-    Bus --> AF
+    Bus --> CM
+    CM --> AF
+    
     AF --> Agent
     AF --> TF
     TF --> TR
     
+    Agent --> CB
     Agent <--> MM
     Agent <--> TR
-    Agent --> OpenAI & Anthropic & DeepSeek & Gemini & Groq & Moonshot
+    Agent --> OpenAI
+    Agent --> Anthropic
+    Agent --> DeepSeek
+    Agent --> Others
+    
+    MM --> SQLite
+    MM --> Vector
+    SQLite <--> Vector
 ```
 
 ### 1.2 目录结构
@@ -409,33 +355,21 @@ FinchBot 实现了先进的 **双层记忆架构**，旨在解决 LLM 上下文�
 
 ```mermaid
 flowchart TB
-    %% 样式定义
     classDef businessLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef serviceLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef storageLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    subgraph Business [业务层]
-        MM[💾 MemoryManager<br/>remember/recall/forget]
-    end
-    class MM businessLayer
+    MM[MemoryManager<br/>remember/recall/forget]:::businessLayer
 
-    subgraph Services [服务层]
-        RS[🔍 RetrievalService<br/>混合检索 + RRF]
-        CS[📊 ClassificationService<br/>自动分类]
-        IS[⭐ ImportanceScorer<br/>重要性评分]
-        ES[🧮 EmbeddingService<br/>FastEmbed 本地]
-    end
-    class RS,CS,IS,ES serviceLayer
+    RS[RetrievalService<br/>混合检索 + RRF]:::serviceLayer
+    CS[ClassificationService<br/>自动分类]:::serviceLayer
+    IS[ImportanceScorer<br/>重要性评分]:::serviceLayer
+    ES[EmbeddingService<br/>FastEmbed 本地]:::serviceLayer
 
-    subgraph Storage [存储层]
-        direction LR
-        SQLite[(🗄️ SQLiteStore<br/>真相源<br/>精确查询)]
-        Vector[(🧮 VectorStore<br/>ChromaDB<br/>语义检索)]
-        DS[🔄 DataSyncManager<br/>增量同步]
-    end
-    class SQLite,Vector,DS storageLayer
+    SQLite[(SQLiteStore<br/>真相源<br/>精确查询)]:::storageLayer
+    Vector[(VectorStore<br/>ChromaDB<br/>语义检索)]:::storageLayer
+    DS[DataSyncManager<br/>增量同步]:::storageLayer
 
-    %% 连接
     MM --> RS & CS & IS
     RS --> SQLite & Vector
     CS --> SQLite
@@ -515,38 +449,27 @@ class MemoryManager:
 
 ```mermaid
 flowchart TB
-    %% 样式定义
     classDef registry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef builtin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef custom fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
 
-    subgraph Registry [工具注册中心]
-        TR[📋 ToolRegistry<br/>全局注册表]
-        Lock[🔒 双重检查锁<br/>线程安全单例]
-    end
-    class TR,Lock registry
+    TR[ToolRegistry<br/>全局注册表]:::registry
+    Lock[双重检查锁<br/>线程安全单例]:::registry
 
-    subgraph BuiltIn [内置工具 - 11 个]
-        direction TB
-        File[📁 文件操作<br/>read_file / write_file<br/>edit_file / list_dir]
-        Web[🌐 网络<br/>web_search / web_extract]
-        Memory[💾 记忆<br/>remember / recall / forget]
-        System[⚙️ 系统<br/>exec / session_title]
-    end
-    class File,Web,Memory,System builtin
+    File[文件操作<br/>read_file / write_file<br/>edit_file / list_dir]:::builtin
+    Web[网络<br/>web_search / web_extract]:::builtin
+    Memory[记忆<br/>remember / recall / forget]:::builtin
+    System[系统<br/>exec / session_title]:::builtin
 
-    subgraph Custom [自定义扩展]
-        Inherit[📝 继承 FinchTool<br/>实现 _run()]
-        Register[✅ 注册到 Registry]
-    end
-    class Inherit,Register custom
+    Inherit[继承 FinchTool<br/>实现 _run()]:::custom
+    Register[注册到 Registry]:::custom
 
-    Agent[🧠 Agent 调用]:::agent
+    Agent[Agent 调用]:::agent
 
     TR --> Lock
-    Lock --> BuiltIn
-    Lock --> Custom
+    Lock --> File & Web & Memory & System
+    Lock --> Inherit --> Register
 
     File --> Agent
     Web --> Agent
@@ -588,20 +511,19 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    %% 样式定义
     classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef fallback fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
 
-    Start[🔍 网页搜索请求]:::check
+    Start[网页搜索请求]:::check
     
     Check1{TAVILY_API_KEY<br/>已设置?}:::check
-    Tavily[🚀 Tavily<br/>质量最佳<br/>AI 优化]:::engine
+    Tavily[Tavily<br/>质量最佳<br/>AI 优化]:::engine
     
     Check2{BRAVE_API_KEY<br/>已设置?}:::check
-    Brave[🦁 Brave Search<br/>隐私友好<br/>免费额度大]:::engine
+    Brave[Brave Search<br/>隐私友好<br/>免费额度大]:::engine
     
-    DDG[🦆 DuckDuckGo<br/>零配置<br/>始终可用]:::fallback
+    DDG[DuckDuckGo<br/>零配置<br/>始终可用]:::fallback
 
     Start --> Check1
     Check1 -->|是| Tavily
@@ -647,26 +569,19 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    %% 样式定义
     classDef bus fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef manager fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef channel fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    subgraph Core [消息路由核心]
-        Bus[📨 MessageBus<br/>入站/出站队列]:::bus
-        CM[🎛️ ChannelManager<br/>通道协调]:::manager
-    end
+    Bus[MessageBus<br/>入站/出站队列]:::bus
+    CM[ChannelManager<br/>通道协调]:::manager
 
-    subgraph Platforms [平台通道]
-        direction TB
-        Web[🌐 Web<br/>WebSocket]
-        Discord[💬 Discord<br/>Bot API]
-        DingTalk[📱 钉钉<br/>Webhook]
-        Feishu[🪶 飞书<br/>Bot API]
-        WeChat[💚 微信<br/>企业微信]
-        Email[📧 邮件<br/>SMTP/IMAP]
-    end
-    class Web,Discord,DingTalk,Feishu,WeChat,Email channel
+    Web[Web<br/>WebSocket]:::channel
+    Discord[Discord<br/>Bot API]:::channel
+    DingTalk[钉钉<br/>Webhook]:::channel
+    Feishu[飞书<br/>Bot API]:::channel
+    WeChat[微信<br/>企业微信]:::channel
+    Email[邮件<br/>SMTP/IMAP]:::channel
 
     Bus <--> CM
     CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
@@ -730,31 +645,30 @@ class OutboundMessage(BaseModel):
 
 ```mermaid
 flowchart TD
-    %% 样式定义
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef file fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    A([🚀 Agent 启动]):::startEnd --> B[📂 加载 Bootstrap 文件]:::process
+    A([Agent 启动]):::startEnd --> B[加载 Bootstrap 文件]:::process
     
     B --> C[SYSTEM.md]:::file
     B --> D[MEMORY_GUIDE.md]:::file
     B --> E[SOUL.md]:::file
     B --> F[AGENT_CONFIG.md]:::file
 
-    C --> G[🔧 组装提示词]:::process
+    C --> G[组装提示词]:::process
     D --> G
     E --> G
     F --> G
 
-    G --> H[📚 加载常驻技能]:::process
-    H --> I[🏗️ 构建技能摘要 XML]:::process
-    I --> J[📋 生成工具文档]:::process
-    J --> K[⚙️ 注入运行时信息]:::process
-    K --> L[📝 完整系统提示]:::output
+    G --> H[加载常驻技能]:::process
+    H --> I[构建技能摘要 XML]:::process
+    I --> J[生成工具文档]:::process
+    J --> K[注入运行时信息]:::process
+    K --> L[完整系统提示]:::output
 
-    L --> M([📤 发送给 LLM]):::startEnd
+    L --> M([发送给 LLM]):::startEnd
 ```
 
 ---
@@ -864,7 +778,6 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    %% 样式定义
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;

@@ -19,14 +19,13 @@ Thank you for your interest in FinchBot! We welcome all forms of contributions, 
 
 ```mermaid
 flowchart LR
-    %% Style Definitions
     classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
 
-    A["1️⃣ Fork Repo"]:::step --> B["2️⃣ Create Branch"]:::step
-    B --> C["3️⃣ Write Code"]:::step
-    C --> D["4️⃣ Submit PR"]:::step
-    D --> E["5️⃣ Code Review"]:::step
-    E --> F["6️⃣ Merge"]:::step
+    A["1. Fork Repo"]:::step --> B["2. Create Branch"]:::step
+    B --> C["3. Write Code"]:::step
+    C --> D["4. Submit PR"]:::step
+    D --> E["5. Code Review"]:::step
+    E --> F["6. Merge"]:::step
 ```
 
 ### 1.1 Fork Repository
@@ -72,7 +71,6 @@ pre-commit install
 
 ```mermaid
 flowchart TD
-    %% Style Definitions
     classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef pass fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef fail fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
@@ -89,7 +87,7 @@ flowchart TD
     G -->|No| I[Fix Types]:::fail
     I --> E
     H --> J{Pass?}
-    J -->|Yes| K([✅ Ready to Commit]):::pass
+    J -->|Yes| K([Ready to Commit]):::pass
     J -->|No| L[Fix Tests]:::fail
     L --> H
 ```
@@ -237,7 +235,6 @@ docs/
 
 ```mermaid
 flowchart TD
-    %% Style Definitions
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;

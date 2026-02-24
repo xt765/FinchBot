@@ -19,14 +19,13 @@
 
 ```mermaid
 flowchart LR
-    %% 样式定义
     classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
 
-    A["1️⃣ Fork 仓库"]:::step --> B["2️⃣ 创建分支"]:::step
-    B --> C["3️⃣ 编写代码"]:::step
-    C --> D["4️⃣ 提交 PR"]:::step
-    D --> E["5️⃣ 代码审查"]:::step
-    E --> F["6️⃣ 合并"]:::step
+    A["1. Fork 仓库"]:::step --> B["2. 创建分支"]:::step
+    B --> C["3. 编写代码"]:::step
+    C --> D["4. 提交 PR"]:::step
+    D --> E["5. 代码审查"]:::step
+    E --> F["6. 合并"]:::step
 ```
 
 ### 1.1 Fork 仓库
@@ -72,7 +71,6 @@ pre-commit install
 
 ```mermaid
 flowchart TD
-    %% 样式定义
     classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef pass fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef fail fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
@@ -89,7 +87,7 @@ flowchart TD
     G -->|否| I[修复类型]:::fail
     I --> E
     H --> J{通过?}
-    J -->|是| K([✅ 可以提交]):::pass
+    J -->|是| K([可以提交]):::pass
     J -->|否| L[修复测试]:::fail
     L --> H
 ```
@@ -237,7 +235,6 @@ docs/
 
 ```mermaid
 flowchart TD
-    %% 样式定义
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;

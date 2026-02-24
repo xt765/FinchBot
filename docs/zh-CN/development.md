@@ -61,13 +61,12 @@ uv sync --extra dev
 
 ```mermaid
 flowchart LR
-    %% 样式定义
     classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
 
-    A["1️⃣ 安装 uv"]:::step --> B["2️⃣ 克隆仓库"]:::step
-    B --> C["3️⃣ uv sync --extra dev"]:::step
-    C --> D["4️⃣ finchbot config"]:::step
-    D --> E["5️⃣ 开始开发"]:::step
+    A["1. 安装 uv"]:::step --> B["2. 克隆仓库"]:::step
+    B --> C["3. uv sync --extra dev"]:::step
+    C --> D["4. finchbot config"]:::step
+    D --> E["5. 开始开发"]:::step
 ```
 
 ---
@@ -138,27 +137,26 @@ uv run basedpyright src
 
 ```mermaid
 flowchart TD
-    %% 样式定义
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
-    A([📝 编写代码]):::startEnd --> B[🔧 ruff format]:::process
+    A([编写代码]):::startEnd --> B[ruff format]:::process
     B --> C{格式正确?}:::check
     C -->|否| B
-    C -->|是| D[🔍 ruff check]:::process
+    C -->|是| D[ruff check]:::process
     D --> E{Lint 通过?}:::check
     E -->|否| F[修复问题]:::process
     F --> D
-    E -->|是| G[📊 basedpyright]:::process
+    E -->|是| G[basedpyright]:::process
     G --> H{类型正确?}:::check
     H -->|否| I[修复类型]:::process
     I --> G
-    H -->|是| J[🧪 pytest]:::process
+    H -->|是| J[pytest]:::process
     J --> K{测试通过?}:::check
     K -->|否| L[修复测试]:::process
     L --> J
-    K -->|是| M([✅ 提交代码]):::startEnd
+    K -->|是| M([提交代码]):::startEnd
 ```
 
 ### 3.5 Pre-commit Hooks (可选)
@@ -242,15 +240,14 @@ FinchBot 采用**运行时懒加载 (Runtime Lazy Loading)** 策略管理大文�
 
 ```mermaid
 flowchart TD
-    %% 样式定义
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
-    A([📦 uv sync]):::startEnd --> B[仅安装 Python 依赖]:::process
-    B --> C([🚀 finchbot chat]):::startEnd
+    A([uv sync]):::startEnd --> B[仅安装 Python 依赖]:::process
+    B --> C([finchbot chat]):::startEnd
     C --> D{模型存在?}:::decision
-    D -->|是| E([✅ 直接启动]):::startEnd
+    D -->|是| E([直接启动]):::startEnd
     D -->|否| F[检测网络环境]:::process
     F --> G{国内网络?}:::decision
     G -->|是| H[使用 hf-mirror.com]:::process

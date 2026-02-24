@@ -61,13 +61,12 @@ uv sync --extra dev
 
 ```mermaid
 flowchart LR
-    %% Style Definitions
     classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
 
-    A["1️⃣ Install uv"]:::step --> B["2️⃣ Clone Repository"]:::step
-    B --> C["3️⃣ uv sync --extra dev"]:::step
-    C --> D["4️⃣ finchbot config"]:::step
-    D --> E["5️⃣ Start Development"]:::step
+    A["1. Install uv"]:::step --> B["2. Clone Repository"]:::step
+    B --> C["3. uv sync --extra dev"]:::step
+    C --> D["4. finchbot config"]:::step
+    D --> E["5. Start Development"]:::step
 ```
 
 ---
@@ -138,27 +137,26 @@ uv run basedpyright src
 
 ```mermaid
 flowchart TD
-    %% Style Definitions
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
-    A([📝 Write Code]):::startEnd --> B[🔧 ruff format]:::process
+    A([Write Code]):::startEnd --> B[ruff format]:::process
     B --> C{Format OK?}:::decision
     C -->|No| B
-    C -->|Yes| D[🔍 ruff check]:::process
+    C -->|Yes| D[ruff check]:::process
     D --> E{Lint Pass?}:::decision
     E -->|No| F[Fix Issues]:::process
     F --> D
-    E -->|Yes| G[📊 basedpyright]:::process
+    E -->|Yes| G[basedpyright]:::process
     G --> H{Types OK?}:::decision
     H -->|No| I[Fix Types]:::process
     I --> G
-    H -->|Yes| J[🧪 pytest]:::process
+    H -->|Yes| J[pytest]:::process
     J --> K{Tests Pass?}:::decision
     K -->|No| L[Fix Tests]:::process
     L --> J
-    K -->|Yes| M([✅ Commit Code]):::startEnd
+    K -->|Yes| M([Commit Code]):::startEnd
 ```
 
 ### 3.5 Pre-commit Hooks (Optional)
@@ -242,15 +240,14 @@ FinchBot uses **Runtime Lazy Loading** strategy for large file dependencies:
 
 ```mermaid
 flowchart TD
-    %% Style Definitions
     classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
-    A([📦 uv sync]):::startEnd --> B[Install Python deps only]:::process
-    B --> C([🚀 finchbot chat]):::startEnd
+    A([uv sync]):::startEnd --> B[Install Python deps only]:::process
+    B --> C([finchbot chat]):::startEnd
     C --> D{Model exists?}:::decision
-    D -->|Yes| E([✅ Start directly]):::startEnd
+    D -->|Yes| E([Start directly]):::startEnd
     D -->|No| F[Detect network]:::process
     F --> G{China network?}:::decision
     G -->|Yes| H[Use hf-mirror.com]:::process
