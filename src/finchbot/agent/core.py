@@ -15,9 +15,10 @@ from langchain.agents import create_agent
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph  # type: ignore[attr-defined]
 from loguru import logger
+import aiosqlite
 
 from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
@@ -170,17 +171,17 @@ def get_default_workspace() -> Path:
 
 
 @contextmanager
-def get_sqlite_checkpointer(workspace: Path) -> Iterator[SqliteSaver]:
+async def get_sqlite_checkpointer(workspace: Path) -> Iterator[AsyncSqliteSaver]:
     """获取 SQLite Checkpointer 上下文管理器.
 
     Args:
         workspace: 工作目录路径。
 
     Yields:
-        SqliteSaver 实例。
+        AsyncSqliteSaver 实例。
     """
     db_path = workspace / "checkpoints.db"
-    with SqliteSaver.from_conn_string(str(db_path)) as checkpointer:
+    async with AsyncSqliteSaver.from_conn_string(str(db_path)) as checkpointer:
         yield checkpointer
 
 
@@ -195,12 +196,12 @@ def get_memory_checkpointer() -> MemorySaver:
     return MemorySaver()
 
 
-def create_finch_agent(
+async def create_finch_agent(
     model: BaseChatModel,
     workspace: Path,
     tools: Sequence[BaseTool] | None = None,
     use_persistent: bool = True,
-) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
+) -> tuple[CompiledStateGraph, AsyncSqliteSaver | MemorySaver]:
     """创建 FinchBot Agent.
 
     Args:
@@ -217,10 +218,8 @@ def create_finch_agent(
 
     if use_persistent:
         db_path = workspace / "checkpoints.db"
-        import sqlite3
-
-        conn = sqlite3.connect(str(db_path), check_same_thread=False)
-        checkpointer = SqliteSaver(conn)
+        conn = await aiosqlite.connect(str(db_path), check_same_thread=False)
+        checkpointer = AsyncSqliteSaver(conn)
     else:
         checkpointer = get_memory_checkpointer()
 

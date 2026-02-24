@@ -20,7 +20,7 @@ class AgentFactory:
     """
 
     @staticmethod
-    def create_for_cli(
+    async def create_for_cli(
         session_id: str,
         workspace: Path,
         model: BaseChatModel,
@@ -42,7 +42,7 @@ class AgentFactory:
         tools = tool_factory.create_default_tools()
 
         # 2. 创建 Agent
-        agent, checkpointer = create_finch_agent(
+        agent, checkpointer = await create_finch_agent(
             model=model,
             workspace=workspace,
             tools=tools,
