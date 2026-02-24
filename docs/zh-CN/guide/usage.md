@@ -17,8 +17,18 @@ uv run finchbot chat
 
 这三个命令覆盖了 FinchBot 的核心工作流程：
 
+```mermaid
+flowchart LR
+    %% 样式定义
+    classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
+    classDef arrow fill:none,stroke:#1565c0,stroke-width:2px;
+
+    A["1️⃣ finchbot config<br/>配置 API 密钥"]:::step --> B["2️⃣ finchbot sessions<br/>管理会话"]:::step
+    B --> C["3️⃣ finchbot chat<br/>开始对话"]:::step
+```
+
 | 命令 | 功能 | 说明 |
-|------|------|------|
+| :--- | :--- | :--- |
 | `finchbot config` | 交互式配置 | 配置 LLM 提供商、API 密钥、默认模型、网页搜索等 |
 | `finchbot sessions` | 会话管理 | 全屏界面创建、重命名、删除会话，查看会话历史 |
 | `finchbot chat` | 开始对话 | 启动交互式聊天，自动加载最近活跃的会话 |
@@ -27,7 +37,9 @@ uv run finchbot chat
 
 ## 1. 启动与基本交互
 
-### 启动 FinchBot
+### 1.1 命令行界面 (CLI)
+
+#### 启动 FinchBot
 
 ```bash
 finchbot chat
@@ -39,7 +51,7 @@ finchbot chat
 uv run finchbot chat
 ```
 
-### 指定会话
+#### 指定会话
 
 您可以指定一个会话 ID 来继续之前的对话或开始新对话：
 
@@ -47,27 +59,65 @@ uv run finchbot chat
 finchbot chat --session "project-alpha"
 ```
 
-如果未指定，系统会自动加载最近一次活跃的会话。
-
-### 指定模型
+#### 指定模型
 
 ```bash
-finchbot chat --model "gpt-4o"
+finchbot chat --model "gpt-5"
 ```
 
-### 指定工作目录
+### 1.2 Web 界面 (Beta)
+
+FinchBot 现已支持 Web 界面，提供更现代化的交互体验。
+
+```mermaid
+flowchart TB
+    %% 样式定义
+    classDef backend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef user fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    subgraph Backend [后端服务]
+        API[FastAPI<br/>:8000]:::backend
+        WS[WebSocket<br/>实时通信]:::backend
+    end
+
+    subgraph Frontend [前端界面]
+        React[React + Vite<br/>:5173]:::frontend
+        MD[Markdown 渲染]:::frontend
+    end
+
+    U[👤 用户]:::user --> React
+    React <--> WS
+    WS <--> API
+
+    API --> React
+    React --> MD
+    MD --> U
+```
+
+#### 启动后端服务
 
 ```bash
-finchbot chat --workspace "~/my-project"
+uv run finchbot serve
 ```
 
-### 交互模式
+服务器将在 `http://127.0.0.1:8000` 启动。
 
-进入聊天界面后，您可以直接输入自然语言与 Agent 对话。
+#### 启动前端界面
 
-- **输入**: 直接输入文字并回车。
-- **换行**: 目前 CLI 为单行输入模式，长文本建议分段发送或使用文件读取工具。
-- **退出**: 输入 `exit`, `quit`, `:q` 或 `q` 退出程序。
+```bash
+cd web
+npm install
+npm run dev
+```
+
+浏览器访问 `http://localhost:5173` 即可开始对话。
+
+Web 界面特性：
+- 实时流式输出
+- Markdown 富文本渲染
+- 代码高亮
+- 历史记录自动加载
 
 ---
 
@@ -140,7 +190,7 @@ finchbot sessions
 ### 操作指南
 
 | 按键 | 功能 |
-|------|------|
+| :--- | :--- |
 | ↑ / ↓ | 导航选择会话 |
 | Enter | 进入选中的会话 |
 | r | 重命名当前选中的会话 |
@@ -153,7 +203,7 @@ finchbot sessions
 会话列表会显示以下信息：
 
 | 列 | 说明 |
-|----|------|
+| :--- | :--- |
 | ID | 会话唯一标识 |
 | 标题 | 会话标题（自动生成或手动设置） |
 | 消息数 | 会话中的消息总数 |
@@ -178,7 +228,7 @@ finchbot config
 ### 配置项
 
 | 配置项 | 说明 |
-|--------|------|
+| :--- | :--- |
 | 语言 | 界面语言（中文/英文） |
 | LLM 提供商 | OpenAI、Anthropic、DeepSeek 等 |
 | API 密钥 | 各提供商的 API Key |
@@ -189,7 +239,7 @@ finchbot config
 ### 支持的 LLM 提供商
 
 | 提供商 | 说明 |
-|--------|------|
+| :--- | :--- |
 | OpenAI | GPT-5, GPT-5.2, O3-mini |
 | Anthropic | Claude Sonnet 4.5, Claude Opus 4.6 |
 | DeepSeek | DeepSeek Chat, DeepSeek Reasoner |
@@ -252,10 +302,39 @@ finchbot models download
 
 FinchBot 内置了 11 个工具，分为四大类：
 
+```mermaid
+flowchart TB
+    %% 样式定义
+    classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Tools [11 个内置工具]
+        File[📁 文件操作]:::category
+        Web[🌐 网络]:::category
+        Memory[💾 记忆]:::category
+        System[⚙️ 系统]:::category
+    end
+
+    File --> F1[read_file]:::tool
+    File --> F2[write_file]:::tool
+    File --> F3[edit_file]:::tool
+    File --> F4[list_dir]:::tool
+
+    Web --> W1[web_search]:::tool
+    Web --> W2[web_extract]:::tool
+
+    Memory --> M1[remember]:::tool
+    Memory --> M2[recall]:::tool
+    Memory --> M3[forget]:::tool
+
+    System --> S1[exec]:::tool
+    System --> S2[session_title]:::tool
+```
+
 ### 文件操作工具
 
 | 工具 | 说明 | 使用场景 |
-|------|------|----------|
+| :--- | :--- | :--- |
 | `read_file` | 读取文件内容 | 查看代码、配置文件 |
 | `write_file` | 写入文件（覆盖） | 创建新文件 |
 | `edit_file` | 编辑文件（替换） | 修改现有文件的部分内容 |
@@ -272,7 +351,7 @@ FinchBot 内置了 11 个工具，分为四大类：
 ### 网络工具
 
 | 工具 | 说明 | 使用场景 |
-|------|------|----------|
+| :--- | :--- | :--- |
 | `web_search` | 搜索互联网 | 获取最新信息、验证事实 |
 | `web_extract` | 提取网页内容 | 获取网页全文 |
 
@@ -291,7 +370,7 @@ FinchBot 内置了 11 个工具，分为四大类：
 ### 记忆管理工具
 
 | 工具 | 说明 | 使用场景 |
-|------|------|----------|
+| :--- | :--- | :--- |
 | `remember` | 保存记忆 | 记录用户信息、偏好 |
 | `recall` | 检索记忆 | 回忆之前的信息 |
 | `forget` | 删除记忆 | 清除过期或错误信息 |
@@ -299,7 +378,7 @@ FinchBot 内置了 11 个工具，分为四大类：
 #### 记忆分类
 
 | 分类 | 说明 | 示例 |
-|------|------|------|
+| :--- | :--- | :--- |
 | personal | 个人信息 | 姓名、年龄、住址 |
 | preference | 用户偏好 | 喜好、习惯 |
 | work | 工作相关 | 项目、任务、会议 |
@@ -311,7 +390,7 @@ FinchBot 内置了 11 个工具，分为四大类：
 #### 检索策略 (QueryType)
 
 | 策略 | 权重 | 使用场景 |
-|------|------|----------|
+| :--- | :--- | :--- |
 | `factual` | 关键词 0.8 / 语义 0.2 | "我的邮箱是多少" |
 | `conceptual` | 关键词 0.2 / 语义 0.8 | "我喜欢的食物" |
 | `complex` | 关键词 0.5 / 语义 0.5 | 复杂查询（默认） |
@@ -322,7 +401,7 @@ FinchBot 内置了 11 个工具，分为四大类：
 ### 系统工具
 
 | 工具 | 说明 | 使用场景 |
-|------|------|----------|
+| :--- | :--- | :--- |
 | `exec` | 执行 shell 命令 | 批量操作、系统命令 |
 | `session_title` | 管理会话标题 | 获取/设置会话标题 |
 
@@ -335,7 +414,7 @@ FinchBot 使用可编辑的 Bootstrap 文件系统来定义 Agent 的行为。�
 ### Bootstrap 文件
 
 | 文件 | 说明 |
-|------|------|
+| :--- | :--- |
 | `SYSTEM.md` | 系统提示词，定义 Agent 的基本行为 |
 | `MEMORY_GUIDE.md` | 记忆系统使用指南 |
 | `SOUL.md` | Agent 的自我认知和性格特征 |
@@ -377,7 +456,7 @@ finchbot chat --workspace "~/my-workspace"
 `finchbot` 命令行支持以下全局选项：
 
 | 选项 | 说明 |
-|------|------|
+| :--- | :--- |
 | `--help` | 显示帮助信息 |
 | `--version` | 显示版本号 |
 | `-v` | 显示 INFO 及以上日志 |
@@ -398,7 +477,7 @@ finchbot chat -vv
 ## 9. 命令速查表
 
 | 命令 | 说明 |
-|------|------|
+| :--- | :--- |
 | `finchbot chat` | 启动交互式聊天会话 |
 | `finchbot chat -s <id>` | 启动/继续指定会话 |
 | `finchbot chat -m <model>` | 使用指定模型 |
@@ -413,7 +492,7 @@ finchbot chat -vv
 ## 10. 聊天命令速查表
 
 | 命令 | 说明 |
-|------|------|
+| :--- | :--- |
 | `/history` | 显示会话历史（带索引） |
 | `/rollback <n>` | 回滚到第 n 条消息 |
 | `/rollback <n> <new_id>` | 创建分支会话 |

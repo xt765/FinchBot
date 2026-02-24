@@ -2,7 +2,7 @@
 
 FinchBot 采用灵活的层级配置系统，支持通过 **配置文件** 和 **环境变量** 进行配置。
 
-优先级：**环境变量** > **用户配置文件** (`~/.finchbot/config.json`) > **默认配置**
+**优先级**：**环境变量** > **用户配置文件** (`~/.finchbot/config.json`) > **默认配置**
 
 ## 目录
 
@@ -10,6 +10,7 @@ FinchBot 采用灵活的层级配置系统，支持通过 **配置文件** 和 *
 2. [环境变量配置](#2-环境变量配置)
 3. [快速配置](#3-快速配置)
 4. [示例配置](#4-示例配置)
+5. [高级配置](#5-高级配置)
 
 ---
 
@@ -55,17 +56,17 @@ FinchBot 采用灵活的层级配置系统，支持通过 **配置文件** 和 *
 
 **内置提供商列表**：
 
-| 提供商 | 说明 | 环境变量前缀 |
-|--------|------|-------------|
-| `openai` | OpenAI 官方 | `OPENAI_*` |
-| `anthropic` | Anthropic Claude | `ANTHROPIC_*` |
-| `gemini` | Google Gemini | `GOOGLE_*` |
-| `deepseek` | DeepSeek | `DEEPSEEK_*` |
-| `moonshot` | Moonshot (Kimi) | `MOONSHOT_*` |
-| `dashscope` | 阿里云通义千问 | `DASHSCOPE_*` |
-| `groq` | Groq | `GROQ_*` |
-| `openrouter` | OpenRouter | `OPENROUTER_*` |
-| `custom` | 自定义提供商 | 无 |
+| 提供商 | 说明 | 环境变量前缀 | 推荐模型 |
+| :--- | :--- | :--- | :--- |
+| `openai` | OpenAI 官方 | `OPENAI_*` | gpt-5, gpt-5.2, o3-mini |
+| `anthropic` | Anthropic Claude | `ANTHROPIC_*` | claude-sonnet-4.5, claude-opus-4.6 |
+| `gemini` | Google Gemini | `GOOGLE_*` | gemini-2.5-flash |
+| `deepseek` | DeepSeek | `DEEPSEEK_*` | deepseek-chat, deepseek-reasoner |
+| `moonshot` | Moonshot (Kimi) | `MOONSHOT_*` | kimi-k1.5, kimi-k2.5 |
+| `dashscope` | 阿里云通义千问 | `DASHSCOPE_*` | qwen-turbo, qwen-max |
+| `groq` | Groq | `GROQ_*` | llama-4-scout, llama-4-maverick |
+| `openrouter` | OpenRouter | `OPENROUTER_*` | (多种模型) |
+| `custom` | 自定义提供商 | 无 | - |
 
 ### `tools` 配置
 
@@ -146,7 +147,7 @@ uv run finchbot config
 OPENAI_API_KEY=sk-...
 OPENAI_API_BASE=https://api.openai.com/v1
 FINCHBOT_LANGUAGE=zh-CN
-FINCHBOT_DEFAULT_MODEL=gpt-4o
+FINCHBOT_DEFAULT_MODEL=gpt-5
 ```
 
 ---
@@ -158,7 +159,7 @@ FINCHBOT_DEFAULT_MODEL=gpt-4o
 ```json
 {
   "language": "zh-CN",
-  "default_model": "gpt-4o",
+  "default_model": "gpt-5",
   "providers": {
     "openai": {
       "api_key": "sk-proj-..."
@@ -259,6 +260,80 @@ FINCHBOT_DEFAULT_MODEL=gpt-4o
 
 ---
 
+## 5. 高级配置
+
+### Bootstrap 文件系统
+
+FinchBot 使用文件系统来管理 Agent 的提示词和行为：
+
+```
+~/.finchbot/
+├── config.json         # 主配置文件
+├── SYSTEM.md           # 角色设定
+├── MEMORY_GUIDE.md     # 记忆使用指南
+├── SOUL.md             # 灵魂设定（性格特征）
+├── AGENT_CONFIG.md     # Agent 配置
+└── workspace/
+    ├── checkpoints.db  # 对话状态持久化
+    ├── memories.db     # 记忆存储
+    ├── chroma/         # 向量数据库
+    └── skills/         # 自定义技能
+        └── my-skill/
+            └── SKILL.md
+```
+
+### 自定义 SYSTEM.md
+
+```markdown
+# 角色设定
+
+你是一个专业的 AI 助手，名为 FinchBot。
+
+## 核心能力
+- 智能对话与问答
+- 文件操作与管理
+- 网络搜索与信息提取
+- 长期记忆管理
+
+## 行为准则
+- 始终保持专业和友好
+- 主动使用工具解决问题
+- 合理使用记忆功能存储重要信息
+```
+
+### 自定义 SOUL.md
+
+```markdown
+# 灵魂设定
+
+## 性格特征
+- 热情开朗，乐于助人
+- 严谨认真，注重细节
+- 善于学习，持续进步
+
+## 沟通风格
+- 简洁明了，直击要点
+- 适当使用表情符号增加亲和力
+- 必要时提供详细解释
+```
+
+### 日志级别配置
+
+通过命令行参数控制日志输出：
+
+```bash
+# 默认：WARNING 及以上
+finchbot chat
+
+# INFO 及以上
+finchbot -v chat
+
+# DEBUG 及以上（调试模式）
+finchbot -vv chat
+```
+
+---
+
 ## 验证配置
 
 查看当前配置的提供商：
@@ -277,6 +352,11 @@ uv run finchbot chat
 
 ## 配置文件位置
 
-- 用户配置：`~/.finchbot/config.json`
-- 环境变量：项目根目录 `.env`（可选）
-- 工作区：`~/.finchbot/workspace/`（默认）
+| 文件/目录 | 路径 | 说明 |
+| :--- | :--- | :--- |
+| 用户配置 | `~/.finchbot/config.json` | 主配置文件 |
+| 环境变量 | 项目根目录 `.env` | 可选 |
+| 工作区 | `~/.finchbot/workspace/` | 默认工作目录 |
+| 记忆数据库 | `~/.finchbot/workspace/memories.db` | SQLite 存储 |
+| 向量数据库 | `~/.finchbot/workspace/chroma/` | ChromaDB |
+| 对话状态 | `~/.finchbot/workspace/checkpoints.db` | LangGraph 持久化 |

@@ -14,80 +14,166 @@ This document provides an in-depth introduction to FinchBot's system architectur
 
 ## 1. Overall Architecture
 
-FinchBot is built on **LangChain v1.2** + **LangGraph v1.0**, serving as an Agent system with persistent memory and dynamic tool scheduling. The system consists of three core components:
+FinchBot is built on **LangChain v1.2** + **LangGraph v1.0**, featuring persistent memory, dynamic tool scheduling, multi-platform messaging, and **fully asynchronous concurrent startup**. The system consists of four core components:
 
-1. **Agent Core (Brain)**: Responsible for decision-making, planning, and tool scheduling
-2. **Memory System**: Responsible for long-term information storage and retrieval
-3. **Tool Ecosystem**: Responsible for interacting with the external world (file system, network, command line)
+1. **Agent Core (Brain)**: Responsible for decision-making, planning, and tool scheduling, supporting async streaming output.
+2. **Memory System**: Responsible for long-term information storage and retrieval, utilizing a hybrid architecture of SQLite + FastEmbed + ChromaDB.
+3. **Tool Ecosystem**: Responsible for interacting with the external world, supporting lazy loading and thread-pool concurrent initialization.
+4. **Channel System**: Responsible for multi-platform message routing, supporting Web, Discord, DingTalk, Feishu, etc.
+
+### 1.1 Overall Architecture Diagram
 
 ```mermaid
 graph TD
-    User[User] --> CLI[CLI Interface]
-    CLI --> Factory[Agent Factory]
-    Factory --> Agent[Agent Core]
+    %% Style Definitions
+    classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef factoryLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef coreLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+    classDef memoryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef toolLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef channelLayer fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b;
+    classDef infraLayer fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#00695c;
 
-    subgraph Core
-        Planner[Planner]
-        Executor[Executor]
-        ContextBuilder[Context Builder]
-        ConfigMgr[Configuration Manager]
+    %% User Interaction Layer
+    subgraph UserLayer [User Interaction Layer]
+        direction LR
+        CLI[🖥️ CLI Interface]
+        WebUI[🌐 Web Interface]
+        API[🔌 REST API]
     end
+    class CLI,WebUI,API userLayer
 
-    Agent --> ContextBuilder
-    ContextBuilder --> SystemPrompt[System Prompt]
-
-    Factory --> ToolFactory[Tool Factory]
-    ToolFactory --> ToolSet[Tool Ecosystem]
-
-    Agent --> MemoryMgr[Memory System]
-    subgraph MemSys
-        Manager[Memory Manager]
-        SQLite[(SQLite Storage)]
-        Vector[(ChromaDB Vector)]
-        Sync[Data Sync]
-        Classify[Classification Service]
-        Importance[Importance Scoring]
-        Retrieval[Retrieval Service]
+    %% Channel System
+    subgraph ChannelSystem [Channel System - Multi-Platform Messaging]
+        direction TB
+        Bus[📨 MessageBus<br/>Async Router]
+        CM[🎛️ ChannelManager]
+        
+        Bus <--> CM
+        
+        subgraph Channels [Platform Channels]
+            WebCh[Web]
+            DiscordCh[Discord]
+            DingTalkCh[DingTalk]
+            FeishuCh[Feishu]
+            WeChatCh[WeChat]
+            EmailCh[Email]
+        end
+        
+        CM <--> Channels
     end
+    class Bus,CM channelLayer
+    class WebCh,DiscordCh,DingTalkCh,FeishuCh,WeChatCh,EmailCh channelLayer
 
-    Manager --> SQLite
-    Manager --> Vector
-    Manager --> Classify
-    Manager --> Importance
-    Manager --> Retrieval
-    SQLite <--> Sync <--> Vector
-
-    Agent --> ToolSet[Tool Ecosystem]
-    subgraph ToolSys
-        Registry[Tool Registry]
-        File[File Operations]
-        Web[Web Search]
-        Shell[Shell Execution]
-        Custom[Custom Tools]
+    %% Factory Layer
+    subgraph FactoryLayer [Factory Layer - Component Assembly]
+        direction LR
+        AF[🏭 AgentFactory<br/>Agent Assembly]
+        TF[🔧 ToolFactory<br/>Tool Creation]
     end
+    class AF,TF factoryLayer
 
-    Registry --> File
-    Registry --> Web
-    Registry --> Shell
-    Registry --> Custom
+    %% Agent Core
+    subgraph AgentCore [Agent Core - Intelligence Engine]
+        direction TB
+        Agent[🧠 LangGraph Agent]
+        CB[📝 ContextBuilder]
+        SP[📄 System Prompt]
+        
+        Agent --> CB
+        CB --> SP
+    end
+    class Agent,CB,SP coreLayer
 
-    Agent --> I18n[Internationalization]
+    %% Memory System
+    subgraph MemorySystem [Memory System - Dual-Layer Storage]
+        direction TB
+        MM[💾 MemoryManager]
+        
+        subgraph Services [Service Layer]
+            RS[🔍 RetrievalService]
+            CS[📊 ClassificationService]
+            IS[⭐ ImportanceScorer]
+        end
+        
+        subgraph Storage [Storage Layer]
+            SQLite[(🗄️ SQLite<br/>Source of Truth)]
+            Vector[(🧮 VectorStore<br/>Semantic Search)]
+        end
+        
+        MM --> RS & CS & IS
+        RS --> SQLite & Vector
+        SQLite <--> Vector
+    end
+    class MM,RS,CS,IS,SQLite,Vector memoryLayer
+
+    %% Tool Ecosystem
+    subgraph ToolEcosystem [Tool Ecosystem - 11 Built-in Tools]
+        direction TB
+        TR[📋 ToolRegistry]
+        
+        subgraph BuiltInTools [Built-in Tools]
+            FileTools[📁 File Ops<br/>read/write/edit/list]
+            WebTools[🌐 Network<br/>search/extract]
+            MemTools[💾 Memory<br/>remember/recall/forget]
+            SysTools[⚙️ System<br/>exec/session_title]
+        end
+        
+        TR --> BuiltInTools
+    end
+    class TR,FileTools,WebTools,MemTools,SysTools toolLayer
+
+    %% LLM Providers
+    subgraph LLMProviders [LLM Providers - Multi-Model Support]
+        direction LR
+        OpenAI[OpenAI]
+        Anthropic[Anthropic]
+        DeepSeek[DeepSeek]
+        Gemini[Gemini]
+        Groq[Groq]
+        Moonshot[Moonshot]
+    end
+    class OpenAI,Anthropic,DeepSeek,Gemini,Groq,Moonshot infraLayer
+
+    %% Connections
+    CLI & WebUI --> Bus
+    API --> AF
+    
+    Bus --> AF
+    AF --> Agent
+    AF --> TF
+    TF --> TR
+    
+    Agent <--> MM
+    Agent <--> TR
+    Agent --> OpenAI & Anthropic & DeepSeek & Gemini & Groq & Moonshot
 ```
 
-### 1.1 Directory Structure
+### 1.2 Directory Structure
 
 ```
 finchbot/
 ├── agent/              # Agent Core
-│   ├── core.py        # Agent creation and execution
-│   ├── factory.py     # Agent Factory
-│   ├── context.py     # Context building
-│   └── skills.py      # Skill system
+│   ├── core.py        # Agent creation and execution (Async Optimized)
+│   ├── factory.py     # AgentFactory (Concurrent Thread Pool)
+│   ├── context.py     # ContextBuilder for prompt assembly
+│   └── skills.py      # SkillsLoader for Markdown skills
+├── channels/           # Multi-Platform Messaging
+│   ├── base.py        # BaseChannel abstract class
+│   ├── bus.py         # MessageBus async router
+│   ├── manager.py     # ChannelManager coordinator
+│   └── schema.py      # InboundMessage/OutboundMessage models
 ├── cli/                # CLI Interface
-│   ├── chat_session.py
+│   ├── chat_session.py # Async Session Management
 │   ├── config_manager.py
 │   ├── providers.py
 │   └── ui.py
+├── server/             # API Server
+│   ├── main.py        # FastAPI Application
+│   └── loop.py        # AgentLoop Event Loop
+├── web/                # Web Frontend (React + Vite)
+│   ├── src/
+│   └── package.json
 ├── config/             # Configuration Management
 │   ├── loader.py
 │   └── schema.py
@@ -120,7 +206,7 @@ finchbot/
 ├── tools/              # Tool System
 │   ├── base.py
 │   ├── registry.py
-│   ├── factory.py     # Tool Factory
+│   ├── factory.py     # ToolFactory
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -130,6 +216,73 @@ finchbot/
 └── utils/              # Utility Functions
     ├── logger.py
     └── model_downloader.py
+```
+
+---
+
+### 1.3 Async Startup Process
+
+FinchBot introduces a fully asynchronous startup architecture, leveraging `asyncio` and `concurrent.futures.ThreadPoolExecutor` to execute time-consuming operations concurrently, significantly improving startup speed.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as CLI (Main Thread)
+    participant Loop as Event Loop
+    participant Pool as Thread Pool
+    participant LLM as LLM Init
+    participant Mem as Memory Store
+    participant Tools as Tool Factory
+
+    CLI->>Loop: Start _run_chat_session_async
+    
+    par Concurrent Init Tasks
+        Loop->>Pool: Submit create_chat_model
+        Pool->>LLM: Load Tiktoken/Schema (Slow)
+        LLM-->>Pool: Return ChatModel
+        
+        Loop->>Pool: Submit SessionMetadataStore
+        Pool->>Mem: Connect SQLite
+        Mem-->>Pool: Return Store
+        
+        Loop->>Pool: Submit get_default_workspace
+        Pool->>Pool: File I/O Check
+    end
+    
+    Loop->>Pool: Submit AgentFactory.create_for_cli
+    Pool->>Tools: create_default_tools
+    Tools-->>Pool: Return Tool List
+    Pool->>Loop: Return Agent & Tools
+    
+    Loop->>CLI: Init Complete, Enter Interaction Loop
+```
+
+### 1.4 Web Interface Interaction Flow
+
+The Web interface communicates with the backend API Server via WebSocket to enable real-time chat and streaming output.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant W as Frontend (React)
+    participant API as API Server (FastAPI)
+    participant Loop as Agent Loop
+    participant Agent as LangGraph Agent
+
+    U->>W: Send Message
+    W->>API: WebSocket (send)
+    API->>Loop: MessageBus (publish)
+    
+    loop Event Loop
+        Loop->>Loop: Consume Message
+        Loop->>Agent: Invoke Agent (stream)
+        Agent-->>Loop: Stream Token/State
+        Loop->>API: MessageBus (publish response)
+    end
+    
+    API-->>W: WebSocket (receive)
+    W-->>U: Render Markdown
 ```
 
 ---
@@ -148,7 +301,7 @@ Agent Core is the brain of FinchBot, responsible for decision-making, planning, 
 * **Agent Core (`core.py`)**: Responsible for Agent runtime logic.
     * **State Management**: Based on `LangGraph`'s `StateGraph`, maintaining conversation state (`messages`)
     * **Persistence**: Uses `SqliteSaver` (`checkpoints.db`) to save state snapshots, supporting resume and history rollback
-* **Context Construction (`context.py`)**: Dynamically assembles the system prompt, including:
+* **ContextBuilder (`context.py`)**: Dynamically assembles the system prompt, including:
     * **Identity**: `SYSTEM.md` (Role definition)
     * **Memory Guide**: `MEMORY_GUIDE.md` (Memory usage guidelines)
     * **Soul**: `SOUL.md` (Soul definition)
@@ -252,6 +405,46 @@ FinchBot implements an advanced **dual-layer memory architecture** designed to s
 | **Classification** | None | Auto-classification + importance scoring |
 | **Update Mechanism** | Full rebuild | Incremental sync |
 
+#### Dual-Layer Storage Architecture
+
+```mermaid
+flowchart TB
+    %% Style Definitions
+    classDef businessLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef serviceLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef storageLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Business [Business Layer]
+        MM[💾 MemoryManager<br/>remember/recall/forget]
+    end
+    class MM businessLayer
+
+    subgraph Services [Service Layer]
+        RS[🔍 RetrievalService<br/>Hybrid Retrieval + RRF]
+        CS[📊 ClassificationService<br/>Auto Classification]
+        IS[⭐ ImportanceScorer<br/>Importance Scoring]
+        ES[🧮 EmbeddingService<br/>FastEmbed Local]
+    end
+    class RS,CS,IS,ES serviceLayer
+
+    subgraph Storage [Storage Layer]
+        direction LR
+        SQLite[(🗄️ SQLiteStore<br/>Source of Truth<br/>Precise Query)]
+        Vector[(🧮 VectorStore<br/>ChromaDB<br/>Semantic Search)]
+        DS[🔄 DataSyncManager<br/>Incremental Sync]
+    end
+    class SQLite,Vector,DS storageLayer
+
+    %% Connections
+    MM --> RS & CS & IS
+    RS --> SQLite & Vector
+    CS --> SQLite
+    IS --> SQLite
+    ES --> Vector
+    
+    SQLite <--> DS <--> Vector
+```
+
 #### Layered Design
 
 1. **Structured Layer (SQLite)**:
@@ -305,6 +498,50 @@ class QueryType(StrEnum):
 * **Lazy Loading**: Default tools (File, Search, etc.) are created by the Factory and automatically registered when the Agent starts.
 * **OpenAI Compatible**: Supports exporting tool definitions in OpenAI Function Calling format.
 
+#### Tool System Architecture
+
+```mermaid
+flowchart TB
+    %% Style Definitions
+    classDef registry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef builtin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef custom fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+
+    subgraph Registry [Tool Registry Center]
+        TR[📋 ToolRegistry<br/>Global Registry]
+        Lock[🔒 Double-checked Lock<br/>Thread Safe Singleton]
+    end
+    class TR,Lock registry
+
+    subgraph BuiltIn [Built-in Tools - 11 Total]
+        direction TB
+        File[📁 File Operations<br/>read_file / write_file<br/>edit_file / list_dir]
+        Web[🌐 Network<br/>web_search / web_extract]
+        Memory[💾 Memory<br/>remember / recall / forget]
+        System[⚙️ System<br/>exec / session_title]
+    end
+    class File,Web,Memory,System builtin
+
+    subgraph Custom [Custom Extension]
+        Inherit[📝 Inherit FinchTool<br/>Implement _run()]
+        Register[✅ Register to Registry]
+    end
+    class Inherit,Register custom
+
+    Agent[🧠 Agent Call]:::agent
+
+    TR --> Lock
+    Lock --> BuiltIn
+    Lock --> Custom
+
+    File --> Agent
+    Web --> Agent
+    Memory --> Agent
+    System --> Agent
+    Register --> Agent
+```
+
 #### Tool Base Class
 
 All tools inherit from the `FinchTool` base class and must implement:
@@ -336,7 +573,29 @@ All tools inherit from the `FinchTool` base class and must implement:
 
 #### Web Search: Three-Engine Fallback Design
 
-FinchBot's web search tool features a clever **three-engine automatic fallback mechanism**, balancing flexibility and out-of-the-box experience:
+```mermaid
+flowchart TD
+    %% Style Definitions
+    classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef fallback fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+
+    Start[🔍 Web Search Request]:::check
+    
+    Check1{TAVILY_API_KEY<br/>Set?}:::check
+    Tavily[🚀 Tavily<br/>Best Quality<br/>AI-Optimized]:::engine
+    
+    Check2{BRAVE_API_KEY<br/>Set?}:::check
+    Brave[🦁 Brave Search<br/>Privacy Friendly<br/>Large Free Tier]:::engine
+    
+    DDG[🦆 DuckDuckGo<br/>Zero Config<br/>Always Available]:::fallback
+
+    Start --> Check1
+    Check1 -->|Yes| Tavily
+    Check1 -->|No| Check2
+    Check2 -->|Yes| Brave
+    Check2 -->|No| DDG
+```
 
 | Priority | Engine | API Key | Features |
 |:---:|:---:|:---:|:---|
@@ -365,7 +624,80 @@ This design lets users **manage sessions without technical details**—whether a
 
 ---
 
-### 2.5 Dynamic Prompt System
+### 2.5 Channel System
+
+**Implementation**: `src/finchbot/channels/`
+
+The Channel system is FinchBot's multi-platform messaging infrastructure, providing unified message routing and platform abstraction.
+
+#### Channel System Architecture
+
+```mermaid
+flowchart LR
+    %% Style Definitions
+    classDef bus fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef manager fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef channel fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Core [Message Routing Core]
+        Bus[📨 MessageBus<br/>Inbound/Outbound Queues]:::bus
+        CM[🎛️ ChannelManager<br/>Channel Coordination]:::manager
+    end
+
+    subgraph Platforms [Platform Channels]
+        direction TB
+        Web[🌐 Web<br/>WebSocket]
+        Discord[💬 Discord<br/>Bot API]
+        DingTalk[📱 DingTalk<br/>Webhook]
+        Feishu[🪶 Feishu<br/>Bot API]
+        WeChat[💚 WeChat<br/>Enterprise]
+        Email[📧 Email<br/>SMTP/IMAP]
+    end
+    class Web,Discord,DingTalk,Feishu,WeChat,Email channel
+
+    Bus <--> CM
+    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
+```
+
+#### Core Components
+
+| Component | File | Function |
+|:---|:---|:---|
+| **BaseChannel** | `base.py` | Abstract base class defining channel interface (start, stop, send, receive) |
+| **MessageBus** | `bus.py` | Async message router managing inbound/outbound message queues |
+| **ChannelManager** | `manager.py` | Coordinates multiple channels, handles message routing and channel lifecycle |
+| **InboundMessage** | `schema.py` | Standardized inbound message format |
+| **OutboundMessage** | `schema.py` | Standardized outbound message format |
+
+#### Message Models
+
+```python
+class InboundMessage(BaseModel):
+    """Inbound message - from platform to Agent"""
+    channel_id: str          # Channel identifier
+    user_id: str             # User identifier
+    content: str             # Message content
+    session_id: str | None   # Session ID
+    metadata: dict = {}      # Additional metadata
+
+class OutboundMessage(BaseModel):
+    """Outbound message - from Agent to platform"""
+    channel_id: str          # Target channel
+    user_id: str             # Target user
+    content: str             # Response content
+    session_id: str | None   # Session ID
+    metadata: dict = {}      # Additional metadata
+```
+
+#### Extending New Channels
+
+1. Inherit `BaseChannel` class
+2. Implement required methods: `start()`, `stop()`, `send()`, `receive()`
+3. Register with `ChannelManager`
+
+---
+
+### 2.6 Dynamic Prompt System
 
 **Implementation**: `src/finchbot/agent/context.py`
 
@@ -385,45 +717,156 @@ This design lets users **manage sessions without technical details**—whether a
 
 ```mermaid
 flowchart TD
-    A[Agent Startup] --> B[Load Bootstrap Files]
-    B --> C[SYSTEM.md]
-    B --> D[MEMORY_GUIDE.md]
-    B --> E[SOUL.md]
-    B --> F[AGENT_CONFIG.md]
+    %% Style Definitions
+    classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef file fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    A([🚀 Agent Startup]):::startEnd --> B[📂 Load Bootstrap Files]:::process
     
-    C --> G[Assemble Prompt]
+    B --> C[SYSTEM.md]:::file
+    B --> D[MEMORY_GUIDE.md]:::file
+    B --> E[SOUL.md]:::file
+    B --> F[AGENT_CONFIG.md]:::file
+
+    C --> G[🔧 Assemble Prompt]:::process
     D --> G
     E --> G
     F --> G
-    
-    G --> H[Load Always-on Skills]
-    H --> I[Build Skill Summary XML]
-    I --> J[Generate Tool Docs]
-    J --> K[Inject Runtime Info]
-    K --> L[Complete System Prompt]
-    
-    L --> M[Send to LLM]
+
+    G --> H[📚 Load Always-on Skills]:::process
+    H --> I[🏗️ Build Skill Summary XML]:::process
+    I --> J[📋 Generate Tool Docs]:::process
+    J --> K[⚙️ Inject Runtime Info]:::process
+    K --> L[📝 Complete System Prompt]:::output
+
+    L --> M([📤 Send to LLM]):::startEnd
+```
+
+---
+
+### 2.7 I18n System (Internationalization)
+
+**Implementation**: `src/finchbot/i18n/`
+
+#### Supported Languages
+
+- `zh-CN`: Simplified Chinese
+- `zh-HK`: Traditional Chinese
+- `en-US`: English
+
+#### Language Fallback Chain
+
+The system implements a smart fallback mechanism:
+```
+zh-CN → zh → en-US
+zh-HK → zh → en-US
+en-US → (no fallback)
+```
+
+#### Configuration Priority
+
+1. Environment variable: `FINCHBOT_LANG`
+2. User config: `~/.finchbot/config.json`
+3. System language detection
+4. Default: `en-US`
+
+---
+
+### 2.8 Configuration System
+
+**Implementation**: `src/finchbot/config/`
+
+Uses Pydantic v2 + Pydantic Settings for type-safe configuration management.
+
+#### Configuration Structure
+
+```
+Config (Root)
+├── language
+├── default_model
+├── agents
+│   └── defaults (Agent defaults)
+├── providers
+│   ├── openai
+│   ├── anthropic
+│   ├── deepseek
+│   ├── moonshot
+│   ├── dashscope
+│   ├── groq
+│   ├── gemini
+│   ├── openrouter
+│   └── custom
+└── tools
+    ├── web.search (Search config)
+    ├── exec (Shell execution config)
+    └── restrict_to_workspace
 ```
 
 ---
 
 ## 3. Data Flow
 
-### 3.1 Conversation Flow
+### 3.1 Complete Data Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant C as Channel
+    participant B as MessageBus
+    participant F as AgentFactory
+    participant A as Agent
+    participant M as MemoryManager
+    participant T as Tools
+    participant L as LLM
+
+    U->>C: Send Message
+    C->>B: InboundMessage
+    B->>F: Get/Create Agent
+    F->>A: Return Compiled Agent
+    
+    Note over A: Build Context
+    A->>M: Recall Relevant Memories
+    M-->>A: Return Context
+    
+    A->>L: Send Request
+    L-->>A: Stream Response
+    
+    alt Tool Call Needed
+        A->>T: Execute Tool
+        T-->>A: Return Result
+        A->>L: Continue with Result
+        L-->>A: Final Response
+    end
+    
+    A->>M: Store New Memories
+    A->>B: OutboundMessage
+    B->>C: Route to Channel
+    C->>U: Display Response
+```
+
+### 3.2 Conversation Flow
 
 ```mermaid
 flowchart LR
-    A[User Input] --> B[CLI Receive]
-    B --> C[Load History Checkpoint]
-    C --> D[ContextBuilder Build Prompt]
-    D --> E[LLM Inference]
-    E --> F{Need Tool?}
-    F -->|No| G[Generate Final Response]
-    F -->|Yes| H[Execute Tool]
-    H --> I[Return Result]
+    %% Style Definitions
+    classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    A[User Input]:::startEnd --> B[CLI Receive]:::process
+    B --> C[Load History Checkpoint]:::process
+    C --> D[ContextBuilder Build Prompt]:::process
+    D --> E[LLM Inference]:::process
+    E --> F{Need Tool?}:::decision
+    F -->|No| G[Generate Final Response]:::process
+    F -->|Yes| H[Execute Tool]:::process
+    H --> I[Return Result]:::process
     I --> E
-    G --> J[Save Checkpoint]
-    J --> K[Display to User]
+    G --> J[Save Checkpoint]:::process
+    J --> K[Display to User]:::startEnd
 ```
 
 1. User input -> Received by CLI
@@ -433,7 +876,7 @@ flowchart LR
 5. If tool call -> Execute tool -> Return result to LLM -> Loop
 6. LLM generates final response -> Display to user
 
-### 3.2 Memory Write Flow (Remember)
+### 3.3 Memory Write Flow (Remember)
 
 1. Agent calls `remember` tool
 2. `MemoryManager` receives content
@@ -443,7 +886,7 @@ flowchart LR
 6. Synchronously calls Embedding service, writing vector to ChromaDB
 7. Records access log
 
-### 3.3 Memory Retrieval Flow (Recall)
+### 3.4 Memory Retrieval Flow (Recall)
 
 1. Agent calls `recall` tool (Query: "What is my API Key")
 2. `RetrievalService` converts query to vector
@@ -461,6 +904,7 @@ Each component has clear responsibility boundaries:
 - `MemoryManager` doesn't directly handle storage details, delegates to `SQLiteStore` and `VectorMemoryStore`
 - `ToolRegistry` only handles registration and lookup, doesn't care about tool implementation
 - `I18n` system is independent of business logic
+- `ChannelManager` coordinates multiple channels, decoupled from Agent core
 
 ### 4.2 Dependency Inversion
 
@@ -513,11 +957,11 @@ Create a `SKILL.md` file in `~/.finchbot/workspace/skills/{skill-name}/`.
 
 Add a new Provider class in `providers/factory.py`.
 
-### 5.4 Adding New Tools
+### 5.4 Adding New Channels
 
-1. Inherit `FinchTool` base class.
-2. Add creation logic in `ToolFactory` (if config injection is needed).
-3. Register with `ToolRegistry`.
+1. Inherit `BaseChannel` class
+2. Implement required methods: `start()`, `stop()`, `send()`, `receive()`
+3. Register with `ChannelManager`
 
 ### 5.5 Custom Memory Retrieval Strategy
 
@@ -536,3 +980,4 @@ FinchBot's architecture design focuses on:
 - **Reliability**: Degradation strategies, retry mechanisms, thread safety
 - **Maintainability**: Type safety, comprehensive logging, modular design
 - **Privacy**: Local processing of sensitive data
+- **Multi-Platform Support**: Channel system supports Web, Discord, DingTalk, Feishu, WeChat, Email

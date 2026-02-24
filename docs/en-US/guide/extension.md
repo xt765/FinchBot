@@ -16,6 +16,18 @@ FinchBot provides powerful extension capabilities, allowing developers to enhanc
 
 Tools are Python code used to perform actual operations (such as calling APIs, processing data, manipulating files, etc.). All tools must inherit from `finchbot.tools.base.FinchTool`.
 
+### Tool Development Process
+
+```mermaid
+flowchart LR
+    %% Style Definitions
+    classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
+
+    A["1️⃣ Create Tool Class<br/>Inherit FinchTool"]:::step --> B["2️⃣ Define Parameters<br/>JSON Schema"]:::step
+    B --> C["3️⃣ Implement Logic<br/>_run / _arun"]:::step
+    C --> D["4️⃣ Register Tool<br/>Factory / Registry"]:::step
+```
+
 ### Step 1: Create Tool Class
 
 Create a new Python file (e.g., `src/finchbot/tools/custom/my_tool.py`) and define the tool class.
@@ -30,13 +42,10 @@ class WeatherTool(FinchTool):
     Allows Agent to query weather conditions for a specified city.
     """
     
-    # Tool name, used when Agent calls
     name: str = "get_weather"
     
-    # Tool description, helps Agent understand when to use this tool
     description: str = "Get current weather for a specific city."
     
-    # Parameter definition (JSON Schema)
     parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
@@ -56,35 +65,32 @@ class WeatherTool(FinchTool):
 
     def _run(self, city: str, unit: str = "celsius") -> str:
         """Synchronous execution logic."""
-        # Implement actual API call logic here
-        # Example return value
         return f"The weather in {city} is Sunny, 25 degrees {unit}."
 
     async def _arun(self, city: str, unit: str = "celsius") -> str:
         """Asynchronous execution logic (optional)."""
-        # If async operations are needed, implement this method
         return self._run(city, unit)
 ```
 
 ### Step 2: Register Tool
 
-**Method A: Modify source code registration (recommended for built-in tools)**
+**Method A: Modify Tool Factory (Recommended for built-in tools)**
 
-Modify `src/finchbot/agent/core.py`:
+Modify `create_default_tools` in `src/finchbot/tools/factory.py`:
 
 ```python
 from finchbot.tools.custom.my_tool import WeatherTool
 
-def _register_default_tools():
-    # ...
-    tools = [
-        # ... existing tools
-        WeatherTool(),  # Add new tool
-    ]
-    # ...
+class ToolFactory:
+    def create_default_tools(self) -> list[BaseTool]:
+        tools: list[BaseTool] = [
+            # ... existing tools
+            WeatherTool(),  # Add new tool instance
+        ]
+        return tools
 ```
 
-**Method B: Runtime registration (recommended for plugins)**
+**Method B: Runtime Registration (Recommended for plugins)**
 
 ```python
 from finchbot.tools.registry import get_global_registry
@@ -97,7 +103,7 @@ registry.register(WeatherTool())
 ### Tool Design Principles
 
 | Principle | Description |
-|:---:|:---|
+| :---: | :--- |
 | **Single Responsibility** | One tool does one thing |
 | **Clear Description** | `description` and `parameters` must be clear, this determines if LLM can call correctly |
 | **Error Handling** | Return meaningful error messages, don't throw exceptions |
@@ -108,7 +114,7 @@ registry.register(WeatherTool())
 The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
 
 | Method | Description | Example |
-|:---:|:---|:---|
+| :---: | :--- | :--- |
 | **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion" |
 | **Agent Modify** | Tell Agent "Change session title to XXX" | Agent calls tool to modify automatically |
 | **Manual Rename** | Press `r` key in session manager to rename | User manually enters new title |
@@ -121,8 +127,6 @@ session_title(action="set", title="New Session Title")
 session_title(action="get")
 ```
 
-This design lets users **manage sessions without technical details**—whether automatic or manual.
-
 ---
 
 ## 2. Writing New Skills
@@ -132,6 +136,22 @@ Skills are Markdown-based documents used to teach Agent how to handle specific t
 ### Out of the Box: Agent Auto-Creates Skills
 
 FinchBot includes a built-in **skill-creator** skill, the ultimate expression of the out-of-the-box philosophy:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant A as Agent
+    participant S as skill-creator
+    participant F as File System
+
+    U->>A: Help me create a translation skill
+    A->>S: Invoke skill-creator skill
+    S->>F: Create skills/translator/SKILL.md
+    F-->>S: Success
+    S-->>A: Return result
+    A-->>U: ✅ Translation skill created, ready to use!
+```
 
 > **Just tell the Agent what skill you want, and it will create it automatically!**
 
@@ -203,23 +223,12 @@ When user requests an analysis report, follow these structure and principles:
 *   Remain objective and neutral.
 *   Use professional terminology, but explain uncommon terms.
 *   Use lists and tables to present data.
-
-## 3. Example
-
-**User**: Please analyze Q1 sales data.
-
-**Agent**:
-# Q1 2024 Sales Data Analysis Report
-
-## Executive Summary
-Sales grew 15% year-over-year this quarter, primarily driven by...
-...
 ```
 
 ### Frontmatter Field Description
 
 | Field | Type | Required | Description |
-|:---|:---|:---:|:---|
+| :--- | :--- | :---: | :--- |
 | `name` | string | ✅ | Skill unique identifier |
 | `description` | string | ✅ | Skill description, used for Agent to decide when to use |
 | `metadata.finchbot.emoji` | string | ❌ | Skill icon |
@@ -229,10 +238,25 @@ Sales grew 15% year-over-year this quarter, primarily driven by...
 
 ### Skill Loading Mechanism
 
+```mermaid
+flowchart TD
+    %% Style Definitions
+    classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    A([🚀 Agent Startup]):::startEnd --> B[📂 Scan skills/ directory]:::process
+    B --> C{always: true?}:::decision
+    C -->|Yes| D[📝 Inject into System Prompt]:::process
+    C -->|No| E[📋 Add to available skills list]:::process
+    D --> F([✅ Skill Ready]):::startEnd
+    E --> F
+```
+
 1. **Auto Discovery**: Agent automatically scans `skills/` directory at startup
 2. **Dynamic Injection**:
     - If `always: true`, skill content is directly appended to System Prompt
-    - If `always: false`, skill's `name` and `description` appear in System Prompt's available skills list. Agent can decide whether to "recall" or "read" to get detailed skill content based on current task
+    - If `always: false`, skill's `name` and `description` appear in System Prompt's available skills list
 
 ---
 
@@ -271,7 +295,6 @@ class MyRetrievalService(RetrievalService):
         **kwargs
     ) -> list[dict]:
         # Custom retrieval logic
-        # E.g., add time decay, personalized ranking, etc.
         results = await super().search(query, query_type, top_k, **kwargs)
         
         # Apply custom ranking
@@ -314,8 +337,32 @@ PROVIDER_FACTORIES = {
 
 ### Tools vs Skills
 
+```mermaid
+flowchart TB
+    %% Style Definitions
+    classDef tool fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef skill fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Tools [Use Tools]
+        T1[Execute Actions<br/>Network/Files/Calculate]:::tool
+        T2[Call External APIs]:::tool
+        T3[Process Data]:::tool
+    end
+
+    subgraph Skills [Use Skills]
+        S1[Follow Processes/Styles]:::skill
+        S2[Teach Thinking Methods]:::skill
+        S3[Define Behavior Standards]:::skill
+    end
+
+    Need{Requirement Type?}
+    
+    Need -->|Execute Operations| Tools
+    Need -->|Guide Behavior| Skills
+```
+
 | Scenario | Use Tools | Use Skills |
-|:---|:---:|:---:|
+| :--- | :---: | :---: |
 | Need to perform actions (network, read files, calculate) | ✅ | ❌ |
 | Need to follow processes or specific styles | ❌ | ✅ |
 | Need to call external APIs | ✅ | ❌ |

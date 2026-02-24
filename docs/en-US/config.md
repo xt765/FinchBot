@@ -2,7 +2,7 @@
 
 FinchBot uses a flexible hierarchical configuration system that supports **configuration files** and **environment variables**.
 
-Priority: **Environment Variables** > **User Config File** (`~/.finchbot/config.json`) > **Default Values**
+**Priority**: **Environment Variables** > **User Config File** (`~/.finchbot/config.json`) > **Default Values**
 
 ## Table of Contents
 
@@ -10,6 +10,7 @@ Priority: **Environment Variables** > **User Config File** (`~/.finchbot/config.
 2. [Environment Variables](#2-environment-variables)
 3. [Quick Setup](#3-quick-setup)
 4. [Example Configurations](#4-example-configurations)
+5. [Advanced Configuration](#5-advanced-configuration)
 
 ---
 
@@ -20,7 +21,7 @@ The user configuration file is located at `~/.finchbot/config.json` by default.
 ### Root Object
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| :--- | :--- | :--- | :--- |
 | `language` | string | `"en-US"` | Interface and prompt language. Supports `zh-CN`, `zh-HK`, `en-US`. |
 | `language_set_by_user` | boolean | `false` | Whether language was manually set by user (for auto-detection). |
 | `default_model` | string | `"gpt-5"` | Default LLM model name to use. |
@@ -32,7 +33,7 @@ The user configuration file is located at `~/.finchbot/config.json` by default.
 ### `agents` Configuration
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| :--- | :--- | :--- | :--- |
 | `defaults.workspace` | string | `~/.finchbot/workspace` | Agent workspace directory. All file operations will be restricted to this directory. |
 | `defaults.model` | string | `"gpt-5"` | Default model to use. |
 | `defaults.temperature` | float | `0.7` | Model temperature (0.0-1.0). 0.0 is most deterministic, 1.0 is most creative. |
@@ -46,7 +47,7 @@ Supported providers: `openai`, `anthropic`, `gemini`, `deepseek`, `moonshot`, `d
 Each provider contains the following fields:
 
 | Field | Type | Description |
-|-------|------|-------------|
+| :--- | :--- | :--- |
 | `api_key` | string | API Key. Recommended to configure via environment variables. |
 | `api_base` | string | API Base URL. For proxies or self-hosted models. |
 | `extra_headers` | dict | Additional request headers (optional). |
@@ -55,22 +56,22 @@ Each provider contains the following fields:
 
 **Built-in Provider List**:
 
-| Provider | Description | Env Var Prefix |
-|----------|-------------|-----------------|
-| `openai` | OpenAI Official | `OPENAI_*` |
-| `anthropic` | Anthropic Claude | `ANTHROPIC_*` |
-| `gemini` | Google Gemini | `GOOGLE_*` |
-| `deepseek` | DeepSeek | `DEEPSEEK_*` |
-| `moonshot` | Moonshot (Kimi) | `MOONSHOT_*` |
-| `dashscope` | Alibaba Cloud Tongyi | `DASHSCOPE_*` |
-| `groq` | Groq | `GROQ_*` |
-| `openrouter` | OpenRouter | `OPENROUTER_*` |
-| `custom` | Custom Providers | None |
+| Provider | Description | Env Var Prefix | Recommended Models |
+| :--- | :--- | :--- | :--- |
+| `openai` | OpenAI Official | `OPENAI_*` | gpt-5, gpt-5.2, o3-mini |
+| `anthropic` | Anthropic Claude | `ANTHROPIC_*` | claude-sonnet-4.5, claude-opus-4.6 |
+| `gemini` | Google Gemini | `GOOGLE_*` | gemini-2.5-flash |
+| `deepseek` | DeepSeek | `DEEPSEEK_*` | deepseek-chat, deepseek-reasoner |
+| `moonshot` | Moonshot (Kimi) | `MOONSHOT_*` | kimi-k1.5, kimi-k2.5 |
+| `dashscope` | Alibaba Cloud Tongyi | `DASHSCOPE_*` | qwen-turbo, qwen-max |
+| `groq` | Groq | `GROQ_*` | llama-4-scout, llama-4-maverick |
+| `openrouter` | OpenRouter | `OPENROUTER_*` | (various models) |
+| `custom` | Custom Providers | None | - |
 
 ### `tools` Configuration
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| :--- | :--- | :--- | :--- |
 | `restrict_to_workspace` | bool | `false` | Whether to restrict file operations to workspace. Recommended to keep enabled for security. |
 | `web.search.max_results` | int | `5` | Maximum number of search results per query. |
 | `web.search.api_key` | string | - | Tavily Search API Key. |
@@ -88,7 +89,7 @@ Nested configuration uses double underscores `__` for separation (Pydantic Setti
 ### LLM Providers
 
 | Provider | API Key Variable | API Base Variable |
-|----------|------------------|-------------------|
+| :--- | :--- | :--- |
 | OpenAI | `OPENAI_API_KEY` | `OPENAI_API_BASE` |
 | Anthropic | `ANTHROPIC_API_KEY` | `ANTHROPIC_API_BASE` |
 | Gemini | `GOOGLE_API_KEY` | - |
@@ -101,7 +102,7 @@ Nested configuration uses double underscores `__` for separation (Pydantic Setti
 ### Search Tools
 
 | Tool | API Key Variable | Note |
-|------|------------------|------|
+| :--- | :--- | :--- |
 | Tavily | `TAVILY_API_KEY` | Best quality, requires API Key |
 | Brave | `BRAVE_API_KEY` | Free tier, requires API Key |
 | DuckDuckGo | - | No API Key required (Fallback) |
@@ -109,7 +110,7 @@ Nested configuration uses double underscores `__` for separation (Pydantic Setti
 ### General Configuration
 
 | Variable Name | Corresponding Config Item | Example |
-|---------------|--------------------------|---------|
+| :--- | :--- | :--- |
 | `FINCHBOT_LANGUAGE` | `language` | `zh-CN` |
 | `FINCHBOT_DEFAULT_MODEL` | `default_model` | `gpt-4o` |
 | `FINCHBOT_AGENTS__DEFAULTS__WORKSPACE` | `agents.defaults.workspace` | `/path/to/workspace` |
@@ -146,7 +147,7 @@ Set in `.env` file (project root):
 OPENAI_API_KEY=sk-...
 OPENAI_API_BASE=https://api.openai.com/v1
 FINCHBOT_LANGUAGE=en-US
-FINCHBOT_DEFAULT_MODEL=gpt-4o
+FINCHBOT_DEFAULT_MODEL=gpt-5
 ```
 
 ---
@@ -158,7 +159,7 @@ FINCHBOT_DEFAULT_MODEL=gpt-4o
 ```json
 {
   "language": "en-US",
-  "default_model": "gpt-4o",
+  "default_model": "gpt-5",
   "providers": {
     "openai": {
       "api_key": "sk-proj-..."
@@ -259,6 +260,80 @@ FINCHBOT_DEFAULT_MODEL=gpt-4o
 
 ---
 
+## 5. Advanced Configuration
+
+### Bootstrap File System
+
+FinchBot uses a file system to manage Agent prompts and behaviors:
+
+```
+~/.finchbot/
+├── config.json         # Main configuration file
+├── SYSTEM.md           # Role definition
+├── MEMORY_GUIDE.md     # Memory usage guide
+├── SOUL.md             # Soul definition (personality)
+├── AGENT_CONFIG.md     # Agent configuration
+└── workspace/
+    ├── checkpoints.db  # Conversation state persistence
+    ├── memories.db     # Memory storage
+    ├── chroma/         # Vector database
+    └── skills/         # Custom skills
+        └── my-skill/
+            └── SKILL.md
+```
+
+### Custom SYSTEM.md
+
+```markdown
+# Role Definition
+
+You are a professional AI assistant named FinchBot.
+
+## Core Capabilities
+- Intelligent conversation and Q&A
+- File operations and management
+- Web search and information extraction
+- Long-term memory management
+
+## Behavioral Guidelines
+- Always maintain professionalism and friendliness
+- Proactively use tools to solve problems
+- Reasonably use memory functions to store important information
+```
+
+### Custom SOUL.md
+
+```markdown
+# Soul Definition
+
+## Personality Traits
+- Enthusiastic and helpful
+- Rigorous and detail-oriented
+- Eager to learn and continuously improve
+
+## Communication Style
+- Concise and to the point
+- Appropriately use emojis for approachability
+- Provide detailed explanations when necessary
+```
+
+### Log Level Configuration
+
+Control log output via command-line arguments:
+
+```bash
+# Default: WARNING and above
+finchbot chat
+
+# INFO and above
+finchbot -v chat
+
+# DEBUG and above (debug mode)
+finchbot -vv chat
+```
+
+---
+
 ## Verifying Configuration
 
 View currently configured providers:
@@ -277,6 +352,11 @@ uv run finchbot chat
 
 ## Configuration File Locations
 
-- User config: `~/.finchbot/config.json`
-- Environment variables: `.env` in project root (optional)
-- Workspace: `~/.finchbot/workspace/` (default)
+| File/Directory | Path | Description |
+| :--- | :--- | :--- |
+| User config | `~/.finchbot/config.json` | Main configuration file |
+| Environment variables | `.env` in project root | Optional |
+| Workspace | `~/.finchbot/workspace/` | Default working directory |
+| Memory database | `~/.finchbot/workspace/memories.db` | SQLite storage |
+| Vector database | `~/.finchbot/workspace/chroma/` | ChromaDB |
+| Conversation state | `~/.finchbot/workspace/checkpoints.db` | LangGraph persistence |

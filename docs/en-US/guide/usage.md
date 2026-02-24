@@ -17,8 +17,18 @@ uv run finchbot chat
 
 These three commands cover FinchBot's core workflow:
 
+```mermaid
+flowchart LR
+    %% Style Definitions
+    classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
+    classDef arrow fill:none,stroke:#1565c0,stroke-width:2px;
+
+    A["1️⃣ finchbot config<br/>Configure API Keys"]:::step --> B["2️⃣ finchbot sessions<br/>Manage Sessions"]:::step
+    B --> C["3️⃣ finchbot chat<br/>Start Chatting"]:::step
+```
+
 | Command | Function | Description |
-|---------|----------|-------------|
+| :--- | :--- | :--- |
 | `finchbot config` | Interactive configuration | Configure LLM providers, API keys, default model, web search, etc. |
 | `finchbot sessions` | Session management | Full-screen interface to create, rename, delete sessions, view history |
 | `finchbot chat` | Start conversation | Launch interactive chat, auto-loads the last active session |
@@ -27,7 +37,9 @@ These three commands cover FinchBot's core workflow:
 
 ## 1. Startup & Basic Interaction
 
-### Start FinchBot
+### 1.1 CLI Interface
+
+#### Start FinchBot
 
 ```bash
 finchbot chat
@@ -39,7 +51,7 @@ Or use `uv run`:
 uv run finchbot chat
 ```
 
-### Specify Session
+#### Specify Session
 
 You can specify a session ID to continue a previous conversation or start a new one:
 
@@ -47,27 +59,65 @@ You can specify a session ID to continue a previous conversation or start a new 
 finchbot chat --session "project-alpha"
 ```
 
-If not specified, the system will automatically load the last active session.
-
-### Specify Model
+#### Specify Model
 
 ```bash
-finchbot chat --model "gpt-4o"
+finchbot chat --model "gpt-5"
 ```
 
-### Specify Workspace
+### 1.2 Web Interface (Beta)
+
+FinchBot now supports a modern Web interface.
+
+```mermaid
+flowchart TB
+    %% Style Definitions
+    classDef backend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef user fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    subgraph Backend [Backend Service]
+        API[FastAPI<br/>:8000]:::backend
+        WS[WebSocket<br/>Real-time]:::backend
+    end
+
+    subgraph Frontend [Frontend Interface]
+        React[React + Vite<br/>:5173]:::frontend
+        MD[Markdown Rendering]:::frontend
+    end
+
+    U[👤 User]:::user --> React
+    React <--> WS
+    WS <--> API
+
+    API --> React
+    React --> MD
+    MD --> U
+```
+
+#### Start Backend Server
 
 ```bash
-finchbot chat --workspace "~/my-project"
+uv run finchbot serve
 ```
 
-### Interactive Mode
+Server will start at `http://127.0.0.1:8000`.
 
-Once in the chat interface, you can type natural language to talk to the Agent.
+#### Start Frontend Interface
 
-- **Input**: Type text and press Enter.
-- **Newline**: The CLI is currently single-line input. For long text, consider sending in segments or using file reading tools.
-- **Exit**: Type `exit`, `quit`, `:q` or `q` to exit.
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser to start chatting.
+
+Web Interface Features:
+- Real-time streaming output
+- Markdown rich text rendering
+- Code highlighting
+- Auto-loading history
 
 ---
 
@@ -140,7 +190,7 @@ Or start `finchbot chat` without arguments when no history sessions exist.
 ### Controls
 
 | Key | Action |
-|-----|--------|
+| :--- | :--- |
 | ↑ / ↓ | Navigate sessions |
 | Enter | Enter selected session |
 | r | Rename selected session |
@@ -153,7 +203,7 @@ Or start `finchbot chat` without arguments when no history sessions exist.
 The session list shows the following information:
 
 | Column | Description |
-|--------|-------------|
+| :--- | :--- |
 | ID | Session unique identifier |
 | Title | Session title (auto-generated or manually set) |
 | Messages | Total messages in session |
@@ -178,7 +228,7 @@ This will launch an interactive interface to configure:
 ### Configuration Options
 
 | Option | Description |
-|--------|-------------|
+| :--- | :--- |
 | Language | Interface language (Chinese/English) |
 | LLM Provider | OpenAI, Anthropic, DeepSeek, etc. |
 | API Key | API Key for each provider |
@@ -189,7 +239,7 @@ This will launch an interactive interface to configure:
 ### Supported LLM Providers
 
 | Provider | Description |
-|----------|-------------|
+| :--- | :--- |
 | OpenAI | GPT-5, GPT-5.2, O3-mini |
 | Anthropic | Claude Sonnet 4.5, Claude Opus 4.6 |
 | DeepSeek | DeepSeek Chat, DeepSeek Reasoner |
@@ -252,10 +302,39 @@ The system will automatically detect your network environment and choose the bes
 
 FinchBot includes 11 built-in tools across four categories:
 
+```mermaid
+flowchart TB
+    %% Style Definitions
+    classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Tools [11 Built-in Tools]
+        File[📁 File Operations]:::category
+        Web[🌐 Network]:::category
+        Memory[💾 Memory]:::category
+        System[⚙️ System]:::category
+    end
+
+    File --> F1[read_file]:::tool
+    File --> F2[write_file]:::tool
+    File --> F3[edit_file]:::tool
+    File --> F4[list_dir]:::tool
+
+    Web --> W1[web_search]:::tool
+    Web --> W2[web_extract]:::tool
+
+    Memory --> M1[remember]:::tool
+    Memory --> M2[recall]:::tool
+    Memory --> M3[forget]:::tool
+
+    System --> S1[exec]:::tool
+    System --> S2[session_title]:::tool
+```
+
 ### File Operation Tools
 
 | Tool | Description | Use Case |
-|------|-------------|----------|
+| :--- | :--- | :--- |
 | `read_file` | Read file contents | View code, config files |
 | `write_file` | Write file (overwrite) | Create new files |
 | `edit_file` | Edit file (replace) | Modify specific parts of existing files |
@@ -272,7 +351,7 @@ FinchBot includes 11 built-in tools across four categories:
 ### Network Tools
 
 | Tool | Description | Use Case |
-|------|-------------|----------|
+| :--- | :--- | :--- |
 | `web_search` | Search the internet | Get latest info, verify facts |
 | `web_extract` | Extract web page content | Get full web page content |
 
@@ -291,7 +370,7 @@ FinchBot includes 11 built-in tools across four categories:
 ### Memory Management Tools
 
 | Tool | Description | Use Case |
-|------|-------------|----------|
+| :--- | :--- | :--- |
 | `remember` | Save memory | Record user info, preferences |
 | `recall` | Retrieve memory | Recall previous information |
 | `forget` | Delete memory | Clear outdated or incorrect info |
@@ -299,7 +378,7 @@ FinchBot includes 11 built-in tools across four categories:
 #### Memory Categories
 
 | Category | Description | Example |
-|----------|-------------|---------|
+| :--- | :--- | :--- |
 | personal | Personal information | Name, age, address |
 | preference | User preferences | Likes, habits |
 | work | Work-related | Projects, tasks, meetings |
@@ -311,7 +390,7 @@ FinchBot includes 11 built-in tools across four categories:
 #### Retrieval Strategies (QueryType)
 
 | Strategy | Weights | Use Case |
-|----------|---------|----------|
+| :--- | :--- | :--- |
 | `factual` | Keyword 0.8 / Semantic 0.2 | "What's my email" |
 | `conceptual` | Keyword 0.2 / Semantic 0.8 | "What food do I like" |
 | `complex` | Keyword 0.5 / Semantic 0.5 | Complex queries (default) |
@@ -322,7 +401,7 @@ FinchBot includes 11 built-in tools across four categories:
 ### System Tools
 
 | Tool | Description | Use Case |
-|------|-------------|----------|
+| :--- | :--- | :--- |
 | `exec` | Execute shell commands | Batch operations, system commands |
 | `session_title` | Manage session title | Get/set session title |
 
@@ -335,7 +414,7 @@ FinchBot uses an editable Bootstrap file system to define Agent behavior. These 
 ### Bootstrap Files
 
 | File | Description |
-|------|-------------|
+| :--- | :--- |
 | `SYSTEM.md` | System prompt, defines Agent's basic behavior |
 | `MEMORY_GUIDE.md` | Memory system usage guide |
 | `SOUL.md` | Agent's self-awareness and personality traits |
@@ -377,7 +456,7 @@ You are FinchBot, a professional Python development assistant.
 The `finchbot` command supports the following global options:
 
 | Option | Description |
-|--------|-------------|
+| :--- | :--- |
 | `--help` | Show help message |
 | `--version` | Show version number |
 | `-v` | Show INFO and above logs |
@@ -398,7 +477,7 @@ finchbot chat -vv
 ## 9. Command Reference
 
 | Command | Description |
-|---------|-------------|
+| :--- | :--- |
 | `finchbot chat` | Start interactive chat session |
 | `finchbot chat -s <id>` | Start/continue specific session |
 | `finchbot chat -m <model>` | Use specified model |
@@ -413,7 +492,7 @@ finchbot chat -vv
 ## 10. Chat Commands Reference
 
 | Command | Description |
-|---------|-------------|
+| :--- | :--- |
 | `/history` | Show session history (with indices) |
 | `/rollback <n>` | Rollback to message n |
 | `/rollback <n> <new_id>` | Create branch session |

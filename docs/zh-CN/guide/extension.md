@@ -16,6 +16,18 @@ FinchBot 提供了强大的扩展能力，允许开发者通过 **添加新工�
 
 工具是 Python 代码，用于执行实际操作（如调用 API、处理数据、操作文件等）。所有工具必须继承自 `finchbot.tools.base.FinchTool`。
 
+### 工具开发流程
+
+```mermaid
+flowchart LR
+    %% 样式定义
+    classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:10,ry:10;
+
+    A["1️⃣ 创建工具类<br/>继承 FinchTool"]:::step --> B["2️⃣ 定义参数<br/>JSON Schema"]:::step
+    B --> C["3️⃣ 实现逻辑<br/>_run / _arun"]:::step
+    C --> D["4️⃣ 注册工具<br/>Factory / Registry"]:::step
+```
+
 ### 步骤 1: 创建工具类
 
 创建一个新的 Python 文件（例如 `src/finchbot/tools/custom/my_tool.py`），并定义工具类。
@@ -30,13 +42,10 @@ class WeatherTool(FinchTool):
     允许 Agent 查询指定城市的天气情况。
     """
     
-    # 工具名称，Agent 调用时使用
     name: str = "get_weather"
     
-    # 工具描述，帮助 Agent 理解何时使用该工具
     description: str = "Get current weather for a specific city."
     
-    # 参数定义 (JSON Schema)
     parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
@@ -56,32 +65,29 @@ class WeatherTool(FinchTool):
 
     def _run(self, city: str, unit: str = "celsius") -> str:
         """同步执行逻辑."""
-        # 这里实现实际的 API 调用逻辑
-        # 示例返回值
         return f"The weather in {city} is Sunny, 25 degrees {unit}."
 
     async def _arun(self, city: str, unit: str = "celsius") -> str:
         """异步执行逻辑 (可选)."""
-        # 如果需要异步操作，请实现此方法
         return self._run(city, unit)
 ```
 
 ### 步骤 2: 注册工具
 
-**方法 A: 修改源码注册 (推荐用于内置工具)**
+**方法 A: 修改工厂类 (推荐用于内置工具)**
 
-修改 `src/finchbot/agent/core.py`:
+修改 `src/finchbot/tools/factory.py` 中的 `create_default_tools` 方法:
 
 ```python
 from finchbot.tools.custom.my_tool import WeatherTool
 
-def _register_default_tools():
-    # ...
-    tools = [
-        # ... 现有工具
-        WeatherTool(),  # 添加新工具
-    ]
-    # ...
+class ToolFactory:
+    def create_default_tools(self) -> list[BaseTool]:
+        tools: list[BaseTool] = [
+            # ... 现有工具
+            WeatherTool(),  # 添加新工具实例
+        ]
+        return tools
 ```
 
 **方法 B: 运行时注册 (推荐用于插件)**
@@ -97,7 +103,7 @@ registry.register(WeatherTool())
 ### 工具设计原则
 
 | 原则 | 说明 |
-|:---:|:---|
+| :---: | :--- |
 | **单一职责** | 一个工具只做一件事 |
 | **清晰描述** | `description` 和 `parameters` 必须清晰，这决定了 LLM 能否正确调用 |
 | **错误处理** | 返回有意义的错误信息，而非抛出异常 |
@@ -108,7 +114,7 @@ registry.register(WeatherTool())
 `session_title` 是一个体现开箱即用理念的工具：
 
 | 操作方式 | 说明 | 示例 |
-|:---:|:---|:---|
+| :---: | :--- | :--- |
 | **自动生成** | 对话 2-3 轮后，AI 自动根据内容生成标题 | "Python 异步编程讨论" |
 | **Agent 修改** | 告诉 Agent "把会话标题改成 XXX" | Agent 调用工具自动修改 |
 | **手动重命名** | 在会话管理器中按 `r` 键重命名 | 用户手动输入新标题 |
@@ -121,8 +127,6 @@ session_title(action="set", title="新会话标题")
 session_title(action="get")
 ```
 
-这个设计让用户**无需关心技术细节**，无论是自动还是手动，都能轻松管理会话。
-
 ---
 
 ## 2. 编写新技能
@@ -132,6 +136,22 @@ session_title(action="get")
 ### 开箱即用：Agent 自动创建技能
 
 FinchBot 内置了 **skill-creator** 技能，这是开箱即用理念的极致体现：
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant A as Agent
+    participant S as skill-creator
+    participant F as 文件系统
+
+    U->>A: 帮我创建一个翻译技能
+    A->>S: 调用 skill-creator 技能
+    S->>F: 创建 skills/translator/SKILL.md
+    F-->>S: 创建成功
+    S-->>A: 返回结果
+    A-->>U: ✅ 已创建翻译技能，可以直接使用！
+```
 
 > **只需告诉 Agent 你想要什么技能，Agent 就会自动创建好！**
 
@@ -203,23 +223,12 @@ metadata:
 *   保持客观、中立。
 *   使用专业术语，但对生僻词进行解释。
 *   多使用列表和表格来展示数据。
-
-## 3. 示例
-
-**用户**: 请分析一下 Q1 的销售数据。
-
-**Agent**:
-# 2024年第一季度销售数据分析报告
-
-## 摘要
-本季度销售额同比增长 15%，主要由...
-...
 ```
 
 ### Frontmatter 字段说明
 
 | 字段 | 类型 | 必填 | 说明 |
-|:---|:---|:---:|:---|
+| :--- | :--- | :---: | :--- |
 | `name` | string | ✅ | 技能唯一标识符 |
 | `description` | string | ✅ | 技能描述，用于 Agent 决定何时使用 |
 | `metadata.finchbot.emoji` | string | ❌ | 技能图标 |
@@ -229,10 +238,25 @@ metadata:
 
 ### 技能加载机制
 
+```mermaid
+flowchart TD
+    %% 样式定义
+    classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    A([🚀 Agent 启动]):::startEnd --> B[📂 扫描 skills/ 目录]:::process
+    B --> C{always: true?}:::decision
+    C -->|是| D[📝 直接注入 System Prompt]:::process
+    C -->|否| E[📋 添加到可用技能列表]:::process
+    D --> F([✅ 技能就绪]):::startEnd
+    E --> F
+```
+
 1. **自动发现**: Agent 启动时会自动扫描 `skills/` 目录
 2. **动态注入**:
     - 如果 `always: true`，技能内容会被直接拼接到 System Prompt 中
-    - 如果 `always: false`，技能的 `name` 和 `description` 会出现在 System Prompt 的可用技能列表中。Agent 可以根据当前任务决定是否通过"回忆"或"阅读"来获取技能的详细内容
+    - 如果 `always: false`，技能的 `name` 和 `description` 会出现在 System Prompt 的可用技能列表中
 
 ---
 
@@ -271,7 +295,6 @@ class MyRetrievalService(RetrievalService):
         **kwargs
     ) -> list[dict]:
         # 自定义检索逻辑
-        # 例如：添加时间衰减、个性化排序等
         results = await super().search(query, query_type, top_k, **kwargs)
         
         # 应用自定义排序
@@ -314,8 +337,32 @@ PROVIDER_FACTORIES = {
 
 ### 工具 vs 技能
 
+```mermaid
+flowchart TB
+    %% 样式定义
+    classDef tool fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef skill fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Tools [使用工具]
+        T1[执行动作<br/>联网/读文件/计算]:::tool
+        T2[调用外部 API]:::tool
+        T3[处理数据]:::tool
+    end
+
+    subgraph Skills [使用技能]
+        S1[遵循流程/风格]:::skill
+        S2[教导思考方式]:::skill
+        S3[定义行为规范]:::skill
+    end
+
+    Need{需求类型?}
+    
+    Need -->|执行操作| Tools
+    Need -->|指导行为| Skills
+```
+
 | 场景 | 使用工具 | 使用技能 |
-|:---|:---:|:---:|
+| :--- | :---: | :---: |
 | 需要执行动作（联网、读文件、计算） | ✅ | ❌ |
 | 需要遵循流程或特定风格 | ❌ | ✅ |
 | 需要调用外部 API | ✅ | ❌ |

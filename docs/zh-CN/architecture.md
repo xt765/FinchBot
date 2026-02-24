@@ -14,80 +14,166 @@
 
 ## 1. 总体架构
 
-FinchBot 采用 **LangChain v1.2** + **LangGraph v1.0** 构建，是一个具备持久化记忆和动态工具调度的 Agent 系统。系统主要由三个核心部分组成：
+FinchBot 采用 **LangChain v1.2** + **LangGraph v1.0** 构建，是一个具备持久化记忆、动态工具调度、多平台消息支持和**全异步并发启动**能力的 Agent 系统。系统主要由四个核心部分组成：
 
-1. **Agent Core (大脑)**: 负责决策、规划和工具调度
-2. **Memory System (记忆)**: 负责长期信息的存储与检索
-3. **Tool Ecosystem (工具)**: 负责与外部世界（文件系统、网络、命令行）交互
+1. **Agent Core (大脑)**: 负责决策、规划和工具调度，支持异步流式输出
+2. **Memory System (记忆)**: 负责长期信息的存储与检索，采用 SQLite + FastEmbed + ChromaDB 混合架构
+3. **Tool Ecosystem (工具)**: 负责与外部世界交互，支持懒加载和线程池并发初始化
+4. **Channel System (通道)**: 负责多平台消息路由，支持 Web、Discord、钉钉、飞书等
+
+### 1.1 整体架构图
 
 ```mermaid
 graph TD
-    User[用户] --> CLI[命令行界面]
-    CLI --> Factory[Agent Factory]
-    Factory --> Agent[Agent Core]
+    %% 样式定义
+    classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef factoryLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef coreLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+    classDef memoryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef toolLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef channelLayer fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b;
+    classDef infraLayer fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#00695c;
 
-    subgraph Core
-        Planner[规划器]
-        Executor[执行器]
-        ContextBuilder[上下文构建器]
-        ConfigMgr[配置管理器]
+    %% 用户交互层
+    subgraph UserLayer [用户交互层]
+        direction LR
+        CLI[🖥️ CLI 界面]
+        WebUI[🌐 Web 界面]
+        API[🔌 REST API]
     end
+    class CLI,WebUI,API userLayer
 
-    Agent --> ContextBuilder
-    ContextBuilder --> SystemPrompt[系统提示词]
-
-    Factory --> ToolFactory[Tool Factory]
-    ToolFactory --> ToolSet[工具集]
-
-    Agent --> MemoryMgr[记忆系统]
-    subgraph MemSys
-        Manager[记忆管理器]
-        SQLite[(SQLite 存储)]
-        Vector[(ChromaDB 向量)]
-        Sync[数据同步]
-        Classify[分类服务]
-        Importance[重要性评分]
-        Retrieval[检索服务]
+    %% 通道系统
+    subgraph ChannelSystem [通道系统 - 多平台消息]
+        direction TB
+        Bus[📨 MessageBus<br/>异步路由器]
+        CM[🎛️ ChannelManager]
+        
+        Bus <--> CM
+        
+        subgraph Channels [平台通道]
+            WebCh[Web]
+            DiscordCh[Discord]
+            DingTalkCh[钉钉]
+            FeishuCh[飞书]
+            WeChatCh[微信]
+            EmailCh[邮件]
+        end
+        
+        CM <--> Channels
     end
+    class Bus,CM channelLayer
+    class WebCh,DiscordCh,DingTalkCh,FeishuCh,WeChatCh,EmailCh channelLayer
 
-    Manager --> SQLite
-    Manager --> Vector
-    Manager --> Classify
-    Manager --> Importance
-    Manager --> Retrieval
-    SQLite <--> Sync <--> Vector
-
-    Agent --> ToolSet[工具集]
-    subgraph ToolSys
-        Registry[工具注册表]
-        File[文件操作]
-        Web[网络搜索]
-        Shell[Shell 执行]
-        Custom[自定义工具]
+    %% 工厂层
+    subgraph FactoryLayer [工厂层 - 组件装配]
+        direction LR
+        AF[🏭 AgentFactory<br/>Agent 装配]
+        TF[🔧 ToolFactory<br/>工具创建]
     end
+    class AF,TF factoryLayer
 
-    Registry --> File
-    Registry --> Web
-    Registry --> Shell
-    Registry --> Custom
+    %% Agent 核心
+    subgraph AgentCore [Agent 核心 - 智能引擎]
+        direction TB
+        Agent[🧠 LangGraph Agent]
+        CB[📝 ContextBuilder]
+        SP[📄 系统提示词]
+        
+        Agent --> CB
+        CB --> SP
+    end
+    class Agent,CB,SP coreLayer
 
-    Agent --> I18n[国际化]
+    %% 记忆系统
+    subgraph MemorySystem [记忆系统 - 双层存储]
+        direction TB
+        MM[💾 MemoryManager]
+        
+        subgraph Services [服务层]
+            RS[🔍 RetrievalService]
+            CS[📊 ClassificationService]
+            IS[⭐ ImportanceScorer]
+        end
+        
+        subgraph Storage [存储层]
+            SQLite[(🗄️ SQLite<br/>真相源)]
+            Vector[(🧮 VectorStore<br/>语义检索)]
+        end
+        
+        MM --> RS & CS & IS
+        RS --> SQLite & Vector
+        SQLite <--> Vector
+    end
+    class MM,RS,CS,IS,SQLite,Vector memoryLayer
+
+    %% 工具生态
+    subgraph ToolEcosystem [工具生态 - 11 个内置工具]
+        direction TB
+        TR[📋 ToolRegistry]
+        
+        subgraph BuiltInTools [内置工具]
+            FileTools[📁 文件操作<br/>read/write/edit/list]
+            WebTools[🌐 网络<br/>search/extract]
+            MemTools[💾 记忆<br/>remember/recall/forget]
+            SysTools[⚙️ 系统<br/>exec/session_title]
+        end
+        
+        TR --> BuiltInTools
+    end
+    class TR,FileTools,WebTools,MemTools,SysTools toolLayer
+
+    %% LLM 提供商
+    subgraph LLMProviders [LLM 提供商 - 多模型支持]
+        direction LR
+        OpenAI[OpenAI]
+        Anthropic[Anthropic]
+        DeepSeek[DeepSeek]
+        Gemini[Gemini]
+        Groq[Groq]
+        Moonshot[Moonshot]
+    end
+    class OpenAI,Anthropic,DeepSeek,Gemini,Groq,Moonshot infraLayer
+
+    %% 连接
+    CLI & WebUI --> Bus
+    API --> AF
+    
+    Bus --> AF
+    AF --> Agent
+    AF --> TF
+    TF --> TR
+    
+    Agent <--> MM
+    Agent <--> TR
+    Agent --> OpenAI & Anthropic & DeepSeek & Gemini & Groq & Moonshot
 ```
 
-### 1.1 目录结构
+### 1.2 目录结构
 
 ```
 finchbot/
 ├── agent/              # Agent 核心
-│   ├── core.py        # Agent 创建与运行
-│   ├── factory.py     # Agent 工厂
-│   ├── context.py     # 上下文构建
-│   └── skills.py      # 技能系统
+│   ├── core.py        # Agent 创建与运行（异步优化）
+│   ├── factory.py     # AgentFactory（线程池并发）
+│   ├── context.py     # ContextBuilder 上下文构建
+│   └── skills.py      # SkillsLoader 技能加载器
+├── channels/           # 多平台消息通道
+│   ├── base.py        # BaseChannel 抽象基类
+│   ├── bus.py         # MessageBus 异步路由器
+│   ├── manager.py     # ChannelManager 协调器
+│   └── schema.py      # InboundMessage/OutboundMessage 模型
 ├── cli/                # 命令行界面
-│   ├── chat_session.py
+│   ├── chat_session.py # 异步会话管理
 │   ├── config_manager.py
 │   ├── providers.py
 │   └── ui.py
+├── server/             # API 服务器
+│   ├── main.py        # FastAPI 应用
+│   └── loop.py        # AgentLoop 事件循环
+├── web/                # Web 前端 (React + Vite)
+│   ├── src/
+│   └── package.json
 ├── config/             # 配置管理
 │   ├── loader.py
 │   └── schema.py
@@ -120,7 +206,7 @@ finchbot/
 ├── tools/              # 工具系统
 │   ├── base.py
 │   ├── registry.py
-│   ├── factory.py     # 工具工厂
+│   ├── factory.py     # ToolFactory 工具工厂
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -130,6 +216,73 @@ finchbot/
 └── utils/              # 工具函数
     ├── logger.py
     └── model_downloader.py
+```
+
+---
+
+### 1.3 异步启动流程
+
+FinchBot 引入了全异步的启动架构，通过 `asyncio` 和 `concurrent.futures.ThreadPoolExecutor` 并发执行耗时操作，显著提升启动速度。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as 命令行 (主线程)
+    participant Loop as 事件循环
+    participant Pool as 线程池
+    participant LLM as LLM 初始化
+    participant Mem as 记忆存储
+    participant Tools as 工具工厂
+
+    CLI->>Loop: 启动 _run_chat_session_async
+    
+    par 并发初始化任务
+        Loop->>Pool: 提交 create_chat_model
+        Pool->>LLM: 加载 Tiktoken/Schema (耗时)
+        LLM-->>Pool: 返回 ChatModel
+        
+        Loop->>Pool: 提交 SessionMetadataStore
+        Pool->>Mem: 连接 SQLite
+        Mem-->>Pool: 返回 Store
+        
+        Loop->>Pool: 提交 get_default_workspace
+        Pool->>Pool: 文件 I/O 检查
+    end
+    
+    Loop->>Pool: 提交 AgentFactory.create_for_cli
+    Pool->>Tools: create_default_tools
+    Tools-->>Pool: 返回 Tool List
+    Pool->>Loop: 返回 Agent & Tools
+    
+    Loop->>CLI: 初始化完成，进入交互循环
+```
+
+### 1.4 Web 界面交互流程
+
+Web 界面通过 WebSocket 与后端 API Server 通信，实现实时聊天和流式输出。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant W as 前端 (React)
+    participant API as API Server (FastAPI)
+    participant Loop as Agent Loop
+    participant Agent as LangGraph Agent
+
+    U->>W: 发送消息
+    W->>API: WebSocket (send)
+    API->>Loop: MessageBus (publish)
+    
+    loop 事件循环
+        Loop->>Loop: 消费消息
+        Loop->>Agent: 调用 Agent (stream)
+        Agent-->>Loop: 流式返回 Token/State
+        Loop->>API: MessageBus (publish response)
+    end
+    
+    API-->>W: WebSocket (receive)
+    W-->>U: 实时渲染 Markdown
 ```
 
 ---
@@ -148,7 +301,7 @@ Agent Core 是 FinchBot 的大脑，负责决策、规划和工具调度。引�
 * **Agent Core (`core.py`)**: 负责 Agent 的运行时逻辑。
     * **状态管理**: 基于 `LangGraph` 的 `StateGraph`，维护对话状态 (`messages`)
     * **持久化**: 使用 `SqliteSaver` (`checkpoints.db`) 保存状态快照，支持断点续传和历史回溯
-* **上下文构建 (`context.py`)**: 动态组合系统提示词，包括：
+* **ContextBuilder (`context.py`)**: 动态组合系统提示词，包括：
     * **Identity**: `SYSTEM.md` (角色设定)
     * **Memory Guide**: `MEMORY_GUIDE.md` (记忆使用准则)
     * **Soul**: `SOUL.md` (灵魂设定)
@@ -252,6 +405,46 @@ FinchBot 实现了先进的 **双层记忆架构**，旨在解决 LLM 上下文�
 | **分类能力** | 无 | 自动分类 + 重要性评分 |
 | **更新机制** | 全量重建 | 增量同步 |
 
+#### 双层存储架构
+
+```mermaid
+flowchart TB
+    %% 样式定义
+    classDef businessLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef serviceLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef storageLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Business [业务层]
+        MM[💾 MemoryManager<br/>remember/recall/forget]
+    end
+    class MM businessLayer
+
+    subgraph Services [服务层]
+        RS[🔍 RetrievalService<br/>混合检索 + RRF]
+        CS[📊 ClassificationService<br/>自动分类]
+        IS[⭐ ImportanceScorer<br/>重要性评分]
+        ES[🧮 EmbeddingService<br/>FastEmbed 本地]
+    end
+    class RS,CS,IS,ES serviceLayer
+
+    subgraph Storage [存储层]
+        direction LR
+        SQLite[(🗄️ SQLiteStore<br/>真相源<br/>精确查询)]
+        Vector[(🧮 VectorStore<br/>ChromaDB<br/>语义检索)]
+        DS[🔄 DataSyncManager<br/>增量同步]
+    end
+    class SQLite,Vector,DS storageLayer
+
+    %% 连接
+    MM --> RS & CS & IS
+    RS --> SQLite & Vector
+    CS --> SQLite
+    IS --> SQLite
+    ES --> Vector
+    
+    SQLite <--> DS <--> Vector
+```
+
 #### 分层设计
 
 1. **结构化层 (SQLite)**:
@@ -318,6 +511,50 @@ class MemoryManager:
 * **Lazy Loading**: 默认工具（文件、搜索等）在 Agent 启动时由 Factory 创建并自动注册。
 * **OpenAI 兼容**: 支持导出工具定义为 OpenAI Function Calling 格式。
 
+#### 工具系统架构
+
+```mermaid
+flowchart TB
+    %% 样式定义
+    classDef registry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef builtin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef custom fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+
+    subgraph Registry [工具注册中心]
+        TR[📋 ToolRegistry<br/>全局注册表]
+        Lock[🔒 双重检查锁<br/>线程安全单例]
+    end
+    class TR,Lock registry
+
+    subgraph BuiltIn [内置工具 - 11 个]
+        direction TB
+        File[📁 文件操作<br/>read_file / write_file<br/>edit_file / list_dir]
+        Web[🌐 网络<br/>web_search / web_extract]
+        Memory[💾 记忆<br/>remember / recall / forget]
+        System[⚙️ 系统<br/>exec / session_title]
+    end
+    class File,Web,Memory,System builtin
+
+    subgraph Custom [自定义扩展]
+        Inherit[📝 继承 FinchTool<br/>实现 _run()]
+        Register[✅ 注册到 Registry]
+    end
+    class Inherit,Register custom
+
+    Agent[🧠 Agent 调用]:::agent
+
+    TR --> Lock
+    Lock --> BuiltIn
+    Lock --> Custom
+
+    File --> Agent
+    Web --> Agent
+    Memory --> Agent
+    System --> Agent
+    Register --> Agent
+```
+
 #### 工具基类
 
 所有工具继承自 `FinchTool` 基类，必须实现：
@@ -349,7 +586,29 @@ class MemoryManager:
 
 #### 网页搜索：三引擎降级设计
 
-FinchBot 的网页搜索工具采用**三引擎自动降级机制**，兼顾灵活性和开箱即用体验：
+```mermaid
+flowchart TD
+    %% 样式定义
+    classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef fallback fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+
+    Start[🔍 网页搜索请求]:::check
+    
+    Check1{TAVILY_API_KEY<br/>已设置?}:::check
+    Tavily[🚀 Tavily<br/>质量最佳<br/>AI 优化]:::engine
+    
+    Check2{BRAVE_API_KEY<br/>已设置?}:::check
+    Brave[🦁 Brave Search<br/>隐私友好<br/>免费额度大]:::engine
+    
+    DDG[🦆 DuckDuckGo<br/>零配置<br/>始终可用]:::fallback
+
+    Start --> Check1
+    Check1 -->|是| Tavily
+    Check1 -->|否| Check2
+    Check2 -->|是| Brave
+    Check2 -->|否| DDG
+```
 
 | 优先级 | 引擎 | API Key | 特点 |
 |:---:|:---:|:---:|:---|
@@ -378,7 +637,80 @@ FinchBot 的网页搜索工具采用**三引擎自动降级机制**，兼顾灵�
 
 ---
 
-### 2.5 动态提示词系统
+### 2.5 Channel System (通道系统)
+
+**实现位置**: `src/finchbot/channels/`
+
+通道系统是 FinchBot 的多平台消息基础设施，提供统一的消息路由和平台抽象。
+
+#### 通道系统架构
+
+```mermaid
+flowchart LR
+    %% 样式定义
+    classDef bus fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef manager fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef channel fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph Core [消息路由核心]
+        Bus[📨 MessageBus<br/>入站/出站队列]:::bus
+        CM[🎛️ ChannelManager<br/>通道协调]:::manager
+    end
+
+    subgraph Platforms [平台通道]
+        direction TB
+        Web[🌐 Web<br/>WebSocket]
+        Discord[💬 Discord<br/>Bot API]
+        DingTalk[📱 钉钉<br/>Webhook]
+        Feishu[🪶 飞书<br/>Bot API]
+        WeChat[💚 微信<br/>企业微信]
+        Email[📧 邮件<br/>SMTP/IMAP]
+    end
+    class Web,Discord,DingTalk,Feishu,WeChat,Email channel
+
+    Bus <--> CM
+    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
+```
+
+#### 核心组件
+
+| 组件 | 文件 | 功能 |
+|:---|:---|:---|
+| **BaseChannel** | `base.py` | 抽象基类，定义通道接口 (start, stop, send, receive) |
+| **MessageBus** | `bus.py` | 异步消息路由器，管理入站/出站消息队列 |
+| **ChannelManager** | `manager.py` | 协调多通道，处理消息路由和通道生命周期 |
+| **InboundMessage** | `schema.py` | 标准化入站消息格式 |
+| **OutboundMessage** | `schema.py` | 标准化出站消息格式 |
+
+#### 消息模型
+
+```python
+class InboundMessage(BaseModel):
+    """入站消息 - 从平台到 Agent"""
+    channel_id: str          # 通道标识
+    user_id: str             # 用户标识
+    content: str             # 消息内容
+    session_id: str | None   # 会话 ID
+    metadata: dict = {}      # 额外元数据
+
+class OutboundMessage(BaseModel):
+    """出站消息 - 从 Agent 到平台"""
+    channel_id: str          # 目标通道
+    user_id: str             # 目标用户
+    content: str             # 响应内容
+    session_id: str | None   # 会话 ID
+    metadata: dict = {}      # 额外元数据
+```
+
+#### 扩展新通道
+
+1. 继承 `BaseChannel` 类
+2. 实现必要方法：`start()`, `stop()`, `send()`, `receive()`
+3. 注册到 `ChannelManager`
+
+---
+
+### 2.6 动态提示词系统
 
 **实现位置**: `src/finchbot/agent/context.py`
 
@@ -398,29 +730,36 @@ FinchBot 的网页搜索工具采用**三引擎自动降级机制**，兼顾灵�
 
 ```mermaid
 flowchart TD
-    A[Agent 启动] --> B[加载 Bootstrap 文件]
-    B --> C[SYSTEM.md]
-    B --> D[MEMORY_GUIDE.md]
-    B --> E[SOUL.md]
-    B --> F[AGENT_CONFIG.md]
+    %% 样式定义
+    classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef file fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    A([🚀 Agent 启动]):::startEnd --> B[📂 加载 Bootstrap 文件]:::process
     
-    C --> G[组装提示词]
+    B --> C[SYSTEM.md]:::file
+    B --> D[MEMORY_GUIDE.md]:::file
+    B --> E[SOUL.md]:::file
+    B --> F[AGENT_CONFIG.md]:::file
+
+    C --> G[🔧 组装提示词]:::process
     D --> G
     E --> G
     F --> G
-    
-    G --> H[加载常驻技能]
-    H --> I[构建技能摘要 XML]
-    I --> J[生成工具文档]
-    J --> K[注入运行时信息]
-    K --> L[完整系统提示]
-    
-    L --> M[发送给 LLM]
+
+    G --> H[📚 加载常驻技能]:::process
+    H --> I[🏗️ 构建技能摘要 XML]:::process
+    I --> J[📋 生成工具文档]:::process
+    J --> K[⚙️ 注入运行时信息]:::process
+    K --> L[📝 完整系统提示]:::output
+
+    L --> M([📤 发送给 LLM]):::startEnd
 ```
 
 ---
 
-### 2.6 I18n 系统 (国际化)
+### 2.7 I18n 系统 (国际化)
 
 **实现位置**: `src/finchbot/i18n/`
 
@@ -448,7 +787,7 @@ en-US → (无回退)
 
 ---
 
-### 2.7 配置系统
+### 2.8 配置系统
 
 **实现位置**: `src/finchbot/config/`
 
@@ -482,21 +821,65 @@ Config (根配置)
 
 ## 3. 数据流向 (Data Flow)
 
-### 3.1 对话流程
+### 3.1 完整数据流
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant C as 通道
+    participant B as MessageBus
+    participant F as AgentFactory
+    participant A as Agent
+    participant M as MemoryManager
+    participant T as 工具
+    participant L as LLM
+
+    U->>C: 发送消息
+    C->>B: InboundMessage
+    B->>F: 获取/创建 Agent
+    F->>A: 返回编译后的 Agent
+    
+    Note over A: 构建上下文
+    A->>M: 召回相关记忆
+    M-->>A: 返回上下文
+    
+    A->>L: 发送请求
+    L-->>A: 流式响应
+    
+    alt 需要工具调用
+        A->>T: 执行工具
+        T-->>A: 返回结果
+        A->>L: 继续处理
+        L-->>A: 最终响应
+    end
+    
+    A->>M: 存储新记忆
+    A->>B: OutboundMessage
+    B->>C: 路由到通道
+    C->>U: 显示响应
+```
+
+### 3.2 对话流程
 
 ```mermaid
 flowchart LR
-    A[用户输入] --> B[CLI 接收]
-    B --> C[加载历史 Checkpoint]
-    C --> D[ContextBuilder 构建 Prompt]
-    D --> E[LLM 推理]
-    E --> F{需要工具?}
-    F -->|否| G[生成最终回复]
-    F -->|是| H[执行工具]
-    H --> I[结果返回]
+    %% 样式定义
+    classDef startEnd fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef process fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    A[用户输入]:::startEnd --> B[CLI 接收]:::process
+    B --> C[加载历史 Checkpoint]:::process
+    C --> D[ContextBuilder 构建 Prompt]:::process
+    D --> E[LLM 推理]:::process
+    E --> F{需要工具?}:::decision
+    F -->|否| G[生成最终回复]:::process
+    F -->|是| H[执行工具]:::process
+    H --> I[结果返回]:::process
     I --> E
-    G --> J[保存 Checkpoint]
-    J --> K[显示给用户]
+    G --> J[保存 Checkpoint]:::process
+    J --> K[显示给用户]:::startEnd
 ```
 
 1. 用户输入 -> CLI 接收
@@ -506,7 +889,7 @@ flowchart LR
 5. 如果调用工具 -> 执行工具 -> 结果回传 LLM -> 循环
 6. LLM 生成最终回复 -> 显示给用户
 
-### 3.2 记忆写入流程 (Remember)
+### 3.3 记忆写入流程 (Remember)
 
 1. Agent 调用 `remember` 工具
 2. `MemoryManager` 接收内容
@@ -516,7 +899,7 @@ flowchart LR
 6. 同步调用 Embedding 服务，将向量写入 ChromaDB
 7. 记录访问日志
 
-### 3.3 记忆检索流程 (Recall)
+### 3.4 记忆检索流程 (Recall)
 
 1. Agent 调用 `recall` 工具 (查询: "我的API Key是多少")
 2. `RetrievalService` 将查询转换为向量
@@ -534,6 +917,7 @@ flowchart LR
 - `MemoryManager` 不直接处理存储细节，委托给 `SQLiteStore` 和 `VectorMemoryStore`
 - `ToolRegistry` 只负责注册和查找，不关心工具实现
 - `I18n` 系统独立于业务逻辑
+- `ChannelManager` 协调多通道，与 Agent 核心解耦
 
 ### 4.2 依赖倒置 (Dependency Inversion)
 
@@ -586,11 +970,11 @@ FinchBot 将"开箱即用"作为核心设计理念：
 
 在 `providers/factory.py` 中添加新的 Provider 类。
 
-### 5.4 添加新工具
+### 5.4 添加新通道
 
-1. 继承 `FinchTool` 基类。
-2. 在 `ToolFactory` 中添加创建逻辑（如果需要配置注入）。
-3. 注册到 `ToolRegistry`。
+1. 继承 `BaseChannel` 类
+2. 实现必要方法：`start()`, `stop()`, `send()`, `receive()`
+3. 注册到 `ChannelManager`
 
 ### 5.5 自定义记忆检索策略
 
@@ -609,3 +993,4 @@ FinchBot 的架构设计注重：
 - **可靠性**: 降级策略、重试机制、线程安全
 - **可维护性**: 类型安全、完善的日志、模块化设计
 - **隐私性**: 本地处理敏感数据
+- **多平台支持**: 通道系统支持 Web、Discord、钉钉、飞书、微信、邮件

@@ -2,51 +2,97 @@
 
 This document provides detailed API reference for FinchBot's core classes and methods.
 
+## Table of Contents
+
+1. [Agent Module](#1-agent-module-finchbotagent)
+2. [Memory Module](#2-memory-module-finchbotmemory)
+3. [Tools Module](#3-tools-module-finchbottools)
+4. [Skill Module](#4-skill-module-finchbotagentskills)
+5. [Channel Module](#5-channel-module-finchbotchannels)
+6. [Config Module](#6-config-module-finchbotconfig)
+7. [I18n Module](#7-i18n-module-finchboti18n)
+8. [Providers Module](#8-providers-module-finchbotproviders)
+
+---
+
 ## 1. Agent Module (`finchbot.agent`)
 
-### 1.1 `create_finch_agent`
+### 1.1 `AgentFactory`
+
+Factory class for assembling and configuring Agent instances.
+
+```python
+class AgentFactory:
+    @staticmethod
+    def create_for_cli(
+        model: BaseChatModel,
+        workspace: Path,
+        session_id: str,
+        config: Config,
+        session_metadata_store: SessionMetadataStore | None = None,
+    ) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver, list[BaseTool]]:
+```
+
+**Parameters**:
+- `model`: Base chat model instance
+- `workspace`: Workspace directory path
+- `session_id`: Session ID
+- `config`: Configuration object
+- `session_metadata_store`: Session metadata store (optional)
+
+**Returns**:
+- `(agent, checkpointer, tools)` tuple
+
+---
+
+### 1.2 `create_finch_agent`
 
 Creates and configures a FinchBot agent instance.
 
 ```python
-def create_finch_agent(
+async def create_finch_agent(
     model: BaseChatModel,
     workspace: Path,
     tools: Sequence[BaseTool] | None = None,
     use_persistent: bool = True,
-) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
+) -> tuple[CompiledStateGraph, AsyncSqliteSaver | MemorySaver]:
 ```
 
 **Parameters**:
 - `model`: Base chat model instance (e.g., `ChatOpenAI`, `ChatAnthropic`)
-- `workspace`: Workspace directory path (`Path` object), used for file operations, memory storage, etc.
-- `tools`: Available tools sequence (optional, defaults to None). If provided, Agent will automatically bind them
-- `use_persistent`: Whether to enable persistent storage (Checkpointing). Default is `True`, which saves conversation history to SQLite
+- `workspace`: Workspace directory path (`Path` object)
+- `tools`: Available tools sequence (optional, defaults to None)
+- `use_persistent`: Whether to enable persistent storage (Checkpointing)
 
 **Returns**:
 - `(agent, checkpointer)` tuple:
-    - `agent`: Compiled LangGraph state graph, can call `.invoke()` or `.stream()`
-    - `checkpointer`: Persistent storage object (`SqliteSaver` instance)
+    - `agent`: Compiled LangGraph state graph
+    - `checkpointer`: Persistent storage object
 
 **Example**:
 ```python
+import asyncio
 from pathlib import Path
 from langchain_openai import ChatOpenAI
 from finchbot.agent import create_finch_agent
 
-model = ChatOpenAI(model="gpt-4")
-workspace = Path("./workspace")
-agent, checkpointer = create_finch_agent(model, workspace)
+async def main():
+    model = ChatOpenAI(model="gpt-4")
+    workspace = Path("./workspace")
+    agent, checkpointer = await create_finch_agent(model, workspace)
 
-response = agent.invoke(
-    {"messages": [("user", "Hello!")]}, 
-    config={"configurable": {"thread_id": "1"}}
-)
+    response = await agent.ainvoke(
+        {"messages": [("user", "Hello!")]}, 
+        config={"configurable": {"thread_id": "1"}}
+    )
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 ---
 
-### 1.2 `ContextBuilder`
+### 1.3 `ContextBuilder`
 
 Dynamic system prompt builder.
 
@@ -58,12 +104,32 @@ class ContextBuilder:
 ```
 
 **Methods**:
-- `build_system_prompt()`: Generates complete system prompt string. It combines:
-    - `SYSTEM.md`: Base role definition
-    - `MEMORY_GUIDE.md`: Memory usage guidelines
-    - `SKILL.md`: Dynamically loaded skill descriptions
-    - `TOOLS.md`: Auto-generated tool documentation
-    - Runtime info (OS, Time, Python Version)
+- `build_system_prompt()`: Generates complete system prompt string
+
+**Prompt Components**:
+- `SYSTEM.md`: Base role definition
+- `MEMORY_GUIDE.md`: Memory usage guidelines
+- `SOUL.md`: Soul definition (personality)
+- `AGENT_CONFIG.md`: Agent configuration
+- `SKILL.md`: Dynamically loaded skill descriptions
+- `TOOLS.md`: Auto-generated tool documentation
+- Runtime info (OS, Time, Python Version)
+
+---
+
+### 1.4 `get_sqlite_checkpointer`
+
+Gets SQLite persistence checkpoint.
+
+```python
+def get_sqlite_checkpointer(db_path: Path) -> SqliteSaver:
+```
+
+**Parameters**:
+- `db_path`: SQLite database file path
+
+**Returns**:
+- `SqliteSaver` instance
 
 ---
 
@@ -98,8 +164,8 @@ def remember(
 
 **Parameters**:
 - `content`: Memory text content
-- `category`: Category (optional, e.g., "personal", "work"). If not provided, will be auto-inferred
-- `importance`: Importance score (0.0-1.0, optional). If not provided, will be auto-calculated
+- `category`: Category (optional, e.g., "personal", "work")
+- `importance`: Importance score (0.0-1.0, optional)
 - `tags`: Tag list (optional)
 
 **Returns**:
@@ -126,14 +192,19 @@ def recall(
 - `top_k`: Number of results to return (default 5)
 - `category`: Filter by category (optional)
 - `query_type`: Query type (default `QueryType.COMPLEX`)
-    - `KEYWORD_ONLY`: Pure keyword retrieval (1.0/0.0)
-    - `SEMANTIC_ONLY`: Pure semantic retrieval (0.0/1.0)
-    - `FACTUAL`: Factual query (0.8/0.2)
-    - `CONCEPTUAL`: Conceptual query (0.2/0.8)
-    - `COMPLEX`: Complex query (0.5/0.5)
-    - `AMBIGUOUS`: Ambiguous query (0.3/0.7)
 - `similarity_threshold`: Similarity threshold (default 0.5)
 - `include_archived`: Whether to include archived memories (default False)
+
+**QueryType Enum**:
+
+| Type | Description | Keyword Weight | Semantic Weight |
+|:---|:---|:---:|:---:|
+| `KEYWORD_ONLY` | Pure keyword retrieval | 1.0 | 0.0 |
+| `SEMANTIC_ONLY` | Pure semantic retrieval | 0.0 | 1.0 |
+| `FACTUAL` | Factual query | 0.8 | 0.2 |
+| `CONCEPTUAL` | Conceptual query | 0.2 | 0.8 |
+| `COMPLEX` | Complex query | 0.5 | 0.5 |
+| `AMBIGUOUS` | Ambiguous query | 0.3 | 0.7 |
 
 **Returns**:
 - List of memory dictionaries, each containing `id`, `content`, `category`, `importance`, `similarity`, etc.
@@ -147,10 +218,19 @@ def forget(self, pattern: str) -> dict[str, Any]:
 ```
 
 **Parameters**:
-- `pattern`: String to match memory content (supports partial matching)
+- `pattern`: String to match memory content
 
 **Returns**:
-- Deletion statistics dictionary containing `total_found`, `deleted`, `archived`, `pattern` fields
+- Deletion statistics dictionary
+
+#### Other Methods
+
+```python
+def get_stats(self) -> dict: ...
+def search_memories(self, query: str, ...) -> list[dict]: ...
+def get_recent_memories(self, days: int = 7, limit: int = 20) -> list[dict]: ...
+def get_important_memories(self, min_importance: float = 0.8, limit: int = 20) -> list[dict]: ...
+```
 
 #### Usage Example
 
@@ -158,41 +238,46 @@ def forget(self, pattern: str) -> dict[str, Any]:
 from finchbot.memory import MemoryManager, QueryType
 from pathlib import Path
 
-# Initialize
 manager = MemoryManager(Path.home() / ".finchbot" / "workspace")
 
-# Save memory (auto-classification + importance scoring)
 memory = manager.remember(
-    content="User prefers dark theme, likes clean interface design",
-    category="preference",  # Can be manually specified or auto-inferred
+    content="User prefers dark theme",
+    category="preference",
     importance=0.8
 )
 
-# Retrieve memory - semantic priority
 results = manager.recall(
     query="user interface preferences",
-    query_type=QueryType.CONCEPTUAL,  # Conceptual query
+    query_type=QueryType.CONCEPTUAL,
     top_k=5
 )
 
-# Retrieve memory - keyword priority
-results = manager.recall(
-    query="what is my email",
-    query_type=QueryType.FACTUAL,  # Factual query
-    top_k=3
-)
-
-# Delete memory
 stats = manager.forget("old email")
+```
+
+---
+
+### 2.2 `QueryType`
+
+Query type enumeration.
+
+```python
+class QueryType(StrEnum):
+    KEYWORD_ONLY = "keyword_only"
+    SEMANTIC_ONLY = "semantic_only"
+    FACTUAL = "factual"
+    CONCEPTUAL = "conceptual"
+    COMPLEX = "complex"
+    AMBIGUOUS = "ambiguous"
 ```
 
 ---
 
 ## 3. Tools Module (`finchbot.tools`)
 
-All tools inherit from `finchbot.tools.base.FinchTool`.
-
 ### 3.1 `FinchTool` (Base Class)
+
+Base class for all tools.
 
 ```python
 class FinchTool(BaseTool):
@@ -204,7 +289,53 @@ class FinchTool(BaseTool):
     async def _arun(self, *args, **kwargs) -> Any: ...
 ```
 
-### 3.2 Creating Custom Tools
+---
+
+### 3.2 `ToolFactory`
+
+Tool factory class.
+
+```python
+class ToolFactory:
+    @staticmethod
+    def create_default_tools(
+        workspace: Path,
+        config: Config,
+        session_metadata_store: SessionMetadataStore | None = None,
+    ) -> list[BaseTool]:
+```
+
+**Parameters**:
+- `workspace`: Workspace directory path
+- `config`: Configuration object
+- `session_metadata_store`: Session metadata store (optional)
+
+**Returns**:
+- List of tools
+
+---
+
+### 3.3 `ToolRegistry`
+
+Tool registry (singleton pattern).
+
+```python
+class ToolRegistry:
+    _instance: ClassVar[ToolRegistry | None] = None
+    _tools: dict[str, BaseTool]
+    
+    @classmethod
+    def get_instance(cls) -> ToolRegistry: ...
+    
+    def register(self, tool: BaseTool) -> None: ...
+    def get(self, name: str) -> BaseTool | None: ...
+    def list_tools(self) -> list[str]: ...
+    def get_all_tools(self) -> list[BaseTool]: ...
+```
+
+---
+
+### 3.4 Creating Custom Tools
 
 ```python
 from finchbot.tools.base import FinchTool
@@ -227,13 +358,14 @@ class MyCustomTool(FinchTool):
     }
     
     def _run(self, input_text: str) -> str:
-        # Implement your logic
         return f"Result: {input_text}"
 ```
 
-### 3.3 Built-in Tools
+---
 
-| Tool Class | Tool Name (`name`) | Description | Key Parameters |
+### 3.5 Built-in Tools
+
+| Tool Class | Tool Name | Description | Key Parameters |
 |:---|:---|:---|:---|
 | `ReadFileTool` | `read_file` | Read file content | `file_path`: File path |
 | `WriteFileTool` | `write_file` | Write file content | `file_path`: Path, `content`: Content |
@@ -268,16 +400,116 @@ class SkillsLoader:
 **Methods**:
 - `list_skills()`: Scan and list all available skills
 - `load_skill()`: Load specified skill content
-- `get_always_skills()`: Get all always-on skills (`always: true`)
+- `get_always_skills()`: Get all always-on skills
 - `build_skills_summary()`: Build XML format skill summary
 
 ---
 
-## 5. Config Module (`finchbot.config`)
+### 4.2 Skill File Format
 
-### 5.1 `Config` (Root Config)
+```yaml
+---
+name: skill-name
+description: Skill description
+metadata:
+  finchbot:
+    emoji: ✨
+    always: false
+    requires:
+      bins: [curl, jq]
+      env: [API_KEY]
+---
+# Skill content (Markdown)
+```
 
-Pydantic model defining the entire application's configuration structure.
+---
+
+## 5. Channel Module (`finchbot.channels`)
+
+### 5.1 `BaseChannel`
+
+Abstract base class for channels.
+
+```python
+class BaseChannel(ABC):
+    @abstractmethod
+    async def start(self) -> None: ...
+    
+    @abstractmethod
+    async def stop(self) -> None: ...
+    
+    @abstractmethod
+    async def send(self, message: OutboundMessage) -> None: ...
+    
+    @abstractmethod
+    async def receive(self) -> AsyncGenerator[InboundMessage, None]: ...
+```
+
+---
+
+### 5.2 `MessageBus`
+
+Async message router.
+
+```python
+class MessageBus:
+    def __init__(self): ...
+    
+    @property
+    def inbound(self) -> asyncio.Queue[InboundMessage]: ...
+    
+    @property
+    def outbound(self) -> asyncio.Queue[OutboundMessage]: ...
+    
+    async def publish_inbound(self, message: InboundMessage) -> None: ...
+    async def publish_outbound(self, message: OutboundMessage) -> None: ...
+    async def consume_inbound(self) -> AsyncGenerator[InboundMessage, None]: ...
+    async def consume_outbound(self) -> AsyncGenerator[OutboundMessage, None]: ...
+```
+
+---
+
+### 5.3 `ChannelManager`
+
+Channel manager.
+
+```python
+class ChannelManager:
+    def __init__(self, bus: MessageBus): ...
+    
+    def register_channel(self, channel: BaseChannel) -> None: ...
+    def unregister_channel(self, channel_id: str) -> None: ...
+    async def start_all(self) -> None: ...
+    async def stop_all(self) -> None: ...
+```
+
+---
+
+### 5.4 Message Models
+
+```python
+class InboundMessage(BaseModel):
+    """Inbound message"""
+    channel_id: str
+    user_id: str
+    content: str
+    session_id: str | None = None
+    metadata: dict = {}
+
+class OutboundMessage(BaseModel):
+    """Outbound message"""
+    channel_id: str
+    user_id: str
+    content: str
+    session_id: str | None = None
+    metadata: dict = {}
+```
+
+---
+
+## 6. Config Module (`finchbot.config`)
+
+### 6.1 `Config` (Root Config)
 
 ```python
 class Config(BaseSettings):
@@ -290,7 +522,9 @@ class Config(BaseSettings):
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
 ```
 
-### 5.2 `load_config`
+---
+
+### 6.2 `load_config`
 
 Load configuration.
 
@@ -304,9 +538,35 @@ def load_config() -> Config: ...
 
 ---
 
-## 6. I18n Module (`finchbot.i18n`)
+### 6.3 Configuration Structure
 
-### 6.1 `I18nLoader`
+```
+Config (Root)
+├── language
+├── default_model
+├── agents
+│   └── defaults
+├── providers
+│   ├── openai
+│   ├── anthropic
+│   ├── deepseek
+│   ├── moonshot
+│   ├── dashscope
+│   ├── groq
+│   ├── gemini
+│   ├── openrouter
+│   └── custom
+└── tools
+    ├── web.search
+    ├── exec
+    └── restrict_to_workspace
+```
+
+---
+
+## 7. I18n Module (`finchbot.i18n`)
+
+### 7.1 `I18nLoader`
 
 Internationalization loader.
 
@@ -328,9 +588,71 @@ from finchbot.i18n import I18nLoader
 
 i18n = I18nLoader("en-US")
 
-# Simple translation
 text = i18n.get("cli.help")
-
-# Translation with variables
 text = i18n.t("cli.chat.session", session_id="abc123")
+```
+
+---
+
+### 7.2 Supported Languages
+
+| Language Code | Language Name |
+|:---|:---|
+| `zh-CN` | Simplified Chinese |
+| `zh-HK` | Traditional Chinese |
+| `en-US` | English |
+
+---
+
+## 8. Providers Module (`finchbot.providers`)
+
+### 8.1 `create_chat_model`
+
+Create chat model.
+
+```python
+def create_chat_model(
+    provider: str,
+    model: str,
+    config: Config,
+) -> BaseChatModel:
+```
+
+**Parameters**:
+- `provider`: Provider name
+- `model`: Model name
+- `config`: Configuration object
+
+**Returns**:
+- `BaseChatModel` instance
+
+---
+
+### 8.2 Supported Providers
+
+| Provider | Model Examples | Environment Variable |
+|:---|:---|:---|
+| OpenAI | gpt-5, gpt-5.2, o3-mini | `OPENAI_API_KEY` |
+| Anthropic | claude-sonnet-4.5, claude-opus-4.6 | `ANTHROPIC_API_KEY` |
+| DeepSeek | deepseek-chat, deepseek-reasoner | `DEEPSEEK_API_KEY` |
+| Gemini | gemini-2.5-flash | `GOOGLE_API_KEY` |
+| Groq | llama-4-scout, llama-4-maverick | `GROQ_API_KEY` |
+| Moonshot | kimi-k1.5, kimi-k2.5 | `MOONSHOT_API_KEY` |
+| OpenRouter | (various models) | `OPENROUTER_API_KEY` |
+
+---
+
+### 8.3 Usage Example
+
+```python
+from finchbot.providers import create_chat_model
+from finchbot.config import load_config
+
+config = load_config()
+
+model = create_chat_model(
+    provider="openai",
+    model="gpt-5",
+    config=config,
+)
 ```
