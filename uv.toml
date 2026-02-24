@@ -2,7 +2,3 @@
 # 缓存放在 D 盘
 
 cache-dir = "D:\\.cache\\uv"
-
-# 构建时额外依赖（用于下载模型）
-[extra-build-dependencies]
-finchbot = ["fastembed>=0.4.0"]

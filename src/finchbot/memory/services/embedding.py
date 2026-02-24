@@ -58,24 +58,35 @@ class EmbeddingService:
         thread.start()
 
     def _check_network_async(self) -> None:
-        """异步检查网络连接和镜像."""
+        """异步检查网络连接和镜像.
+        
+        策略：
+        1. 优先检查国内镜像 (hf-mirror.com)
+        2. 如果国内镜像可用，直接使用，视为有网络
+        3. 如果国内镜像不可用，检查官方源 (huggingface.co)
+        """
         try:
-            # 检查网络
+            # 1. 优先检测国内镜像
+            try:
+                socket.create_connection(("hf-mirror.com", 443), timeout=2)
+                self._has_internet = True
+                self._mirror_url = "https://hf-mirror.com"
+                self._mirror_name = "国内镜像"
+                self._network_checked = True
+                logger.debug(f"Network check completed: {self._mirror_name}, internet=True")
+                return
+            except OSError:
+                pass
+
+            # 2. 检测官方源
             try:
                 socket.create_connection(("huggingface.co", 443), timeout=2)
                 self._has_internet = True
+                self._mirror_url = "https://huggingface.co"
+                self._mirror_name = "官方源"
             except OSError:
                 self._has_internet = False
-
-            # 检测最佳镜像
-            if self._has_internet:
-                try:
-                    socket.create_connection(("hf-mirror.com", 443), timeout=2)
-                    self._mirror_url = "https://hf-mirror.com"
-                    self._mirror_name = "国内镜像"
-                except OSError:
-                    self._mirror_url = "https://huggingface.co"
-                    self._mirror_name = "官方源"
+                self._mirror_name = "无连接"
 
             self._network_checked = True
             logger.debug(

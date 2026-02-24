@@ -610,7 +610,7 @@ def _get_tavily_key(config_obj: Any) -> str | None:
         return env_key
 
     if hasattr(config_obj, "tools") and hasattr(config_obj.tools, "web"):
-        return config_obj.tools.web.search.tavily_api_key
+        return config_obj.tools.web.search.api_key
     return None
 
 
