@@ -147,6 +147,8 @@ session_option = "会话 ID"
 model_option = "使用的模型"
 workspace_option = "工作目录"
 markdown_option = "将 AI 响应渲染为 Markdown"
+thinking = "思考中"
+ai = "AI"
 
 [cli.history]
 title = "对话历史:"

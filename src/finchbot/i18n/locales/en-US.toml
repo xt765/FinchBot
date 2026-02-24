@@ -142,6 +142,8 @@ session_option = "Session ID"
 model_option = "Model to use"
 workspace_option = "Workspace directory"
 markdown_option = "Render AI response as Markdown"
+thinking = "Thinking"
+ai = "AI"
 
 [cli.history]
 title = "Conversation History:"
