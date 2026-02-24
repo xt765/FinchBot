@@ -47,12 +47,39 @@
 
 ### Design Philosophy
 
-```
-Privacy First → Local Embedding, no cloud data upload
-Modularity → Each component independently replaceable
-Developer Friendly → Type safety + comprehensive documentation
-Production Ready → Double-checked locking + auto-retry + timeout control
-Out of the Box → Zero-config startup, automatic fallback, rich CLI
+```mermaid
+graph TD
+    %% Design Philosophy Nodes
+    Privacy[Privacy First]
+    Modularity[Modularity]
+    Dev_Experience[Developer Friendly]
+    Stability[Production Ready]
+    Out_of_Box[Out of the Box]
+
+    %% Details
+    Privacy --> Local_Embedding(Local Embedding)
+    Privacy --> No_Cloud_Upload(No Cloud Upload)
+    
+    Modularity --> Factory_Pattern(Factory Pattern)
+    Modularity --> Decoupled_Components(Decoupled Components)
+    
+    Dev_Experience --> Type_Safety(Type Safety)
+    Dev_Experience --> Documentation(Rich Docs)
+    
+    Stability --> Locks(Thread Safety)
+    Stability --> Retry(Auto Retry)
+    Stability --> Timeout(Timeout Control)
+    
+    Out_of_Box --> Zero_Config(Zero Config Start)
+    Out_of_Box --> Auto_Fallback(Auto Fallback)
+    Out_of_Box --> Rich_CLI(Rich CLI)
+
+    %% Styling
+    classDef main fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef sub fill:#fff9c4,stroke:#fbc02d,stroke-width:1px;
+    
+    class Privacy,Modularity,Dev_Experience,Stability,Out_of_Box main
+    class Local_Embedding,No_Cloud_Upload,Factory_Pattern,Decoupled_Components,Type_Safety,Documentation,Locks,Retry,Timeout,Zero_Config,Auto_Fallback,Rich_CLI sub
 ```
 
 ### Out-of-the-Box Experience

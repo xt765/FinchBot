@@ -60,12 +60,39 @@ FinchBot (雀翎) 是一个轻量级、模块化的 AI Agent 框架，基于 **L
 
 ### 1.2 FinchBot 的设计哲学
 
-```
-隐私优先 → 本地 Embedding，数据不上云
-模块化 → 每个组件独立可替换，采用工厂模式解耦
-开发者友好 → 类型安全 + 完善文档
-生产级稳定 → 双重检查锁 + 自动重试 + 超时控制
-开箱即用 → 零配置启动，自动降级，富文本界面
+```mermaid
+graph TD
+    %% 设计哲学节点
+    Privacy[隐私优先]
+    Modularity[模块化]
+    Dev_Experience[开发者友好]
+    Stability[生产级稳定]
+    Out_of_Box[开箱即用]
+
+    %% 细节
+    Privacy --> Local_Embedding(本地 Embedding)
+    Privacy --> No_Cloud_Upload(数据不上云)
+    
+    Modularity --> Factory_Pattern(工厂模式)
+    Modularity --> Decoupled(组件解耦)
+    
+    Dev_Experience --> Type_Safety(类型安全)
+    Dev_Experience --> Docs(文档完善)
+    
+    Stability --> Thread_Safe(双重检查锁)
+    Stability --> Retry(自动重试)
+    Stability --> Timeout(超时控制)
+    
+    Out_of_Box --> Zero_Config(零配置启动)
+    Out_of_Box --> Auto_Fallback(自动降级)
+    Out_of_Box --> Rich_CLI(富文本界面)
+
+    %% 样式
+    classDef main fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef sub fill:#fff9c4,stroke:#fbc02d,stroke-width:1px;
+    
+    class Privacy,Modularity,Dev_Experience,Stability,Out_of_Box main
+    class Local_Embedding,No_Cloud_Upload,Factory_Pattern,Decoupled,Type_Safety,Docs,Thread_Safe,Retry,Timeout,Zero_Config,Auto_Fallback,Rich_CLI sub
 ```
 
 ### 1.3 开箱即用体验
