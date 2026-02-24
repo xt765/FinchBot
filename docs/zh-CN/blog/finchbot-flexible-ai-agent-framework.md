@@ -24,14 +24,14 @@
 > 欢迎技术探讨与项目合作，解锁大模型与智能交互的无限可能！
 
 ---
-# FinchBot (雀翎) - 一个真正灵活的 AI Agent 框架
-![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/89e72e3b66ff4adc8ab8aa90400385ef.png)
 
+# FinchBot (雀翎) - 一个真正灵活的 AI Agent 框架
+
+![在这里插入图片描述](https://i-blog.csdnimg.cn/direct/89e72e3b66ff4adc8ab8aa90400385ef.png)
 
 > 作者：玄同765 (xt765)
 > 项目地址：[GitHub - FinchBot](https://github.com/xt765/finchbot)
 > 国内镜像：[Gitee - FinchBot](https://gitee.com/xt765/finchbot)
-
 
 ## 摘要
 
@@ -153,7 +153,7 @@ graph TD
         Agent[Agent 大脑]
         ContextBuilder[上下文构建器]
         SystemPrompt[系统提示词]
-        
+      
         Agent --> ContextBuilder
         ContextBuilder --> SystemPrompt
     end
@@ -165,7 +165,7 @@ graph TD
         SQLite[(SQLite 存储)]
         Vector[(向量存储)]
         Sync[数据同步]
-        
+      
         MemoryMgr --> Retrieval[检索服务]
         MemoryMgr --> Classification[自动分类]
         Retrieval --> SQLite
@@ -180,7 +180,7 @@ graph TD
     subgraph Tool_Ecosystem [工具生态]
         ToolSet[工具集]
         ToolRegistry[工具注册表]
-        
+      
         ToolSet --> ToolRegistry
         ToolRegistry --> File[文件操作]
         ToolRegistry --> Web[网络搜索]
@@ -218,11 +218,11 @@ def _create_web_search_tool(self):
     # 1. 尝试使用 Tavily (最佳质量)
     if self.config.tavily_api_key:
         return WebSearchTool(engine="tavily", ...)
-    
+  
     # 2. 尝试使用 Brave (隐私优先)
     if self.config.brave_api_key:
         return WebSearchTool(engine="brave", ...)
-        
+      
     # 3. 默认使用 DuckDuckGo (无需 Key)
     return WebSearchTool(engine="duckduckgo", ...)
 ```
@@ -273,8 +273,8 @@ flowchart TB
     SQLite <--> DS <--> Vector
 ```
 
-1.  **结构化层 (SQLite)**: 事实来源 (Source of Truth)，存储完整文本、元数据、分类和重要性评分。
-2.  **语义层 (Vector Store)**: 基于 ChromaDB + FastEmbed，提供模糊检索和联想能力。
+1. **结构化层 (SQLite)**: 事实来源 (Source of Truth)，存储完整文本、元数据、分类和重要性评分。
+2. **语义层 (Vector Store)**: 基于 ChromaDB + FastEmbed，提供模糊检索和联想能力。
 
 ### 3.3 混合检索策略
 
@@ -432,14 +432,14 @@ flowchart LR
 
 ### 6.3 支持的 LLM 提供商
 
-|  提供商  | 模型                      | 特点             |
-| :-------: | :------------------------ | :--------------- |
+|  提供商  | 模型                        | 特点             |
+| :-------: | :-------------------------- | :--------------- |
 |  OpenAI  | GPT-5, GPT-5.2, O3-mini     | 综合能力最强     |
 | Anthropic | Claude Sonnet 4.5, Opus 4.6 | 安全性高，长文本 |
-| DeepSeek | DeepSeek Chat, Reasoner           | 国产，性价比高   |
-|  Gemini  | Gemini 2.5 Flash      | Google 最新      |
-|   Groq   | Llama 4 Scout/Maverick          | 极速推理         |
-| Moonshot | Kimi K1.5/K2.5            | 长文本，国产     |
+| DeepSeek | DeepSeek Chat, Reasoner     | 国产，性价比高   |
+|  Gemini  | Gemini 2.5 Flash            | Google 最新      |
+|   Groq   | Llama 4 Scout/Maverick      | 极速推理         |
+| Moonshot | Kimi K1.5/K2.5              | 长文本，国产     |
 
 ---
 

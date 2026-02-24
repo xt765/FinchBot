@@ -120,18 +120,12 @@ class VectorMemoryStore:
 
         try:
             import chromadb
+            from langchain_chroma import Chroma
+
+            client = chromadb.PersistentClient(path=str(self.vector_dir))
 
             # 显式获取或创建默认 collection
             # 这一步是为了确保 tenant/database 初始化正确
-            from chromadb.config import Settings
-            from langchain_chroma import Chroma
-
-            client = chromadb.PersistentClient(
-                path=str(self.vector_dir.resolve()),  # 强制使用绝对路径
-                # 显式禁用遥测，有时能解决 Windows 上的连接超时/锁定问题
-                settings=Settings(anonymized_telemetry=False),
-            )
-
             client.get_or_create_collection("langchain")
 
             self._vectorstore = Chroma(
@@ -146,13 +140,6 @@ class VectorMemoryStore:
             )
             self._vectorstore = None
         except Exception as e:
-            error_msg = str(e)
-            if "tenant" in error_msg.lower() or "database" in error_msg.lower():
-                logger.error(
-                    "ChromaDB initialization failed due to tenant/database error.\n"
-                    "Solution: Stop the program and delete the 'memory_vectors' directory in your workspace.\n"
-                    f"Path: {self.vector_dir}"
-                )
             logger.warning(f"Failed to init vector store: {e}")
             self._vectorstore = None
 

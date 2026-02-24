@@ -66,13 +66,11 @@ class ToolFactory:
         ]
 
         # 记忆工具
-        tools.extend(
-            [
-                RememberTool(workspace=str(self.workspace), memory_manager=memory_manager),
-                RecallTool(workspace=str(self.workspace), memory_manager=memory_manager),
-                ForgetTool(workspace=str(self.workspace), memory_manager=memory_manager),
-            ]
-        )
+        tools.extend([
+            RememberTool(workspace=str(self.workspace), memory_manager=memory_manager),
+            RecallTool(workspace=str(self.workspace), memory_manager=memory_manager),
+            ForgetTool(workspace=str(self.workspace), memory_manager=memory_manager),
+        ])
 
         # 会话工具
         tools.append(SessionTitleTool(workspace=str(self.workspace), session_id=self.session_id))
