@@ -95,7 +95,7 @@ class ToolFactory:
         """创建网页搜索工具.
 
         Returns:
-            WebSearchTool 实例，如果未配置 API Key 则返回 None.
+            WebSearchTool 实例.
         """
         if not (hasattr(self.config, "tools") and hasattr(self.config.tools, "web")):
             return None
@@ -103,13 +103,12 @@ class ToolFactory:
         tavily_key = self._get_tavily_key()
         brave_key = self.config.tools.web.search.brave_api_key
 
-        if tavily_key or brave_key:
-            return WebSearchTool(
-                tavily_api_key=tavily_key,
-                brave_api_key=brave_key,
-                max_results=self.config.tools.web.search.max_results,
-            )
-        return None
+        # 即使没有 API Key，也可以使用 DuckDuckGo，所以总是返回工具
+        return WebSearchTool(
+            tavily_api_key=tavily_key,
+            brave_api_key=brave_key,
+            max_results=self.config.tools.web.search.max_results,
+        )
 
     def _get_tavily_key(self) -> str | None:
         """获取 Tavily API Key.
