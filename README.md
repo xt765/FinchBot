@@ -89,56 +89,72 @@ FinchBot is built on **LangChain v1.2** and **LangGraph v1.0**, serving as an Ag
 
 ```mermaid
 graph TD
-    User[User] --> CLI[CLI Interface]
-    CLI --> Factory[Agent Factory]
-    Factory --> Agent[Agent Core]
+    %% 样式定义
+    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef factory fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef memory fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef tools fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    classDef user fill:#ffebee,stroke:#c62828,stroke-width:2px;
 
-    subgraph Core
-        Planner[Planner]
-        Executor[Executor]
+    %% 用户交互层
+    User([User]) --> CLI[CLI Interface]
+    class User user
+    class CLI user
+
+    %% 工厂层
+    subgraph Factory_Layer [Factory Layer]
+        AgentFactory[Agent Factory]
+        ToolFactory[Tool Factory]
+    end
+    class AgentFactory,ToolFactory factory
+
+    CLI --> AgentFactory
+    AgentFactory --> Agent
+    AgentFactory --> ToolFactory
+    ToolFactory --> ToolSet
+
+    %% 核心层
+    subgraph Agent_Core [Agent Core]
+        Agent[Agent Brain]
         ContextBuilder[Context Builder]
-        ConfigMgr[Configuration Manager]
+        SystemPrompt[System Prompt]
+        
+        Agent --> ContextBuilder
+        ContextBuilder --> SystemPrompt
     end
+    class Agent,ContextBuilder,SystemPrompt core
 
-    Agent --> ContextBuilder
-    ContextBuilder --> SystemPrompt[System Prompt]
-
-    Factory --> ToolFactory[Tool Factory]
-    ToolFactory --> ToolSet[Tool Ecosystem]
-
-    Agent --> MemoryMgr[Memory System]
-    subgraph MemSys
-        Manager[Memory Manager]
+    %% 记忆系统
+    subgraph Memory_System [Memory System]
+        MemoryMgr[Memory Manager]
         SQLite[(SQLite Storage)]
-        Vector[(ChromaDB Vector)]
+        Vector[(Vector Store)]
         Sync[Data Sync]
-        Classify[Classification Service]
-        Importance[Importance Scoring]
-        Retrieval[Retrieval Service]
+        
+        MemoryMgr --> Retrieval[Retrieval Service]
+        MemoryMgr --> Classification[Classification]
+        Retrieval --> SQLite
+        Retrieval --> Vector
+        SQLite <--> Sync <--> Vector
     end
+    class MemoryMgr,SQLite,Vector,Sync,Retrieval,Classification memory
 
-    Manager --> SQLite
-    Manager --> Vector
-    Manager --> Classify
-    Manager --> Importance
-    Manager --> Retrieval
-    SQLite <--> Sync <--> Vector
+    Agent --> MemoryMgr
 
-    Agent --> ToolSet[Tool Ecosystem]
-    subgraph ToolSys
-        Registry[Tool Registry]
-        File[File Operations]
-        Web[Web Search]
-        Shell[Shell Execution]
-        Custom[Custom Tools]
+    %% 工具系统
+    subgraph Tool_Ecosystem [Tool Ecosystem]
+        ToolSet[Tool Set]
+        ToolRegistry[Tool Registry]
+        
+        ToolSet --> ToolRegistry
+        ToolRegistry --> File[File Ops]
+        ToolRegistry --> Web[Web Search]
+        ToolRegistry --> Shell[Shell Exec]
+        ToolRegistry --> Custom[Custom Skills]
     end
+    class ToolSet,ToolRegistry,File,Web,Shell,Custom tools
 
-    Registry --> File
-    Registry --> Web
-    Registry --> Shell
-    Registry --> Custom
-
-    Agent --> I18n[Internationalization]
+    Agent --> ToolSet
 ```
 
 ### Directory Structure

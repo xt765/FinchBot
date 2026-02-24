@@ -104,15 +104,72 @@ FinchBot 采用工厂模式 (Factory Pattern) 来提升系统的灵活性和可�
 
 ```mermaid
 graph TD
-    User[用户] --> CLI[命令行界面]
-    CLI --> Factory[Agent Factory]
-    Factory --> Agent[Agent Core]
+    %% 样式定义
+    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef factory fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef memory fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef tools fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    classDef user fill:#ffebee,stroke:#c62828,stroke-width:2px;
 
-    Factory --> ToolFactory[Tool Factory]
-    ToolFactory --> ToolSet[工具集]
+    %% 用户交互层
+    User([用户]) --> CLI[命令行界面]
+    class User user
+    class CLI user
 
-    Agent --> ContextBuilder[上下文构建器]
-    Agent --> MemoryMgr[记忆系统]
+    %% 工厂层
+    subgraph Factory_Layer [工厂层]
+        AgentFactory[Agent Factory]
+        ToolFactory[Tool Factory]
+    end
+    class AgentFactory,ToolFactory factory
+
+    CLI --> AgentFactory
+    AgentFactory --> Agent
+    AgentFactory --> ToolFactory
+    ToolFactory --> ToolSet
+
+    %% 核心层
+    subgraph Agent_Core [Agent 核心]
+        Agent[Agent 大脑]
+        ContextBuilder[上下文构建器]
+        SystemPrompt[系统提示词]
+        
+        Agent --> ContextBuilder
+        ContextBuilder --> SystemPrompt
+    end
+    class Agent,ContextBuilder,SystemPrompt core
+
+    %% 记忆系统
+    subgraph Memory_System [记忆系统]
+        MemoryMgr[记忆管理器]
+        SQLite[(SQLite 存储)]
+        Vector[(向量存储)]
+        Sync[数据同步]
+        
+        MemoryMgr --> Retrieval[检索服务]
+        MemoryMgr --> Classification[自动分类]
+        Retrieval --> SQLite
+        Retrieval --> Vector
+        SQLite <--> Sync <--> Vector
+    end
+    class MemoryMgr,SQLite,Vector,Sync,Retrieval,Classification memory
+
+    Agent --> MemoryMgr
+
+    %% 工具系统
+    subgraph Tool_Ecosystem [工具生态]
+        ToolSet[工具集]
+        ToolRegistry[工具注册表]
+        
+        ToolSet --> ToolRegistry
+        ToolRegistry --> File[文件操作]
+        ToolRegistry --> Web[网络搜索]
+        ToolRegistry --> Shell[Shell 执行]
+        ToolRegistry --> Custom[自定义技能]
+    end
+    class ToolSet,ToolRegistry,File,Web,Shell,Custom tools
+
+    Agent --> ToolSet
 ```
 
 ### 2.2 Agent Factory

@@ -89,56 +89,72 @@ FinchBot 采用 **LangChain v1.2** + **LangGraph v1.0** 构建，是一个具备
 
 ```mermaid
 graph TD
-    User[用户] --> CLI[命令行界面]
-    CLI --> Factory[Agent Factory]
-    Factory --> Agent[Agent Core]
+    %% 样式定义
+    classDef core fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef factory fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef memory fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef tools fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    classDef user fill:#ffebee,stroke:#c62828,stroke-width:2px;
 
-    subgraph Core
-        Planner[规划器]
-        Executor[执行器]
+    %% 用户交互层
+    User([用户]) --> CLI[命令行界面]
+    class User user
+    class CLI user
+
+    %% 工厂层
+    subgraph Factory_Layer [工厂层]
+        AgentFactory[Agent Factory]
+        ToolFactory[Tool Factory]
+    end
+    class AgentFactory,ToolFactory factory
+
+    CLI --> AgentFactory
+    AgentFactory --> Agent
+    AgentFactory --> ToolFactory
+    ToolFactory --> ToolSet
+
+    %% 核心层
+    subgraph Agent_Core [Agent 核心]
+        Agent[Agent 大脑]
         ContextBuilder[上下文构建器]
-        ConfigMgr[配置管理器]
+        SystemPrompt[系统提示词]
+        
+        Agent --> ContextBuilder
+        ContextBuilder --> SystemPrompt
     end
+    class Agent,ContextBuilder,SystemPrompt core
 
-    Agent --> ContextBuilder
-    ContextBuilder --> SystemPrompt[系统提示词]
-
-    Factory --> ToolFactory[Tool Factory]
-    ToolFactory --> ToolSet[工具集]
-
-    Agent --> MemoryMgr[记忆系统]
-    subgraph MemSys
-        Manager[记忆管理器]
+    %% 记忆系统
+    subgraph Memory_System [记忆系统]
+        MemoryMgr[记忆管理器]
         SQLite[(SQLite 存储)]
-        Vector[(ChromaDB 向量)]
+        Vector[(向量存储)]
         Sync[数据同步]
-        Classify[分类服务]
-        Importance[重要性评分]
-        Retrieval[检索服务]
+        
+        MemoryMgr --> Retrieval[检索服务]
+        MemoryMgr --> Classification[自动分类]
+        Retrieval --> SQLite
+        Retrieval --> Vector
+        SQLite <--> Sync <--> Vector
     end
+    class MemoryMgr,SQLite,Vector,Sync,Retrieval,Classification memory
 
-    Manager --> SQLite
-    Manager --> Vector
-    Manager --> Classify
-    Manager --> Importance
-    Manager --> Retrieval
-    SQLite <--> Sync <--> Vector
+    Agent --> MemoryMgr
 
-    Agent --> ToolSet[工具集]
-    subgraph ToolSys
-        Registry[工具注册表]
-        File[文件操作]
-        Web[网络搜索]
-        Shell[Shell 执行]
-        Custom[自定义工具]
+    %% 工具系统
+    subgraph Tool_Ecosystem [工具生态]
+        ToolSet[工具集]
+        ToolRegistry[工具注册表]
+        
+        ToolSet --> ToolRegistry
+        ToolRegistry --> File[文件操作]
+        ToolRegistry --> Web[网络搜索]
+        ToolRegistry --> Shell[Shell 执行]
+        ToolRegistry --> Custom[自定义技能]
     end
+    class ToolSet,ToolRegistry,File,Web,Shell,Custom tools
 
-    Registry --> File
-    Registry --> Web
-    Registry --> Shell
-    Registry --> Custom
-
-    Agent --> I18n[国际化]
+    Agent --> ToolSet
 ```
 
 ### 目录结构
