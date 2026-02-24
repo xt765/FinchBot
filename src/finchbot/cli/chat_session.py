@@ -1081,6 +1081,13 @@ async def _run_chat_session_async(
             console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
             console.print(f"[dim]{t('cli.chat.check_logs')}[/dim]")
 
+    # 关闭 checkpointer 连接
+    if hasattr(checkpointer, "conn") and checkpointer.conn:
+        try:
+            await checkpointer.conn.close()
+        except Exception as e:
+            logger.debug(f"Error closing checkpointer: {e}")
+
 
 def _get_last_active_session(workspace: Path) -> str:
     """获取最近活跃的会话 ID.
