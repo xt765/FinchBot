@@ -149,6 +149,7 @@ workspace_option = "工作目录"
 markdown_option = "将 AI 响应渲染为 Markdown"
 thinking = "思考中"
 ai = "AI"
+loading_model = "正在加载模型..."
 
 [cli.history]
 title = "对话历史:"

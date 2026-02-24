@@ -26,6 +26,7 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
+from finchbot.agent import get_default_workspace
 from finchbot.config import load_config
 from finchbot.i18n import t
 from finchbot.sessions import SessionMetadataStore
@@ -808,21 +809,15 @@ async def _run_chat_session_async(
 
     if detected_model:
         use_model = detected_model
-        console.print(f"[dim]{t('cli.chat.auto_detected_model').format(use_model)}[/dim]")
 
     if not api_key:
         console.print(f"[red]{t('cli.error_no_api_key')}[/red]")
         console.print(t("cli.error_config_hint"))
         raise typer.Exit(1)
 
-    if workspace:
-        ws_path = Path(workspace).expanduser()
-    else:
-        from finchbot.agent import get_default_workspace
+    ws_path = Path(workspace).expanduser() if workspace else get_default_workspace()
 
-        ws_path = get_default_workspace()
-
-    from finchbot.agent.factory import AgentFactory
+    console.print(f"[dim]{t('cli.chat.loading_model')}[/dim]", end="\r")
 
     chat_model = create_chat_model(
         model=use_model,
@@ -830,6 +825,8 @@ async def _run_chat_session_async(
         api_base=api_base,
         temperature=config_obj.agents.defaults.temperature,
     )
+
+    console.print(" " * 50, end="\r")
 
     history_file = Path.home() / ".finchbot" / "history" / "chat_history"
     history_file.parent.mkdir(parents=True, exist_ok=True)
@@ -851,6 +848,8 @@ async def _run_chat_session_async(
 
     console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
     console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
+
+    from finchbot.agent.factory import AgentFactory
 
     agent, checkpointer, tools = await AgentFactory.create_for_cli(
         session_id=session_id,
