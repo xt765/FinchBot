@@ -516,6 +516,7 @@ rename_success = "✓ Renamed to: {title}"
 back = "Back"
 cancel = "Cancel"
 cancelled = "Cancelled"
+quit = "Exited session management"
 
 [sessions.columns]
 id = "ID"

@@ -166,6 +166,7 @@ class SessionSelector:
 
         except KeyboardInterrupt:
             logger.debug("Session management cancelled by user")
+            console.print(f"\n[dim]{t('sessions.actions.quit')}[/dim]")
 
     def _render_session_list(
         self,

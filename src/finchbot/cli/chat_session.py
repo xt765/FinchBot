@@ -771,9 +771,12 @@ def _run_chat_session(
     render_markdown: bool = True,
 ) -> None:
     """启动聊天会话（REPL 模式）."""
-    asyncio.run(
-        _run_chat_session_async(session_id, model, workspace, first_message, render_markdown)
-    )
+    try:
+        asyncio.run(
+            _run_chat_session_async(session_id, model, workspace, first_message, render_markdown)
+        )
+    except KeyboardInterrupt:
+        console.print(GOODBYE_MESSAGE)
 
 
 async def _run_chat_session_async(

@@ -483,6 +483,7 @@ rename_success = "✓ 已重命名为: {title}"
 back = "返回"
 cancel = "取消"
 cancelled = "已取消"
+quit = "已退出会话管理"
 
 [sessions.columns]
 id = "ID"
