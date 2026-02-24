@@ -161,7 +161,7 @@ class SessionSelector:
                         return
                     selected_idx = 0
                 elif key.lower() == "q" or key == readchar.key.CTRL_C:
-                    # 退出
+                    console.print(f"\n[dim]{t('sessions.actions.quit')}[/dim]")
                     return
 
         except KeyboardInterrupt:
