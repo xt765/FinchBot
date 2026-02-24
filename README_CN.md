@@ -88,9 +88,9 @@ graph BT
 
 ### 多平台消息支持
 
-FinchBot 支持多种消息接入方式，统一的消息路由架构：
+FinchBot 统一消息路由架构，一次开发，多端触达：
 
-**Web** (WebSocket) • **Discord** (Bot API) • **钉钉** (Webhook) • **飞书** (Bot API) • **微信** (企业微信) • **邮件** (SMTP/IMAP)
+![Web](https://img.shields.io/badge/Web-WebSocket-blue?logo=googlechrome&logoColor=white) ![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![钉钉](https://img.shields.io/badge/钉钉-Webhook-0089FF?logo=dingtalk&logoColor=white) ![飞书](https://img.shields.io/badge/飞书-Bot_API-00D6D9?logo=lark&logoColor=white) ![微信](https://img.shields.io/badge/微信-企业微信-07C160?logo=wechat&logoColor=white) ![邮件](https://img.shields.io/badge/邮件-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
 
 ### Web 界面 (Beta)
 

@@ -88,9 +88,9 @@ graph BT
 
 ### Multi-Platform Messaging
 
-FinchBot supports multiple messaging platforms with a unified routing architecture:
+FinchBot unified message routing architecture - develop once, reach everywhere:
 
-**Web** (WebSocket) • **Discord** (Bot API) • **DingTalk** (Webhook) • **Feishu** (Bot API) • **WeChat** (Enterprise) • **Email** (SMTP/IMAP)
+![Web](https://img.shields.io/badge/Web-WebSocket-blue?logo=googlechrome&logoColor=white) ![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![DingTalk](https://img.shields.io/badge/DingTalk-Webhook-0089FF?logo=dingtalk&logoColor=white) ![Feishu](https://img.shields.io/badge/Feishu-Bot_API-00D6D9?logo=lark&logoColor=white) ![WeChat](https://img.shields.io/badge/WeChat-Enterprise-07C160?logo=wechat&logoColor=white) ![Email](https://img.shields.io/badge/Email-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
 
 ### Web Interface (Beta)
 
