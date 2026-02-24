@@ -25,74 +25,36 @@ FinchBot is built on **LangChain v1.2** + **LangGraph v1.0**, featuring persiste
 
 ```mermaid
 graph TB
-    classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
-    classDef channelLayer fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b;
-    classDef factoryLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef coreLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
-    classDef memoryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef toolLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
-    classDef infraLayer fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#00695c;
-
-    subgraph Layer1 [User Interaction Layer]
-        CLI[CLI Interface]:::userLayer
-        WebUI[Web Interface]:::userLayer
-        API[REST API]:::userLayer
+    subgraph UI [User Interaction Layer]
+        CLI[CLI Interface]
+        Web[Web Interface]
+        API[REST API]
+        Channels[Multi-platform Channels<br/>Discord/DingTalk/Feishu]
     end
 
-    subgraph Layer2 [Message Routing Layer]
-        Bus[MessageBus<br/>Async Router]:::channelLayer
-        CM[ChannelManager<br/>Coordination]:::channelLayer
+    subgraph Core [Agent Core]
+        Agent[LangGraph Agent<br/>Decision Engine]
+        Context[ContextBuilder<br/>Context Building]
+        Tools[ToolRegistry<br/>11 Built-in Tools]
+        Memory[MemoryManager<br/>Dual-layer Memory]
     end
 
-    subgraph Layer3 [Factory Assembly Layer]
-        AF[AgentFactory<br/>Agent Assembly]:::factoryLayer
-        TF[ToolFactory<br/>Tool Creation]:::factoryLayer
+    subgraph Infra [Infrastructure Layer]
+        Storage[Dual-layer Storage<br/>SQLite + VectorStore]
+        LLM[LLM Providers<br/>OpenAI/Anthropic/DeepSeek]
     end
 
-    subgraph Layer4 [Intelligence Engine Layer]
-        Agent[LangGraph Agent<br/>Decision Engine]:::coreLayer
-        CB[ContextBuilder<br/>Context Building]:::coreLayer
-    end
+    CLI --> Agent
+    Web --> Agent
+    API --> Agent
+    Channels --> Agent
 
-    subgraph Layer5 [Capability Support Layer]
-        MM[MemoryManager<br/>Memory Management]:::memoryLayer
-        TR[ToolRegistry<br/>Tool Registry]:::toolLayer
-    end
+    Agent --> Context
+    Agent <--> Tools
+    Agent <--> Memory
 
-    subgraph Layer6 [Storage Layer]
-        SQLite[(SQLite<br/>Source of Truth)]:::memoryLayer
-        Vector[(VectorStore<br/>Semantic Search)]:::memoryLayer
-    end
-
-    subgraph Layer7 [LLM Providers]
-        OpenAI[OpenAI]:::infraLayer
-        Anthropic[Anthropic]:::infraLayer
-        DeepSeek[DeepSeek]:::infraLayer
-        Others[Others...]:::infraLayer
-    end
-
-    CLI --> Bus
-    WebUI --> Bus
-    API --> AF
-    
-    Bus --> CM
-    CM --> AF
-    
-    AF --> Agent
-    AF --> TF
-    TF --> TR
-    
-    Agent --> CB
-    Agent <--> MM
-    Agent <--> TR
-    Agent --> OpenAI
-    Agent --> Anthropic
-    Agent --> DeepSeek
-    Agent --> Others
-    
-    MM --> SQLite
-    MM --> Vector
-    SQLite <--> Vector
+    Memory --> Storage
+    Agent --> LLM
 ```
 
 ### 1.2 Directory Structure

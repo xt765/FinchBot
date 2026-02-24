@@ -119,74 +119,36 @@ FinchBot 采用工厂模式 (Factory Pattern) 来提升系统的灵活性和可�
 
 ```mermaid
 graph TB
-    classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
-    classDef channelLayer fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#c2185b;
-    classDef factoryLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef coreLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
-    classDef memoryLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef toolLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
-    classDef infraLayer fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#00695c;
-
-    subgraph Layer1 [用户交互层]
-        CLI[CLI 界面]:::userLayer
-        WebUI[Web 界面]:::userLayer
-        API[REST API]:::userLayer
+    subgraph UI [用户交互层]
+        CLI[CLI 界面]
+        Web[Web 界面]
+        API[REST API]
+        Channels[多平台通道<br/>Discord/钉钉/飞书]
     end
 
-    subgraph Layer2 [消息路由层]
-        Bus[MessageBus<br/>异步路由]:::channelLayer
-        CM[ChannelManager<br/>通道协调]:::channelLayer
+    subgraph Core [Agent 核心]
+        Agent[LangGraph Agent<br/>决策引擎]
+        Context[ContextBuilder<br/>上下文构建]
+        Tools[ToolRegistry<br/>11个内置工具]
+        Memory[MemoryManager<br/>双层记忆]
     end
 
-    subgraph Layer3 [工厂装配层]
-        AF[AgentFactory<br/>Agent 装配]:::factoryLayer
-        TF[ToolFactory<br/>工具创建]:::factoryLayer
+    subgraph Infra [基础设施层]
+        Storage[双层存储<br/>SQLite + VectorStore]
+        LLM[LLM 提供商<br/>OpenAI/Anthropic/DeepSeek]
     end
 
-    subgraph Layer4 [智能引擎层]
-        Agent[LangGraph Agent<br/>决策引擎]:::coreLayer
-        CB[ContextBuilder<br/>上下文构建]:::coreLayer
-    end
+    CLI --> Agent
+    Web --> Agent
+    API --> Agent
+    Channels --> Agent
 
-    subgraph Layer5 [能力支撑层]
-        MM[MemoryManager<br/>记忆管理]:::memoryLayer
-        TR[ToolRegistry<br/>工具注册]:::toolLayer
-    end
+    Agent --> Context
+    Agent <--> Tools
+    Agent <--> Memory
 
-    subgraph Layer6 [存储层]
-        SQLite[(SQLite<br/>真相源)]:::memoryLayer
-        Vector[(VectorStore<br/>语义检索)]:::memoryLayer
-    end
-
-    subgraph Layer7 [LLM 提供商]
-        OpenAI[OpenAI]:::infraLayer
-        Anthropic[Anthropic]:::infraLayer
-        DeepSeek[DeepSeek]:::infraLayer
-        Others[其他...]:::infraLayer
-    end
-
-    CLI --> Bus
-    WebUI --> Bus
-    API --> AF
-    
-    Bus --> CM
-    CM --> AF
-    
-    AF --> Agent
-    AF --> TF
-    TF --> TR
-    
-    Agent --> CB
-    Agent <--> MM
-    Agent <--> TR
-    Agent --> OpenAI
-    Agent --> Anthropic
-    Agent --> DeepSeek
-    Agent --> Others
-    
-    MM --> SQLite
-    MM --> Vector
-    SQLite <--> Vector
+    Memory --> Storage
+    Agent --> LLM
 ```
 
 ### 2.2 Agent Factory
