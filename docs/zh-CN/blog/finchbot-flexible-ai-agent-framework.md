@@ -96,9 +96,9 @@ uv run finchbot chat
 
 ---
 
-## 二、架构革新：工厂模式与解耦
+## 二、架构设计：模块化与工厂模式
 
-FinchBot 近期进行了重大架构重构，引入了工厂模式 (Factory Pattern) 来提升系统的灵活性和可维护性。
+FinchBot 采用工厂模式 (Factory Pattern) 来提升系统的灵活性和可维护性。
 
 ### 2.1 核心组件关系
 
@@ -168,6 +168,34 @@ FinchBot 实现了先进的**双层记忆架构**，彻底解决了 LLM 上下�
 
 ### 3.2 双层存储架构
 
+```mermaid
+flowchart TB
+    subgraph Business[业务层]
+        MM[MemoryManager]
+    end
+  
+    subgraph Storage[存储层]
+        SQLite[SQLiteStore<br/>真相源]
+        Vector[VectorMemoryStore<br/>语义检索]
+    end
+  
+    subgraph Services[服务层]
+        RS[RetrievalService<br/>混合检索]
+        CS[ClassificationService<br/>自动分类]
+        IS[ImportanceScorer<br/>重要性评分]
+        DS[DataSyncManager<br/>数据同步]
+    end
+  
+    MM --> RS
+    MM --> CS
+    MM --> IS
+  
+    RS --> SQLite
+    RS --> Vector
+  
+    SQLite <--> DS <--> Vector
+```
+
 1.  **结构化层 (SQLite)**: 事实来源 (Source of Truth)，存储完整文本、元数据、分类和重要性评分。
 2.  **语义层 (Vector Store)**: 基于 ChromaDB + FastEmbed，提供模糊检索和联想能力。
 
@@ -175,13 +203,66 @@ FinchBot 实现了先进的**双层记忆架构**，彻底解决了 LLM 上下�
 
 FinchBot 采用**加权 RRF (Weighted Reciprocal Rank Fusion)** 策略，智能融合关键词检索和语义检索的结果。系统会根据查询类型（如事实型、概念型、模糊型）自动调整两者的权重，确保检索结果既准确又全面。
 
+```python
+class QueryType(StrEnum):
+    """查询类型，决定检索权重"""
+    KEYWORD_ONLY = "keyword_only"      # 纯关键词 (1.0/0.0)
+    SEMANTIC_ONLY = "semantic_only"    # 纯语义 (0.0/1.0)
+    FACTUAL = "factual"                # 事实型 (0.8/0.2)
+    CONCEPTUAL = "conceptual"          # 概念型 (0.2/0.8)
+    COMPLEX = "complex"                # 复杂型 (0.5/0.5)
+    AMBIGUOUS = "ambiguous"            # 歧义型 (0.3/0.7)
+```
+
 ---
 
-## 四、技能与工具：无限扩展的 Agent 能力
+## 四、动态提示词系统：用户可编辑的 Agent 大脑
+
+FinchBot 的提示词系统采用**文件系统 + 模块化组装**的设计，让用户可以自由定制 Agent 的行为。
+
+### 4.1 Bootstrap 文件系统
+
+```
+~/.finchbot/
+├── SYSTEM.md           # 角色设定
+├── MEMORY_GUIDE.md     # 记忆使用指南
+├── SOUL.md             # 灵魂设定（性格特征）
+├── AGENT_CONFIG.md     # Agent 配置
+└── workspace/
+    └── skills/         # 自定义技能
+```
+
+### 4.2 提示词加载流程
+
+```mermaid
+flowchart TD
+    A[Agent 启动] --> B[加载 Bootstrap 文件]
+    B --> C[SYSTEM.md]
+    B --> D[MEMORY_GUIDE.md]
+    B --> E[SOUL.md]
+    B --> F[AGENT_CONFIG.md]
+  
+    C --> G[组装提示词]
+    D --> G
+    E --> G
+    F --> G
+  
+    G --> H[加载常驻技能]
+    H --> I[构建技能摘要 XML]
+    I --> J[生成工具文档]
+    J --> K[注入运行时信息]
+    K --> L[完整系统提示]
+  
+    L --> M[发送给 LLM]
+```
+
+---
+
+## 五、技能与工具：无限扩展的 Agent 能力
 
 FinchBot 的扩展性建立在两个层次上：**工具层 (Tool)** 和 **技能层 (Skill)**。
 
-### 4.1 工具系统：代码级能力扩展
+### 5.1 工具系统：代码级能力扩展
 
 工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 11 个内置工具，并支持轻松扩展。
 
@@ -197,7 +278,7 @@ FinchBot 的网页搜索工具采用巧妙的**三引擎自动降级机制**，�
 
 这个设计确保**即使没有任何 API Key 配置，网页搜索也能开箱即用**！
 
-### 4.2 技能系统：用 Markdown 定义 Agent 能力
+### 5.2 技能系统：用 Markdown 定义 Agent 能力
 
 技能是 FinchBot 的独特创新——**用 Markdown 文件定义 Agent 的能力边界**。
 
@@ -220,35 +301,72 @@ Agent: 好的，我来为你创建翻译技能...
 
 ---
 
-## 五、快速上手
+## 六、LangChain 1.2 架构实践
 
-### 5.1 最佳实践：三步上手
+FinchBot 基于 **LangChain v1.2** 和 **LangGraph v1.0** 构建，采用最新的 Agent 架构。
 
-```bash
-# 第一步：配置 API 密钥和默认模型
-uv run finchbot config
+### 6.1 Agent 创建流程
 
-# 第二步：管理你的会话
-uv run finchbot sessions
+```python
+from langchain.agents import create_agent
+from langgraph.checkpoint.sqlite import SqliteSaver
 
-# 第三步：开始对话
-uv run finchbot chat
+def create_finch_agent(
+    model: BaseChatModel,
+    workspace: Path,
+    tools: Sequence[BaseTool] | None = None,
+    use_persistent: bool = True,
+) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
+  
+    # 1. 初始化检查点（持久化状态）
+    if use_persistent:
+        checkpointer = SqliteSaver.from_conn_string(str(db_path))
+    else:
+        checkpointer = MemorySaver()
+  
+    # 2. 构建系统提示
+    system_prompt = build_system_prompt(workspace)
+  
+    # 3. 创建 Agent（使用 LangChain 官方 API）
+    agent = create_agent(
+        model=model,
+        tools=list(tools) if tools else None,
+        system_prompt=system_prompt,
+        checkpointer=checkpointer,
+    )
+  
+    return agent, checkpointer
 ```
 
-### 5.2 安装
+### 6.2 LangGraph 状态管理
 
-```bash
-# 克隆仓库
-git clone https://github.com/xt765/finchbot.git
-cd finchbot
-
-# 使用 uv 安装依赖
-uv sync
+```mermaid
+flowchart LR
+    A[用户输入] --> B[加载 Checkpoint]
+    B --> C[构建 Prompt]
+    C --> D[LLM 推理]
+    D --> E{需要工具?}
+    E -->|否| F[生成回复]
+    E -->|是| G[执行工具]
+    G --> D
+    F --> H[保存 Checkpoint]
+    H --> I[返回用户]
 ```
+
+### 6.3 支持的 LLM 提供商
+
+|  提供商  | 模型                      | 特点             |
+| :-------: | :------------------------ | :--------------- |
+|  OpenAI  | GPT-5, GPT-5.2, O3-mini     | 综合能力最强     |
+| Anthropic | Claude Sonnet 4.5, Opus 4.6 | 安全性高，长文本 |
+| DeepSeek | DeepSeek Chat, Reasoner           | 国产，性价比高   |
+|  Gemini  | Gemini 2.5 Flash      | Google 最新      |
+|   Groq   | Llama 4 Scout/Maverick          | 极速推理         |
+| Moonshot | Kimi K1.5/K2.5            | 长文本，国产     |
 
 ---
 
-## 六、总结
+## 七、总结
 
 FinchBot 不是一个简单的 LLM 封装，而是一个深思熟虑的 Agent 框架设计：
 
