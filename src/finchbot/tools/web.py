@@ -165,8 +165,12 @@ class WebExtractTool(FinchTool):
             httpx_available = False
 
         api_key = self.api_key or os.getenv("TAVILY_API_KEY")
+
         if not api_key:
-            return t("tools.web_search.error_no_api_key")
+            # 如果没有 Tavily API Key，尝试使用 jina.ai reader
+            if not httpx_available or httpx is None:
+                return "Error: httpx not installed. Run: uv add httpx"
+            return self._extract_with_jina(urls, httpx)
 
         if not httpx_available or httpx is None:
             return "Error: httpx not installed. Run: uv add httpx"
@@ -186,6 +190,7 @@ class WebExtractTool(FinchTool):
             )
             response.raise_for_status()
             data = response.json()
+            return self._format_results(data)
 
         except httpx.HTTPStatusError as e:
             return f"Extract failed: {e.response.status_code}"
@@ -194,7 +199,44 @@ class WebExtractTool(FinchTool):
         except Exception as e:
             return f"{t('errors.generic')}: {str(e)}"
 
-        return self._format_results(data)
+    def _extract_with_jina(self, urls: list[str], httpx: Any) -> str:
+        """使用 jina.ai reader 提取网页内容（无需 API Key）.
+        
+        Args:
+            urls: URL 列表.
+            httpx: httpx 模块.
+            
+        Returns:
+            提取的内容字符串.
+        """
+        if not httpx:
+             return "Error: httpx not installed. Run: uv add httpx"
+             
+        output_parts = []
+        failed_urls = []
+        
+        for url in urls:
+            try:
+                # 使用 jina.ai reader: https://r.jina.ai/<url>
+                jina_url = f"https://r.jina.ai/{url}"
+                response = httpx.get(jina_url, timeout=30.0)
+                
+                if response.status_code == 200:
+                    output_parts.append(f"## {url}\n")
+                    content = response.text
+                    truncated = content[:5000] + "..." if len(content) > 5000 else content
+                    output_parts.append(truncated)
+                    output_parts.append("\n---\n")
+                else:
+                    failed_urls.append(url)
+                    
+            except Exception:
+                failed_urls.append(url)
+                
+        if failed_urls:
+            output_parts.append(f"\n**Failed URLs**: {', '.join(failed_urls)}")
+            
+        return "\n".join(output_parts) if output_parts else "No content extracted (Jina)"
 
     def _format_results(self, data: dict[str, Any]) -> str:
         """格式化提取结果.
