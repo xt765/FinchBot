@@ -1,5 +1,6 @@
 """FinchBot 记忆模块."""
 
+from finchbot.memory.global_services import GlobalServices
 from finchbot.memory.manager import MemoryManager
 from finchbot.memory.services.classification import ClassificationService
 from finchbot.memory.storage.sqlite import SQLiteStore
@@ -14,4 +15,5 @@ __all__ = [
     "DataSyncManager",
     "MemoryManager",
     "ClassificationService",
+    "GlobalServices",
 ]
