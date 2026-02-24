@@ -23,7 +23,8 @@ FinchBot is built on **LangChain v1.2** + **LangGraph v1.0**, serving as an Agen
 ```mermaid
 graph TD
     User[User] --> CLI[CLI Interface]
-    CLI --> Agent[Agent Core]
+    CLI --> Factory[Agent Factory]
+    Factory --> Agent[Agent Core]
 
     subgraph Core
         Planner[Planner]
@@ -34,6 +35,9 @@ graph TD
 
     Agent --> ContextBuilder
     ContextBuilder --> SystemPrompt[System Prompt]
+
+    Factory --> ToolFactory[Tool Factory]
+    ToolFactory --> ToolSet[Tool Ecosystem]
 
     Agent --> MemoryMgr[Memory System]
     subgraph MemSys
@@ -76,6 +80,7 @@ graph TD
 finchbot/
 ├── agent/              # Agent Core
 │   ├── core.py        # Agent creation and execution
+│   ├── factory.py     # Agent Factory
 │   ├── context.py     # Context building
 │   └── skills.py      # Skill system
 ├── cli/                # CLI Interface
@@ -115,6 +120,7 @@ finchbot/
 ├── tools/              # Tool System
 │   ├── base.py
 │   ├── registry.py
+│   ├── factory.py     # Tool Factory
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -132,15 +138,17 @@ finchbot/
 
 ### 2.1 Agent Core
 
-**Implementation**: `src/finchbot/agent/core.py`
+**Implementation**: `src/finchbot/agent/`
 
-Agent Core is the brain of FinchBot, responsible for decision-making, planning, and tool scheduling.
+Agent Core is the brain of FinchBot, responsible for decision-making, planning, and tool scheduling. It now uses a factory pattern to decouple creation logic.
 
-#### Core Features
+#### Core Components
 
-* **State Management**: Based on `LangGraph`'s `StateGraph`, maintaining conversation state (`messages`)
-* **Persistence**: Uses `SqliteSaver` (`checkpoints.db`) to save state snapshots, supporting resume and history rollback
-* **Context Construction (`ContextBuilder`)**: Dynamically assembles the system prompt, including:
+* **AgentFactory (`factory.py`)**: Responsible for assembling the Agent, coordinating ToolFactory to create toolsets, and initializing Checkpointer.
+* **Agent Core (`core.py`)**: Responsible for Agent runtime logic.
+    * **State Management**: Based on `LangGraph`'s `StateGraph`, maintaining conversation state (`messages`)
+    * **Persistence**: Uses `SqliteSaver` (`checkpoints.db`) to save state snapshots, supporting resume and history rollback
+* **Context Construction (`context.py`)**: Dynamically assembles the system prompt, including:
     * **Identity**: `SYSTEM.md` (Role definition)
     * **Memory Guide**: `MEMORY_GUIDE.md` (Memory usage guidelines)
     * **Soul**: `SOUL.md` (Soul definition)
@@ -152,11 +160,10 @@ Agent Core is the brain of FinchBot, responsible for decision-making, planning, 
 
 | Function/Class | Description |
 |:---|:---|
-| `create_finch_agent()` | Creates and configures FinchBot Agent |
+| `AgentFactory.create_for_cli()` | Static factory method to create a configured Agent for CLI |
+| `create_finch_agent()` | Creates and configures LangGraph Agent |
 | `build_system_prompt()` | Builds the complete system prompt |
-| `get_default_workspace()` | Gets the default workspace directory |
 | `get_sqlite_checkpointer()` | Gets SQLite persistence checkpoint |
-| `get_memory_checkpointer()` | Gets in-memory checkpoint |
 
 #### Thread Safety Mechanism
 
@@ -291,11 +298,12 @@ class QueryType(StrEnum):
 
 **Implementation**: `src/finchbot/tools/`
 
-#### Registration Mechanism
+#### Registration Mechanism and Factory Pattern
 
-* **ToolRegistry**: Singleton registry managing all available tools
-* **Lazy Loading**: Default tools (File, Search, etc.) are automatically registered when the Agent starts
-* **OpenAI Compatible**: Supports exporting tool definitions in OpenAI Function Calling format
+* **ToolFactory (`factory.py`)**: Responsible for creating and assembling the tool list based on configuration. It handles the auto-fallback logic for WebSearchTool (Tavily/Brave/DuckDuckGo).
+* **ToolRegistry**: Singleton registry managing all available tools.
+* **Lazy Loading**: Default tools (File, Search, etc.) are created by the Factory and automatically registered when the Agent starts.
+* **OpenAI Compatible**: Supports exporting tool definitions in OpenAI Function Calling format.
 
 #### Tool Base Class
 
@@ -319,8 +327,8 @@ All tools inherit from the `FinchTool` base class and must implement:
 | `edit_file` | File | `filesystem.py` | Edit file (line-level) |
 | `list_dir` | File | `filesystem.py` | List directory contents |
 | `exec` | System | `shell.py` | Execute Shell command |
-| `web_search` | Network | `web.py` / `search/` | Web search (supports Tavily/Brave/DDG) |
-| `web_extract` | Network | `web.py` | Extract web content |
+| `web_search` | Network | `web.py` / `search/` | Web search (supports Tavily/Brave/DuckDuckGo) |
+| `web_extract` | Network | `web.py` | Extract web content (supports Jina AI fallback) |
 | `remember` | Memory | `memory.py` | Store memory |
 | `recall` | Memory | `memory.py` | Retrieve memory |
 | `forget` | Memory | `memory.py` | Delete/archive memory |
@@ -505,11 +513,17 @@ Create a `SKILL.md` file in `~/.finchbot/workspace/skills/{skill-name}/`.
 
 Add a new Provider class in `providers/factory.py`.
 
-### 5.4 Custom Memory Retrieval Strategy
+### 5.4 Adding New Tools
+
+1. Inherit `FinchTool` base class.
+2. Add creation logic in `ToolFactory` (if config injection is needed).
+3. Register with `ToolRegistry`.
+
+### 5.5 Custom Memory Retrieval Strategy
 
 Inherit `RetrievalService` or modify the `search()` method.
 
-### 5.5 Adding New Languages
+### 5.6 Adding New Languages
 
 Add a new `.toml` file under `i18n/locales/`.
 

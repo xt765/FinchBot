@@ -23,7 +23,8 @@ FinchBot 采用 **LangChain v1.2** + **LangGraph v1.0** 构建，是一个具备
 ```mermaid
 graph TD
     User[用户] --> CLI[命令行界面]
-    CLI --> Agent[Agent Core]
+    CLI --> Factory[Agent Factory]
+    Factory --> Agent[Agent Core]
 
     subgraph Core
         Planner[规划器]
@@ -34,6 +35,9 @@ graph TD
 
     Agent --> ContextBuilder
     ContextBuilder --> SystemPrompt[系统提示词]
+
+    Factory --> ToolFactory[Tool Factory]
+    ToolFactory --> ToolSet[工具集]
 
     Agent --> MemoryMgr[记忆系统]
     subgraph MemSys
@@ -76,6 +80,7 @@ graph TD
 finchbot/
 ├── agent/              # Agent 核心
 │   ├── core.py        # Agent 创建与运行
+│   ├── factory.py     # Agent 工厂
 │   ├── context.py     # 上下文构建
 │   └── skills.py      # 技能系统
 ├── cli/                # 命令行界面
@@ -115,6 +120,7 @@ finchbot/
 ├── tools/              # 工具系统
 │   ├── base.py
 │   ├── registry.py
+│   ├── factory.py     # 工具工厂
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -132,15 +138,17 @@ finchbot/
 
 ### 2.1 Agent Core (智能体核心)
 
-**实现位置**: `src/finchbot/agent/core.py`
+**实现位置**: `src/finchbot/agent/`
 
-Agent Core 是 FinchBot 的大脑，负责决策、规划和工具调度。
+Agent Core 是 FinchBot 的大脑，负责决策、规划和工具调度。引入了工厂模式来解耦创建逻辑。
 
-#### 核心功能
+#### 核心组件
 
-* **状态管理**: 基于 `LangGraph` 的 `StateGraph`，维护对话状态 (`messages`)
-* **持久化**: 使用 `SqliteSaver` (`checkpoints.db`) 保存状态快照，支持断点续传和历史回溯
-* **上下文构建 (`ContextBuilder`)**: 动态组合系统提示词，包括：
+* **AgentFactory (`factory.py`)**: 负责组装 Agent，协调 ToolFactory 创建工具集，并初始化 Checkpointer。
+* **Agent Core (`core.py`)**: 负责 Agent 的运行时逻辑。
+    * **状态管理**: 基于 `LangGraph` 的 `StateGraph`，维护对话状态 (`messages`)
+    * **持久化**: 使用 `SqliteSaver` (`checkpoints.db`) 保存状态快照，支持断点续传和历史回溯
+* **上下文构建 (`context.py`)**: 动态组合系统提示词，包括：
     * **Identity**: `SYSTEM.md` (角色设定)
     * **Memory Guide**: `MEMORY_GUIDE.md` (记忆使用准则)
     * **Soul**: `SOUL.md` (灵魂设定)
@@ -152,11 +160,10 @@ Agent Core 是 FinchBot 的大脑，负责决策、规划和工具调度。
 
 | 函数/类 | 说明 |
 |:---|:---|
-| `create_finch_agent()` | 创建并配置 FinchBot Agent |
+| `AgentFactory.create_for_cli()` | 静态工厂方法，为 CLI 创建配置好的 Agent |
+| `create_finch_agent()` | 创建并配置 LangGraph Agent |
 | `build_system_prompt()` | 构建完整的系统提示词 |
-| `get_default_workspace()` | 获取默认工作目录 |
 | `get_sqlite_checkpointer()` | 获取 SQLite 持久化检查点 |
-| `get_memory_checkpointer()` | 获取内存检查点 |
 
 #### 线程安全机制
 
@@ -304,11 +311,12 @@ class MemoryManager:
 
 **实现位置**: `src/finchbot/tools/`
 
-#### 注册机制
+#### 注册机制与工厂模式
 
-* **ToolRegistry**: 单例注册表，管理所有可用工具
-* **Lazy Loading**: 默认工具（文件、搜索等）在 Agent 启动时自动注册
-* **OpenAI 兼容**: 支持导出工具定义为 OpenAI Function Calling 格式
+* **ToolFactory (`factory.py`)**: 负责根据配置创建和组装工具列表。它处理了 WebSearchTool 的自动降级逻辑（Tavily/Brave/DuckDuckGo）。
+* **ToolRegistry**: 单例注册表，管理所有可用工具。
+* **Lazy Loading**: 默认工具（文件、搜索等）在 Agent 启动时由 Factory 创建并自动注册。
+* **OpenAI 兼容**: 支持导出工具定义为 OpenAI Function Calling 格式。
 
 #### 工具基类
 
@@ -332,8 +340,8 @@ class MemoryManager:
 | `edit_file` | 文件 | `filesystem.py` | 编辑文件（行级） |
 | `list_dir` | 文件 | `filesystem.py` | 列出目录内容 |
 | `exec` | 系统 | `shell.py` | 执行 Shell 命令 |
-| `web_search` | 网络 | `web.py` / `search/` | 网页搜索（支持 Tavily/Brave/DDG） |
-| `web_extract` | 网络 | `web.py` | 提取网页内容 |
+| `web_search` | 网络 | `web.py` / `search/` | 网页搜索（支持 Tavily/Brave/DuckDuckGo） |
+| `web_extract` | 网络 | `web.py` | 提取网页内容（支持 Jina AI 降级） |
 | `remember` | 记忆 | `memory.py` | 存储记忆 |
 | `recall` | 记忆 | `memory.py` | 检索记忆 |
 | `forget` | 记忆 | `memory.py` | 删除/归档记忆 |
@@ -578,11 +586,17 @@ FinchBot 将"开箱即用"作为核心设计理念：
 
 在 `providers/factory.py` 中添加新的 Provider 类。
 
-### 5.4 自定义记忆检索策略
+### 5.4 添加新工具
+
+1. 继承 `FinchTool` 基类。
+2. 在 `ToolFactory` 中添加创建逻辑（如果需要配置注入）。
+3. 注册到 `ToolRegistry`。
+
+### 5.5 自定义记忆检索策略
 
 继承 `RetrievalService` 或修改 `search()` 方法。
 
-### 5.5 添加新语言
+### 5.6 添加新语言
 
 在 `i18n/locales/` 下添加新的 `.toml` 文件。
 
