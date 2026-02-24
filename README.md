@@ -49,37 +49,33 @@
 
 ```mermaid
 graph TD
-    %% Design Philosophy Nodes
-    Privacy[Privacy First]
-    Modularity[Modularity]
-    Dev_Experience[Developer Friendly]
-    Stability[Production Ready]
-    Out_of_Box[Out of the Box]
+    subgraph Philosophy [Design Philosophy]
+        direction TB
+        
+        P[Privacy First] --> P1(Local Embedding)
+        P --> P2(No Cloud Upload)
+        
+        M[Modularity] --> M1(Factory Pattern)
+        M --> M2(Decoupled Components)
+        
+        D[Developer Friendly] --> D1(Type Safety)
+        D --> D2(Rich Docs)
+        
+        S[Production Ready] --> S1(Thread Safety)
+        S --> S2(Auto Retry)
+        S --> S3(Timeout Control)
+        
+        O[Out of the Box] --> O1(Zero Config Start)
+        O --> O2(Auto Fallback)
+        O --> O3(Rich CLI)
+    end
 
-    %% Details
-    Privacy --> Local_Embedding(Local Embedding)
-    Privacy --> No_Cloud_Upload(No Cloud Upload)
-    
-    Modularity --> Factory_Pattern(Factory Pattern)
-    Modularity --> Decoupled_Components(Decoupled Components)
-    
-    Dev_Experience --> Type_Safety(Type Safety)
-    Dev_Experience --> Documentation(Rich Docs)
-    
-    Stability --> Locks(Thread Safety)
-    Stability --> Retry(Auto Retry)
-    Stability --> Timeout(Timeout Control)
-    
-    Out_of_Box --> Zero_Config(Zero Config Start)
-    Out_of_Box --> Auto_Fallback(Auto Fallback)
-    Out_of_Box --> Rich_CLI(Rich CLI)
+    %% Style Definitions
+    classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,font-weight:bold;
+    classDef item fill:#ffffff,stroke:#90caf9,stroke-width:1px,color:#333;
 
-    %% Styling
-    classDef main fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef sub fill:#fff9c4,stroke:#fbc02d,stroke-width:1px;
-    
-    class Privacy,Modularity,Dev_Experience,Stability,Out_of_Box main
-    class Local_Embedding,No_Cloud_Upload,Factory_Pattern,Decoupled_Components,Type_Safety,Documentation,Locks,Retry,Timeout,Zero_Config,Auto_Fallback,Rich_CLI sub
+    class P,M,D,S,O category;
+    class P1,P2,M1,M2,D1,D2,S1,S2,S3,O1,O2,O3 item;
 ```
 
 ### Out-of-the-Box Experience

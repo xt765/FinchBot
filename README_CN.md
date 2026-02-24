@@ -49,37 +49,33 @@
 
 ```mermaid
 graph TD
-    %% 设计哲学节点
-    Privacy[隐私优先]
-    Modularity[模块化]
-    Dev_Experience[开发者友好]
-    Stability[生产级稳定]
-    Out_of_Box[开箱即用]
+    subgraph Philosophy [设计哲学]
+        direction TB
+        
+        P[隐私优先] --> P1(本地 Embedding)
+        P --> P2(数据不上云)
+        
+        M[模块化] --> M1(工厂模式)
+        M --> M2(组件解耦)
+        
+        D[开发者友好] --> D1(类型安全)
+        D --> D2(文档完善)
+        
+        S[生产级稳定] --> S1(双重检查锁)
+        S --> S2(自动重试)
+        S --> S3(超时控制)
+        
+        O[开箱即用] --> O1(零配置启动)
+        O --> O2(自动降级)
+        O --> O3(富文本界面)
+    end
 
-    %% 细节
-    Privacy --> Local_Embedding(本地 Embedding)
-    Privacy --> No_Cloud_Upload(数据不上云)
-    
-    Modularity --> Factory_Pattern(工厂模式)
-    Modularity --> Decoupled(组件解耦)
-    
-    Dev_Experience --> Type_Safety(类型安全)
-    Dev_Experience --> Docs(文档完善)
-    
-    Stability --> Thread_Safe(双重检查锁)
-    Stability --> Retry(自动重试)
-    Stability --> Timeout(超时控制)
-    
-    Out_of_Box --> Zero_Config(零配置启动)
-    Out_of_Box --> Auto_Fallback(自动降级)
-    Out_of_Box --> Rich_CLI(富文本界面)
+    %% 样式定义
+    classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,font-weight:bold;
+    classDef item fill:#ffffff,stroke:#90caf9,stroke-width:1px,color:#333;
 
-    %% 样式
-    classDef main fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef sub fill:#fff9c4,stroke:#fbc02d,stroke-width:1px;
-    
-    class Privacy,Modularity,Dev_Experience,Stability,Out_of_Box main
-    class Local_Embedding,No_Cloud_Upload,Factory_Pattern,Decoupled,Type_Safety,Docs,Thread_Safe,Retry,Timeout,Zero_Config,Auto_Fallback,Rich_CLI sub
+    class P,M,D,S,O category;
+    class P1,P2,M1,M2,D1,D2,S1,S2,S3,O1,O2,O3 item;
 ```
 
 ### 开箱即用体验
