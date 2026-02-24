@@ -26,7 +26,7 @@ class GlobalServices:
     4. 线程安全的实例创建
     """
 
-    _lock = threading.Lock()
+    _lock = threading.RLock()  # 使用可重入锁，避免死锁
     _embedding_service: EmbeddingService | None = None
     _vector_stores: dict[str, VectorMemoryStore] = {}
     _memory_managers: dict[str, MemoryManager] = {}
