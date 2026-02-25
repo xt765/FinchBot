@@ -92,7 +92,34 @@ graph BT
 
 FinchBot is designed with **"Out of the Box"** as a core principle:
 
-**Three Commands to Get Started:**
+#### Multi-Platform Messaging
+
+FinchBot unified message routing architecture - develop once, reach everywhere:
+
+![Web](https://img.shields.io/badge/Web-WebSocket-blue?logo=googlechrome&logoColor=white) ![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![DingTalk](https://img.shields.io/badge/DingTalk-Webhook-0089FF?logo=dingtalk&logoColor=white) ![Feishu](https://img.shields.io/badge/Feishu-Bot_API-00D6D9?logo=lark&logoColor=white) ![WeChat](https://img.shields.io/badge/WeChat-Enterprise-07C160?logo=wechat&logoColor=white) ![Email](https://img.shields.io/badge/Email-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
+
+#### Web Interface (Beta)
+
+FinchBot provides a modern Web interface built with React + Vite + FastAPI:
+
+```bash
+# Start the backend server
+uv run finchbot serve
+
+# In another terminal, start the frontend
+cd web
+npm install
+npm run dev
+```
+
+The Web interface supports:
+- Real-time chat via WebSocket
+- Multi-session management (coming soon)
+- Rich text rendering
+
+#### Command Line Interface
+
+FinchBot provides a full-featured command line interface, three commands to get started:
 
 ```bash
 # Step 1: Configure API keys and default model
@@ -105,14 +132,11 @@ uv run finchbot sessions
 uv run finchbot chat
 ```
 
-| Feature | Description |
-| :---: | :--- |
-| **Three-Step Start** | `config` → `sessions` → `chat`, complete workflow |
-| **Env Vars** | Configure via `OPENAI_API_KEY`, etc. |
-| **Rich CLI** | Full-screen keyboard navigation |
-| **i18n** | Built-in English/Chinese support |
-| **Auto Fallback** | Web search: Tavily → Brave → DuckDuckGo |
-| **Zero Config** | Just set API Key and run |
+|             Feature             | Description                                                                                               |
+| :-----------------------------: | :-------------------------------------------------------------------------------------------------------- |
+| **Environment Variables** | All configurations can be set via environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.) |
+|     **i18n Support**     | Built-in Chinese/English support, auto-detects system language                                            |
+|     **Auto Fallback**     | Web search automatically falls back through Tavily → Brave → DuckDuckGo                                 |
 
 ---
 

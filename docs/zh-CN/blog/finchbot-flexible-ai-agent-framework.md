@@ -87,7 +87,34 @@ graph BT
 
 FinchBot 将 **"开箱即用"** 作为核心设计理念——无需复杂配置即可上手：
 
-**三步快速上手：**
+#### 多平台消息支持
+
+FinchBot 统一消息路由架构，一次开发，多端触达：
+
+![Web](https://img.shields.io/badge/Web-WebSocket-blue?logo=googlechrome&logoColor=white) ![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![钉钉](https://img.shields.io/badge/钉钉-Webhook-0089FF?logo=dingtalk&logoColor=white) ![飞书](https://img.shields.io/badge/飞书-Bot_API-00D6D9?logo=lark&logoColor=white) ![微信](https://img.shields.io/badge/微信-企业微信-07C160?logo=wechat&logoColor=white) ![邮件](https://img.shields.io/badge/邮件-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
+
+#### Web 界面 (Beta)
+
+FinchBot 提供基于 React + Vite + FastAPI 构建的现代化 Web 界面：
+
+```bash
+# 启动后端服务
+uv run finchbot serve
+
+# 在另一个终端启动前端
+cd web
+npm install
+npm run dev
+```
+
+Web 界面支持：
+- WebSocket 实时聊天
+- 多会话管理 (即将推出)
+- 富文本渲染
+
+#### 命令行界面
+
+FinchBot 提供功能完整的命令行界面，三步快速上手：
 
 ```bash
 # 第一步：配置 API 密钥和默认模型
@@ -104,7 +131,6 @@ uv run finchbot chat
 | :---------------------: | :--------------------------------------------------------------------------- |
 | **环境变量配置** | 所有配置均可通过环境变量设置（`OPENAI_API_KEY`、`ANTHROPIC_API_KEY` 等） |
 |  **i18n 国际化**  | 内置中英文支持，自动检测系统语言                                             |
-| **多平台消息支持** | 支持 Web、Discord、钉钉、飞书、微信、邮件等多平台消息接入                   |
 |   **自动降级**   | 网页搜索自动降级：Tavily → Brave → DuckDuckGo                              |
 
 ---
