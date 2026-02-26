@@ -30,8 +30,11 @@
 ![Banner](https://i-blog.csdnimg.cn/direct/89e72e3b66ff4adc8ab8aa90400385ef.png)
 
 > 作者：玄同 765 (xt765)
-> 项目：[GitHub - FinchBot](https://github.com/xt765/FinchBot)
-> 镜像：[Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
+> 项目：[GitHub - FinchBot](https://github.com/xt765/FinchBot) | [Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
+
+**🎉 Gitee 官方推荐项目** — FinchBot 已获得 Gitee 官方推荐！
+
+---
 
 ## 摘要
 
@@ -66,14 +69,14 @@ graph BT
     classDef pillar fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:8,ry:8;
     classDef base fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px,color:#1b5e20,rx:10,ry:10;
 
-    Roof("<b>FinchBot Framework</b><br/>轻量 • 灵活 • 可扩展"):::roof
+    Roof("<b>FinchBot Framework</b><br/>轻量 • 灵活 • 无限扩展"):::roof
 
     subgraph Pillars [核心哲学]
         direction LR
-        P("<b>隐私优先</b><br/>本地 Embedding<br/>无需上传云端"):::pillar
-        M("<b>模块化</b><br/>工厂模式<br/>解耦设计"):::pillar
-        D("<b>开发友好</b><br/>类型安全<br/>丰富文档"):::pillar
-        S("<b>快速启动</b><br/>全异步<br/>线程池"):::pillar
+        P("<b>隐私优先</b><br/>本地 Embedding<br/>数据不上云"):::pillar
+        M("<b>模块化</b><br/>工厂模式<br/>组件解耦"):::pillar
+        D("<b>开发者友好</b><br/>类型安全<br/>文档完善"):::pillar
+        S("<b>极速启动</b><br/>全异步架构<br/>线程池并发"):::pillar
         O("<b>开箱即用</b><br/>零配置<br/>自动降级"):::pillar
     end
 
@@ -91,7 +94,12 @@ FinchBot 以 **"开箱即用"** 为核心设计原则：
 
 FinchBot 统一的消息路由架构 —— 一次开发，多端触达：
 
-![Web](https://img.shields.io/badge/Web-WebSocket-blue?logo=googlechrome&logoColor=white) ![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![钉钉](https://img.shields.io/badge/钉钉-Webhook-0089FF?logo=dingtalk&logoColor=white) ![飞书](https://img.shields.io/badge/飞书-Bot_API-00D6D9?logo=lark&logoColor=white) ![微信](https://img.shields.io/badge/微信-企业微信-07C160?logo=wechat&logoColor=white) ![邮件](https://img.shields.io/badge/邮件-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
+- Web (WebSocket)
+- Discord
+- 钉钉 (Webhook)
+- 飞书 (Bot API)
+- 微信 (企业微信)
+- 邮件 (SMTP/IMAP)
 
 #### Web 界面（Beta）
 
@@ -163,9 +171,9 @@ graph TD
         direction TB
         Bus[MessageBus]
         CM[ChannelManager]
-        
+
         Bus <--> CM
-        
+
         subgraph Channels [平台通道]
             WebCh[Web]
             DiscordCh[Discord]
@@ -174,7 +182,7 @@ graph TD
             WeChatCh[微信]
             EmailCh[邮件]
         end
-        
+
         CM <--> Channels
     end
     class Bus,CM channelLayer
@@ -192,7 +200,7 @@ graph TD
         Agent[LangGraph Agent]
         CB[ContextBuilder]
         SP[系统提示词]
-        
+
         Agent --> CB
         CB --> SP
     end
@@ -201,18 +209,18 @@ graph TD
     subgraph MemorySystem [记忆系统 - 双层存储]
         direction TB
         MM[MemoryManager]
-        
+
         subgraph Services [服务层]
             RS[RetrievalService]
             CS[ClassificationService]
             IS[ImportanceScorer]
         end
-        
+
         subgraph Storage [存储层]
             SQLite[(SQLite)]
             Vector[(VectorStore)]
         end
-        
+
         MM --> RS & CS & IS
         RS --> SQLite & Vector
         SQLite <--> Vector
@@ -222,14 +230,14 @@ graph TD
     subgraph ToolEcosystem [工具生态 - 11 个内置工具]
         direction TB
         TR[ToolRegistry]
-        
+
         subgraph BuiltInTools [内置工具]
             FileTools[文件操作]
             WebTools[网络]
             MemTools[记忆]
             SysTools[系统]
         end
-        
+
         TR --> BuiltInTools
     end
     class TR,FileTools,WebTools,MemTools,SysTools toolLayer
@@ -247,12 +255,12 @@ graph TD
 
     CLI & WebUI --> Bus
     API --> AF
-    
+
     Bus --> AF
     AF --> Agent
     AF --> TF
     TF --> TR
-    
+
     Agent <--> MM
     Agent <--> TR
     Agent --> OpenAI & Anthropic & DeepSeek & Gemini & Groq & Moonshot
@@ -326,7 +334,7 @@ flowchart TB
     CS --> SQLite
     IS --> SQLite
     ES --> Vector
-    
+
     SQLite <--> DS <--> Vector
 ```
 
@@ -342,7 +350,7 @@ class QueryType(StrEnum):
     FACTUAL = "factual"                # 事实型（0.8/0.2）
     CONCEPTUAL = "conceptual"          # 概念型（0.2/0.8）
     COMPLEX = "complex"                # 复杂型（0.5/0.5）
-    AMBIGUOUS = "ambiguous"            # 歧义型（0.3/0.7）
+    AMBIGUOUS = "ambiguous"            # 歧义型（0.3/0.7)
 ```
 
 ---
@@ -373,7 +381,7 @@ flowchart TD
     classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
     A([Agent 启动]):::startEnd --> B[加载 Bootstrap 文件]:::process
-    
+
     B --> C[SYSTEM.md]:::file
     B --> D[MEMORY_GUIDE.md]:::file
     B --> E[SOUL.md]:::file
@@ -410,13 +418,13 @@ flowchart TD
     classDef fallback fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
 
     Start[网页搜索请求]:::check
-    
+
     Check1{TAVILY_API_KEY<br/>已设置？}:::check
     Tavily[Tavily<br/>质量最佳<br/>AI 优化]:::engine
-    
+
     Check2{BRAVE_API_KEY<br/>已设置？}:::check
     Brave[Brave Search<br/>隐私友好<br/>免费额度大]:::engine
-    
+
     DDG[DuckDuckGo<br/>零配置<br/>始终可用]:::fallback
 
     Start --> Check1
@@ -427,7 +435,7 @@ flowchart TD
 ```
 
 | 优先级 | 引擎 | API Key | 特点 |
-| :---: | :---: | :---: | :--- |
+| :---: | :--- | :---: | :--- |
 | 1 | **Tavily** | 需要 | 质量最佳，专为 AI 优化 |
 | 2 | **Brave** | 需要 | 隐私友好，免费额度大 |
 | 3 | **DuckDuckGo** | 无需 | 始终可用，零配置 |
@@ -506,7 +514,7 @@ FinchBot 提供完整的 Docker 支持，一键部署：
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/xt765/FinchBot.git
+git clone https://gitee.com/xt765/FinchBot.git
 cd finchbot
 
 # 2. 配置环境变量
@@ -595,13 +603,13 @@ FinchBot 是一个精心设计的 Agent 框架：
 
 如果你正在寻找一个：
 
-* 隐私优先
-* 真正持久化
-* 生产就绪
-* 灵活可扩展
-* 现代架构
-* 开箱即用
-* 多种部署方式
+- 隐私优先
+- 真正持久化
+- 生产就绪
+- 灵活可扩展
+- 现代架构
+- 开箱即用
+- 多种部署方式
 
 的框架，FinchBot 值得一试。
 
@@ -609,9 +617,9 @@ FinchBot 是一个精心设计的 Agent 框架：
 
 ## 链接
 
-* **项目地址**：[GitHub - FinchBot](https://github.com/xt765/FinchBot) | [Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
-* **文档**：[FinchBot 文档](https://github.com/xt765/FinchBot/tree/main/docs)
-* **问题反馈**：[GitHub Issues](https://github.com/xt765/FinchBot/issues)
+- **项目地址**：[GitHub - FinchBot](https://github.com/xt765/FinchBot) | [Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
+- **文档**：[FinchBot 文档](https://github.com/xt765/FinchBot/tree/main/docs)
+- **问题反馈**：[GitHub Issues](https://github.com/xt765/FinchBot/issues)
 
 ---
 
