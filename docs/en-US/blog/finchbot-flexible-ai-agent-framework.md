@@ -68,20 +68,20 @@ graph BT
     classDef base fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px,color:#1b5e20,rx:10,ry:10;
 
     %% Roof
-    Roof("🦅 <b>FinchBot Framework</b><br/>Lightweight • Flexible • Extensible"):::roof
+    Roof(" <b>FinchBot Framework</b><br/>Lightweight • Flexible • Extensible"):::roof
 
     %% Pillars
     subgraph Pillars [Core Philosophy]
         direction LR
-        P("🛡️ <b>Privacy First</b><br/>Local Embedding<br/>No Cloud Upload"):::pillar
-        M("🧩 <b>Modularity</b><br/>Factory Pattern<br/>Decoupled"):::pillar
-        D("❤️ <b>Dev Friendly</b><br/>Type Safety<br/>Rich Docs"):::pillar
-        S("⚡ <b>Fast Startup</b><br/>Fully Async<br/>Thread Pool"):::pillar
-        O("📦 <b>Out of Box</b><br/>Zero Config<br/>Auto Fallback"):::pillar
+        P(" <b>Privacy First</b><br/>Local Embedding<br/>No Cloud Upload"):::pillar
+        M(" <b>Modularity</b><br/>Factory Pattern<br/>Decoupled"):::pillar
+        D(" <b>Dev Friendly</b><br/>Type Safety<br/>Rich Docs"):::pillar
+        S(" <b>Fast Startup</b><br/>Fully Async<br/>Thread Pool"):::pillar
+        O(" <b>Out of Box</b><br/>Zero Config<br/>Auto Fallback"):::pillar
     end
 
     %% Foundation
-    Base("🏗️ <b>Tech Foundation</b><br/>LangChain v1.2 • LangGraph v1.0 • Python 3.13"):::base
+    Base(" <b>Tech Foundation</b><br/>LangChain v1.2 • LangGraph v1.0 • Python 3.13"):::base
 
     %% Connections
     Base === P & M & D & S & O
@@ -160,17 +160,17 @@ graph TD
     %% User Interaction Layer
     subgraph UserLayer [User Interaction Layer]
         direction LR
-        CLI[🖥️ CLI Interface]
-        WebUI[🌐 Web Interface]
-        API[🔌 REST API]
+        CLI[ CLI Interface]
+        WebUI[ Web Interface]
+        API[ REST API]
     end
     class CLI,WebUI,API userLayer
 
     %% Channel System
     subgraph ChannelSystem [Channel System - Multi-Platform Messaging]
         direction TB
-        Bus[📨 MessageBus]
-        CM[🎛️ ChannelManager]
+        Bus[ MessageBus]
+        CM[ ChannelManager]
         
         Bus <--> CM
         
@@ -191,17 +191,17 @@ graph TD
     %% Factory Layer
     subgraph FactoryLayer [Factory Layer - Component Assembly]
         direction LR
-        AF[🏭 AgentFactory]
-        TF[🔧 ToolFactory]
+        AF[ AgentFactory]
+        TF[ ToolFactory]
     end
     class AF,TF factoryLayer
 
     %% Agent Core
     subgraph AgentCore [Agent Core - Intelligence Engine]
         direction TB
-        Agent[🧠 LangGraph Agent]
-        CB[📝 ContextBuilder]
-        SP[📄 System Prompt]
+        Agent[ LangGraph Agent]
+        CB[ ContextBuilder]
+        SP[ System Prompt]
         
         Agent --> CB
         CB --> SP
@@ -211,17 +211,17 @@ graph TD
     %% Memory System
     subgraph MemorySystem [Memory System - Dual-Layer Storage]
         direction TB
-        MM[💾 MemoryManager]
+        MM[ MemoryManager]
         
         subgraph Services [Service Layer]
-            RS[🔍 RetrievalService]
-            CS[📊 ClassificationService]
-            IS[⭐ ImportanceScorer]
+            RS[ RetrievalService]
+            CS[ ClassificationService]
+            IS[ ImportanceScorer]
         end
         
         subgraph Storage [Storage Layer]
-            SQLite[(🗄️ SQLite)]
-            Vector[(🧮 VectorStore)]
+            SQLite[( SQLite)]
+            Vector[( VectorStore)]
         end
         
         MM --> RS & CS & IS
@@ -233,13 +233,13 @@ graph TD
     %% Tool Ecosystem
     subgraph ToolEcosystem [Tool Ecosystem - 11 Built-in Tools]
         direction TB
-        TR[📋 ToolRegistry]
+        TR[ ToolRegistry]
         
         subgraph BuiltInTools [Built-in Tools]
-            FileTools[📁 File Ops]
-            WebTools[🌐 Network]
-            MemTools[💾 Memory]
-            SysTools[⚙️ System]
+            FileTools[ File Ops]
+            WebTools[ Network]
+            MemTools[ Memory]
+            SysTools[ System]
         end
         
         TR --> BuiltInTools
@@ -316,23 +316,23 @@ flowchart TB
     classDef storageLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
     subgraph Business [Business Layer]
-        MM[💾 MemoryManager<br/>remember/recall/forget]
+        MM[ MemoryManager<br/>remember/recall/forget]
     end
     class MM businessLayer
 
     subgraph Services [Service Layer]
-        RS[🔍 RetrievalService<br/>Hybrid Retrieval + RRF]
-        CS[📊 ClassificationService<br/>Auto Classification]
-        IS[⭐ ImportanceScorer<br/>Importance Scoring]
-        ES[🧮 EmbeddingService<br/>FastEmbed Local]
+        RS[ RetrievalService<br/>Hybrid Retrieval + RRF]
+        CS[ ClassificationService<br/>Auto Classification]
+        IS[ ImportanceScorer<br/>Importance Scoring]
+        ES[ EmbeddingService<br/>FastEmbed Local]
     end
     class RS,CS,IS,ES serviceLayer
 
     subgraph Storage [Storage Layer]
         direction LR
-        SQLite[(🗄️ SQLiteStore<br/>Source of Truth<br/>Precise Query)]
-        Vector[(🧮 VectorStore<br/>ChromaDB<br/>Semantic Search)]
-        DS[🔄 DataSyncManager<br/>Incremental Sync]
+        SQLite[( SQLiteStore<br/>Source of Truth<br/>Precise Query)]
+        Vector[( VectorStore<br/>ChromaDB<br/>Semantic Search)]
+        DS[ DataSyncManager<br/>Incremental Sync]
     end
     class SQLite,Vector,DS storageLayer
 
@@ -371,12 +371,12 @@ FinchBot uses a **file system + modular assembly** approach for prompts.
 
 ```
 ~/.finchbot/
-├── SYSTEM.md           # Role definition
-├── MEMORY_GUIDE.md     # Memory guide
-├── SOUL.md             # Personality
-├── AGENT_CONFIG.md     # Configuration
-└── workspace/
-    └── skills/         # Custom skills
+ SYSTEM.md           # Role definition
+ MEMORY_GUIDE.md     # Memory guide
+ SOUL.md             # Personality
+ AGENT_CONFIG.md     # Configuration
+ workspace/
+     skills/         # Custom skills
 ```
 
 ### 4.2 Loading Flow
@@ -389,25 +389,25 @@ flowchart TD
     classDef file fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    A([🚀 Agent Startup]):::startEnd --> B[📂 Load Bootstrap Files]:::process
+    A([ Agent Startup]):::startEnd --> B[ Load Bootstrap Files]:::process
     
     B --> C[SYSTEM.md]:::file
     B --> D[MEMORY_GUIDE.md]:::file
     B --> E[SOUL.md]:::file
     B --> F[AGENT_CONFIG.md]:::file
 
-    C --> G[🔧 Assemble Prompt]:::process
+    C --> G[ Assemble Prompt]:::process
     D --> G
     E --> G
     F --> G
 
-    G --> H[📚 Load Always-on Skills]:::process
-    H --> I[🏗️ Build Skill Summary XML]:::process
-    I --> J[📋 Generate Tool Docs]:::process
-    J --> K[⚙️ Inject Runtime Info]:::process
-    K --> L[📝 Complete System Prompt]:::output
+    G --> H[ Load Always-on Skills]:::process
+    H --> I[ Build Skill Summary XML]:::process
+    I --> J[ Generate Tool Docs]:::process
+    J --> K[ Inject Runtime Info]:::process
+    K --> L[ Complete System Prompt]:::output
 
-    L --> M([📤 Send to LLM]):::startEnd
+    L --> M([ Send to LLM]):::startEnd
 ```
 
 ---
@@ -427,15 +427,15 @@ flowchart TD
     classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef fallback fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
 
-    Start[🔍 Web Search Request]:::check
+    Start[ Web Search Request]:::check
     
     Check1{TAVILY_API_KEY<br/>Set?}:::check
-    Tavily[🚀 Tavily<br/>Best Quality<br/>AI-Optimized]:::engine
+    Tavily[ Tavily<br/>Best Quality<br/>AI-Optimized]:::engine
     
     Check2{BRAVE_API_KEY<br/>Set?}:::check
-    Brave[🦁 Brave Search<br/>Privacy Friendly<br/>Large Free Tier]:::engine
+    Brave[ Brave Search<br/>Privacy Friendly<br/>Large Free Tier]:::engine
     
-    DDG[🦆 DuckDuckGo<br/>Zero Config<br/>Always Available]:::fallback
+    DDG[ DuckDuckGo<br/>Zero Config<br/>Always Available]:::fallback
 
     Start --> Check1
     Check1 -->|Yes| Tavily
@@ -463,7 +463,7 @@ User: Create a translation skill for Chinese to English.
 
 Agent: Okay, creating translation skill...
        [Invokes skill-creator]
-       ✅ Created skills/translator/SKILL.md
+        Created skills/translator/SKILL.md
        You can now use translation!
 ```
 
@@ -492,7 +492,7 @@ flowchart TB
         MD[Markdown Rendering]:::frontend
     end
 
-    U[👤 User]:::user --> React
+    U[ User]:::user --> React
     React <--> WS
     WS <--> API
 
@@ -614,13 +614,13 @@ FinchBot is a thoughtfully designed Agent framework:
 
 If you are looking for a framework that is:
 
-* ✅ Privacy First
-* ✅ Truly Persistent
-* ✅ Production Ready
-* ✅ Flexible & Extensible
-* ✅ Modern Architecture
-* ✅ Out of the Box
-* ✅ Multiple Deployment Options
+*  Privacy First
+*  Truly Persistent
+*  Production Ready
+*  Flexible & Extensible
+*  Modern Architecture
+*  Out of the Box
+*  Multiple Deployment Options
 
 FinchBot is worth a try.
 
@@ -628,10 +628,10 @@ FinchBot is worth a try.
 
 ## Links
 
-* 📦 **Project**: [GitHub - FinchBot](https://github.com/xt765/finchbot) | [Gitee - FinchBot](https://gitee.com/xt765/finchbot)
-* 📖 **Docs**: [FinchBot Docs](https://github.com/xt765/finchbot/tree/main/docs)
-* 💬 **Issues**: [GitHub Issues](https://github.com/xt765/finchbot/issues)
+*  **Project**: [GitHub - FinchBot](https://github.com/xt765/finchbot) | [Gitee - FinchBot](https://gitee.com/xt765/finchbot)
+*  **Docs**: [FinchBot Docs](https://github.com/xt765/finchbot/tree/main/docs)
+*  **Issues**: [GitHub Issues](https://github.com/xt765/finchbot/issues)
 
 ---
 
-> If this helps you, please give it a Star ⭐️
+> If this helps you, please give it a Star 
