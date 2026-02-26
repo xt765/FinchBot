@@ -1,25 +1,25 @@
-# API 
+# API 参考
 
- FinchBot  API 
+本文档提供 FinchBot 核心类和方法的详细 API 参考。
 
-## 
+## 目录
 
-1. [Agent ](#1-agent--finchbotagent)
-2. [Memory ](#2-memory--finchbotmemory)
-3. [Tools ](#3-tools--finchbottools)
-4. [Skill ](#4-skill--finchbotagentskills)
-5. [Channel ](#5-channel--finchbotchannels)
-6. [Config ](#6-config--finchbotconfig)
-7. [I18n ](#7-i18n--finchboti18n)
-8. [Providers ](#8-providers--finchbotproviders)
+1. [Agent 模块](#1-agent-模块finchbotagent)
+2. [记忆模块](#2-记忆模块finchbotmemory)
+3. [工具模块](#3-工具模块finchbottools)
+4. [技能模块](#4-技能模块finchbotagentskills)
+5. [通道模块](#5-通道模块finchbotchannels)
+6. [配置模块](#6-配置模块finchbotconfig)
+7. [国际化模块](#7-国际化模块finchboti18n)
+8. [提供商模块](#8-提供商模块finchbotproviders)
 
 ---
 
-## 1. Agent  (`finchbot.agent`)
+## 1. Agent 模块 (`finchbot.agent`)
 
 ### 1.1 `AgentFactory`
 
-Agent  Agent 
+用于组装和配置 Agent 实例的工厂类。
 
 ```python
 class AgentFactory:
@@ -33,21 +33,21 @@ class AgentFactory:
     ) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver, list[BaseTool]]:
 ```
 
-****:
-- `model`: 
-- `workspace`: 
-- `session_id`:  ID
-- `config`: 
-- `session_metadata_store`: 
+**参数**：
+- `model`：基础聊天模型实例
+- `workspace`：工作区目录路径
+- `session_id`：会话 ID
+- `config`：配置对象
+- `session_metadata_store`：会话元数据存储（可选）
 
-****:
-- `(agent, checkpointer, tools)` 
+**返回值**：
+- `(agent, checkpointer, tools)` 元组
 
 ---
 
 ### 1.2 `create_finch_agent`
 
- FinchBot 
+创建并配置 FinchBot Agent 实例。
 
 ```python
 async def create_finch_agent(
@@ -58,18 +58,18 @@ async def create_finch_agent(
 ) -> tuple[CompiledStateGraph, AsyncSqliteSaver | MemorySaver]:
 ```
 
-****:
-- `model`:  ( `ChatOpenAI`, `ChatAnthropic`)
-- `workspace`:  (`Path` )
-- `tools`:  ( None)
-- `use_persistent`:  (Checkpointing)
+**参数**：
+- `model`：基础聊天模型实例（如 `ChatOpenAI`、`ChatAnthropic`）
+- `workspace`：工作区目录路径（`Path` 对象）
+- `tools`：可用工具序列（可选，默认为 None）
+- `use_persistent`：是否启用持久化存储（检查点）
 
-****:
-- `(agent, checkpointer)` :
-    - `agent`:  LangGraph 
-    - `checkpointer`: 
+**返回值**：
+- `(agent, checkpointer)` 元组：
+    - `agent`：编译后的 LangGraph 状态图
+    - `checkpointer`：持久化存储对象
 
-****:
+**示例**：
 ```python
 import asyncio
 from pathlib import Path
@@ -82,7 +82,7 @@ async def main():
     agent, checkpointer = await create_finch_agent(model, workspace)
 
     response = await agent.ainvoke(
-        {"messages": [("user", "Hello!")]}, 
+        {"messages": [("user", "你好！")]}, 
         config={"configurable": {"thread_id": "1"}}
     )
 
@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
 ### 1.3 `ContextBuilder`
 
-
+动态系统提示词构建器。
 
 ```python
 class ContextBuilder:
@@ -103,41 +103,41 @@ class ContextBuilder:
     def build_system_prompt(self, skill_names, use_cache=True) -> str: ...
 ```
 
-****:
-- `build_system_prompt()`: 
+**方法**：
+- `build_system_prompt()`：生成完整的系统提示词字符串
 
-****:
-- `SYSTEM.md`: 
-- `MEMORY_GUIDE.md`: 
-- `SOUL.md`: 
-- `AGENT_CONFIG.md`: Agent 
-- `SKILL.md`: 
-- `TOOLS.md`: 
--  (OS, Time, Python Version)
+**提示词组件**：
+- `SYSTEM.md`：基础角色定义
+- `MEMORY_GUIDE.md`：记忆使用指南
+- `SOUL.md`：灵魂定义（性格）
+- `AGENT_CONFIG.md`：Agent 配置
+- `SKILL.md`：动态加载的技能描述
+- `TOOLS.md`：自动生成的工具文档
+- 运行时信息（操作系统、时间、Python 版本）
 
 ---
 
 ### 1.4 `get_sqlite_checkpointer`
 
- SQLite 
+获取 SQLite 持久化检查点。
 
 ```python
 def get_sqlite_checkpointer(db_path: Path) -> SqliteSaver:
 ```
 
-****:
-- `db_path`: SQLite 
+**参数**：
+- `db_path`：SQLite 数据库文件路径
 
-****:
-- `SqliteSaver` 
+**返回值**：
+- `SqliteSaver` 实例
 
 ---
 
-## 2. Memory  (`finchbot.memory`)
+## 2. 记忆模块 (`finchbot.memory`)
 
 ### 2.1 `MemoryManager`
 
-
+记忆系统的统一入口。
 
 ```python
 class MemoryManager:
@@ -150,7 +150,7 @@ class MemoryManager:
 
 #### `remember`
 
-
+保存新记忆。
 
 ```python
 def remember(
@@ -162,18 +162,18 @@ def remember(
 ) -> str:
 ```
 
-****:
-- `content`: 
-- `category`:  ( "personal", "work")
-- `importance`:  (0.0-1.0)
-- `tags`:  ()
+**参数**：
+- `content`：记忆文本内容
+- `category`：分类（可选，如 "personal"、"work"）
+- `importance`：重要性评分（0.0-1.0，可选）
+- `tags`：标签列表（可选）
 
-****:
-- `memory_id`:  ID (UUID)
+**返回值**：
+- `memory_id`：新创建的记忆 ID（UUID）
 
 #### `recall`
 
-
+检索相关记忆。
 
 ```python
 def recall(
@@ -187,43 +187,43 @@ def recall(
 ) -> list[dict[str, Any]]:
 ```
 
-****:
-- `query`:  ()
-- `top_k`:  ( 5)
-- `category`:  ()
-- `query_type`:  ( `QueryType.COMPLEX`)
-- `similarity_threshold`:  ( 0.5)
-- `include_archived`:  ( False)
+**参数**：
+- `query`：查询文本（自然语言）
+- `top_k`：返回结果数量（默认 5）
+- `category`：按分类过滤（可选）
+- `query_type`：查询类型（默认 `QueryType.COMPLEX`）
+- `similarity_threshold`：相似度阈值（默认 0.5）
+- `include_archived`：是否包含已归档记忆（默认 False）
 
-**QueryType **:
+**QueryType 枚举**：
 
-|  |  |  |  |
+| 类型 | 说明 | 关键词权重 | 语义权重 |
 |:---|:---|:---:|:---:|
-| `KEYWORD_ONLY` |  | 1.0 | 0.0 |
-| `SEMANTIC_ONLY` |  | 0.0 | 1.0 |
-| `FACTUAL` |  | 0.8 | 0.2 |
-| `CONCEPTUAL` |  | 0.2 | 0.8 |
-| `COMPLEX` |  | 0.5 | 0.5 |
-| `AMBIGUOUS` |  | 0.3 | 0.7 |
+| `KEYWORD_ONLY` | 纯关键词检索 | 1.0 | 0.0 |
+| `SEMANTIC_ONLY` | 纯语义检索 | 0.0 | 1.0 |
+| `FACTUAL` | 事实型查询 | 0.8 | 0.2 |
+| `CONCEPTUAL` | 概念型查询 | 0.2 | 0.8 |
+| `COMPLEX` | 复杂查询 | 0.5 | 0.5 |
+| `AMBIGUOUS` | 歧义查询 | 0.3 | 0.7 |
 
-****:
--  `id`, `content`, `category`, `importance`, `similarity` 
+**返回值**：
+- 记忆字典列表，每个包含 `id`、`content`、`category`、`importance`、`similarity` 等
 
 #### `forget`
 
-
+删除或归档记忆。
 
 ```python
 def forget(self, pattern: str) -> dict[str, Any]:
 ```
 
-****:
-- `pattern`: 
+**参数**：
+- `pattern`：匹配记忆内容的字符串
 
-****:
-- 
+**返回值**：
+- 删除统计字典
 
-#### 
+#### 其他方法
 
 ```python
 def get_stats(self) -> dict: ...
@@ -232,7 +232,7 @@ def get_recent_memories(self, days: int = 7, limit: int = 20) -> list[dict]: ...
 def get_important_memories(self, min_importance: float = 0.8, limit: int = 20) -> list[dict]: ...
 ```
 
-#### 
+#### 使用示例
 
 ```python
 from finchbot.memory import MemoryManager, QueryType
@@ -241,25 +241,25 @@ from pathlib import Path
 manager = MemoryManager(Path.home() / ".finchbot" / "workspace")
 
 memory = manager.remember(
-    content="",
+    content="用户偏好深色主题",
     category="preference",
     importance=0.8
 )
 
 results = manager.recall(
-    query="",
+    query="用户界面偏好",
     query_type=QueryType.CONCEPTUAL,
     top_k=5
 )
 
-stats = manager.forget("")
+stats = manager.forget("旧邮箱")
 ```
 
 ---
 
 ### 2.2 `QueryType`
 
-
+查询类型枚举。
 
 ```python
 class QueryType(StrEnum):
@@ -273,11 +273,11 @@ class QueryType(StrEnum):
 
 ---
 
-## 3. Tools  (`finchbot.tools`)
+## 3. 工具模块 (`finchbot.tools`)
 
-### 3.1 `FinchTool` ()
+### 3.1 `FinchTool`（基类）
 
-
+所有工具的基类。
 
 ```python
 class FinchTool(BaseTool):
@@ -293,7 +293,7 @@ class FinchTool(BaseTool):
 
 ### 3.2 `ToolFactory`
 
-
+工具工厂类。
 
 ```python
 class ToolFactory:
@@ -305,19 +305,19 @@ class ToolFactory:
     ) -> list[BaseTool]:
 ```
 
-****:
-- `workspace`: 
-- `config`: 
-- `session_metadata_store`: 
+**参数**：
+- `workspace`：工作区目录路径
+- `config`：配置对象
+- `session_metadata_store`：会话元数据存储（可选）
 
-****:
-- 
+**返回值**：
+- 工具列表
 
 ---
 
 ### 3.3 `ToolRegistry`
 
-
+工具注册表（单例模式）。
 
 ```python
 class ToolRegistry:
@@ -335,57 +335,57 @@ class ToolRegistry:
 
 ---
 
-### 3.4 
+### 3.4 创建自定义工具
 
 ```python
 from finchbot.tools.base import FinchTool
 from typing import Any, ClassVar
 
 class MyCustomTool(FinchTool):
-    """"""
+    """自定义工具示例。"""
     
     name: str = "my_custom_tool"
-    description: str = ""
+    description: str = "我的自定义工具描述"
     parameters: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
             "input_text": {
                 "type": "string",
-                "description": ""
+                "description": "输入文本"
             }
         },
         "required": ["input_text"]
     }
     
     def _run(self, input_text: str) -> str:
-        return f": {input_text}"
+        return f"结果: {input_text}"
 ```
 
 ---
 
-### 3.5 
+### 3.5 内置工具
 
-|  |  |  |  |
+| 工具类 | 工具名称 | 说明 | 关键参数 |
 |:---|:---|:---|:---|
-| `ReadFileTool` | `read_file` |  | `file_path`:  |
-| `WriteFileTool` | `write_file` |  | `file_path`: , `content`:  |
-| `EditFileTool` | `edit_file` |  | `file_path`: , `old_text`: , `new_text`:  |
-| `ListDirTool` | `list_dir` |  | `dir_path`:  |
-| `ExecTool` | `exec` |  Shell  | `command`:  |
-| `WebSearchTool` | `web_search` |  | `query`: , `max_results`:  |
-| `WebExtractTool` | `web_extract` |  | `urls`: URL  |
-| `RememberTool` | `remember` |  | `content`: , `category`:  |
-| `RecallTool` | `recall` |  | `query`: , `query_type`:  |
-| `ForgetTool` | `forget` |  | `pattern`:  |
-| `SessionTitleTool` | `session_title` |  | `action`: get/set, `title`:  |
+| `ReadFileTool` | `read_file` | 读取文件内容 | `file_path`：文件路径 |
+| `WriteFileTool` | `write_file` | 写入文件内容 | `file_path`：路径，`content`：内容 |
+| `EditFileTool` | `edit_file` | 编辑文件内容 | `file_path`：路径，`old_text`：旧文本，`new_text`：新文本 |
+| `ListDirTool` | `list_dir` | 列出目录内容 | `dir_path`：目录路径 |
+| `ExecTool` | `exec` | 执行 Shell 命令 | `command`：命令字符串 |
+| `WebSearchTool` | `web_search` | 网页搜索 | `query`：查询，`max_results`：最大结果数 |
+| `WebExtractTool` | `web_extract` | 提取网页内容 | `urls`：URL 列表 |
+| `RememberTool` | `remember` | 保存记忆 | `content`：内容，`category`：分类 |
+| `RecallTool` | `recall` | 检索记忆 | `query`：查询，`query_type`：查询类型 |
+| `ForgetTool` | `forget` | 删除记忆 | `pattern`：匹配模式 |
+| `SessionTitleTool` | `session_title` | 管理会话标题 | `action`：get/set，`title`：标题 |
 
 ---
 
-## 4. Skill  (`finchbot.agent.skills`)
+## 4. 技能模块 (`finchbot.agent.skills`)
 
 ### 4.1 `SkillsLoader`
 
-
+技能加载器。
 
 ```python
 class SkillsLoader:
@@ -397,20 +397,20 @@ class SkillsLoader:
     def build_skills_summary(self) -> str: ...
 ```
 
-****:
-- `list_skills()`: 
-- `load_skill()`: 
-- `get_always_skills()`: 
-- `build_skills_summary()`:  XML 
+**方法**：
+- `list_skills()`：扫描并列出所有可用技能
+- `load_skill()`：加载指定技能内容
+- `get_always_skills()`：获取所有常驻技能
+- `build_skills_summary()`：构建 XML 格式的技能摘要
 
 ---
 
-### 4.2 
+### 4.2 技能文件格式
 
 ```yaml
 ---
 name: skill-name
-description: 
+description: 技能描述
 metadata:
   finchbot:
     emoji: 
@@ -419,16 +419,16 @@ metadata:
       bins: [curl, jq]
       env: [API_KEY]
 ---
-#  (Markdown)
+# 技能内容（Markdown）
 ```
 
 ---
 
-## 5. Channel  (`finchbot.channels`)
+## 5. 通道模块 (`finchbot.channels`)
 
 ### 5.1 `BaseChannel`
 
-
+通道抽象基类。
 
 ```python
 class BaseChannel(ABC):
@@ -449,7 +449,7 @@ class BaseChannel(ABC):
 
 ### 5.2 `MessageBus`
 
-
+异步消息路由器。
 
 ```python
 class MessageBus:
@@ -471,7 +471,7 @@ class MessageBus:
 
 ### 5.3 `ChannelManager`
 
-
+通道管理器。
 
 ```python
 class ChannelManager:
@@ -485,11 +485,11 @@ class ChannelManager:
 
 ---
 
-### 5.4 
+### 5.4 消息模型
 
 ```python
 class InboundMessage(BaseModel):
-    """"""
+    """入站消息"""
     channel_id: str
     user_id: str
     content: str
@@ -497,7 +497,7 @@ class InboundMessage(BaseModel):
     metadata: dict = {}
 
 class OutboundMessage(BaseModel):
-    """"""
+    """出站消息"""
     channel_id: str
     user_id: str
     content: str
@@ -507,9 +507,9 @@ class OutboundMessage(BaseModel):
 
 ---
 
-## 6. Config  (`finchbot.config`)
+## 6. 配置模块 (`finchbot.config`)
 
-### 6.1 `Config` ()
+### 6.1 `Config`（根配置）
 
 ```python
 class Config(BaseSettings):
@@ -526,22 +526,22 @@ class Config(BaseSettings):
 
 ### 6.2 `load_config`
 
-
+加载配置。
 
 ```python
 def load_config() -> Config: ...
 ```
 
-****:
-- `~/.finchbot/config.json` 
--  ( `FINCHBOT_`)
+**说明**：
+- 自动合并默认配置、`~/.finchbot/config.json` 和环境变量
+- 环境变量优先级最高（前缀 `FINCHBOT_`）
 
 ---
 
-### 6.3 
+### 6.3 配置结构
 
 ```
-Config ()
+Config（根）
  language
  default_model
  agents
@@ -564,11 +564,11 @@ Config ()
 
 ---
 
-## 7. I18n  (`finchbot.i18n`)
+## 7. 国际化模块 (`finchbot.i18n`)
 
 ### 7.1 `I18nLoader`
 
-
+国际化加载器。
 
 ```python
 class I18nLoader:
@@ -578,11 +578,11 @@ class I18nLoader:
     def t(self, key: str, **kwargs) -> str: ...
 ```
 
-****:
-- `get()`: 
-- `t()`: 
+**方法**：
+- `get()`：获取翻译文本
+- `t()`：获取翻译文本并替换变量
 
-****:
+**示例**：
 ```python
 from finchbot.i18n import I18nLoader
 
@@ -594,21 +594,21 @@ text = i18n.t("cli.chat.session", session_id="abc123")
 
 ---
 
-### 7.2 
+### 7.2 支持的语言
 
-|  |  |
+| 语言代码 | 语言名称 |
 |:---|:---|
-| `zh-CN` |  |
-| `zh-HK` |  |
-| `en-US` |  |
+| `zh-CN` | 简体中文 |
+| `zh-HK` | 繁体中文 |
+| `en-US` | 英语 |
 
 ---
 
-## 8. Providers  (`finchbot.providers`)
+## 8. 提供商模块 (`finchbot.providers`)
 
 ### 8.1 `create_chat_model`
 
-
+创建聊天模型。
 
 ```python
 def create_chat_model(
@@ -618,19 +618,19 @@ def create_chat_model(
 ) -> BaseChatModel:
 ```
 
-****:
-- `provider`: 
-- `model`: 
-- `config`: 
+**参数**：
+- `provider`：提供商名称
+- `model`：模型名称
+- `config`：配置对象
 
-****:
-- `BaseChatModel` 
+**返回值**：
+- `BaseChatModel` 实例
 
 ---
 
-### 8.2 
+### 8.2 支持的提供商
 
-|  |  |  |
+| 提供商 | 模型示例 | 环境变量 |
 |:---|:---|:---|
 | OpenAI | gpt-5, gpt-5.2, o3-mini | `OPENAI_API_KEY` |
 | Anthropic | claude-sonnet-4.5, claude-opus-4.6 | `ANTHROPIC_API_KEY` |
@@ -638,11 +638,11 @@ def create_chat_model(
 | Gemini | gemini-2.5-flash | `GOOGLE_API_KEY` |
 | Groq | llama-4-scout, llama-4-maverick | `GROQ_API_KEY` |
 | Moonshot | kimi-k1.5, kimi-k2.5 | `MOONSHOT_API_KEY` |
-| OpenRouter | () | `OPENROUTER_API_KEY` |
+| OpenRouter | （多种模型） | `OPENROUTER_API_KEY` |
 
 ---
 
-### 8.3 
+### 8.3 使用示例
 
 ```python
 from finchbot.providers import create_chat_model

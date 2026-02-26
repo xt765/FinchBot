@@ -1,94 +1,94 @@
-# 
+# 配置指南
 
-FinchBot  ****  **** 
+FinchBot 使用灵活的分层配置系统，支持**配置文件**和**环境变量**两种方式。
 
-******** > **** (`~/.finchbot/config.json`) > ****
+**优先级**：**环境变量** > **用户配置文件**（`~/.finchbot/config.json`）> **默认值**
 
-## 
+## 目录
 
-1. [](#1-)
-2. [](#2-)
-3. [](#3-)
-4. [](#4-)
-5. [](#5-)
+1. [配置文件结构](#1-配置文件结构)
+2. [环境变量](#2-环境变量)
+3. [快速配置](#3-快速配置)
+4. [配置示例](#4-配置示例)
+5. [高级配置](#5-高级配置)
 
 ---
 
-## 1. 
+## 1. 配置文件结构
 
- `~/.finchbot/config.json`
+用户配置文件默认位于 `~/.finchbot/config.json`。
 
-### 
+### 根对象
 
-|  |  |  |  |
+| 字段 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `language` | string | `"en-US"` |  `zh-CN`, `zh-HK`, `en-US` |
-| `language_set_by_user` | boolean | `false` |  |
-| `default_model` | string | `"gpt-5"` |  LLM  |
-| `default_model_set_by_user` | boolean | `false` |  |
-| `agents` | object | - | Agent  |
-| `providers` | object | - | LLM  |
-| `tools` | object | - |  |
+| `language` | string | `"en-US"` | 界面和提示词语言。支持 `zh-CN`、`zh-HK`、`en-US`。 |
+| `language_set_by_user` | boolean | `false` | 语言是否由用户手动设置（用于自动检测）。 |
+| `default_model` | string | `"gpt-5"` | 默认使用的 LLM 模型名称。 |
+| `default_model_set_by_user` | boolean | `false` | 默认模型是否由用户手动设置。 |
+| `agents` | object | - | Agent 行为配置。 |
+| `providers` | object | - | LLM 提供商配置。 |
+| `tools` | object | - | 工具特定配置。 |
 
-### `agents` 
+### `agents` 配置
 
-|  |  |  |  |
+| 字段 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `defaults.workspace` | string | `~/.finchbot/workspace` | Agent  |
-| `defaults.model` | string | `"gpt-5"` |  |
-| `defaults.temperature` | float | `0.7` |  (0.0-1.0)0.0 1.0  |
-| `defaults.max_tokens` | int | `8192` |  Token  |
-| `defaults.max_tool_iterations` | int | `20` |  |
+| `defaults.workspace` | string | `~/.finchbot/workspace` | Agent 工作区目录。所有文件操作将限制在此目录内。 |
+| `defaults.model` | string | `"gpt-5"` | 默认使用的模型。 |
+| `defaults.temperature` | float | `0.7` | 模型温度（0.0-1.0）。0.0 最确定性，1.0 最具创造性。 |
+| `defaults.max_tokens` | int | `8192` | 最大输出令牌数。 |
+| `defaults.max_tool_iterations` | int | `20` | 每次对话最大工具调用次数（防止无限循环）。 |
 
-### `providers` 
+### `providers` 配置
 
-`openai`, `anthropic`, `gemini`, `deepseek`, `moonshot`, `dashscope`, `groq`, `openrouter`, `custom`
+支持的提供商：`openai`、`anthropic`、`gemini`、`deepseek`、`moonshot`、`dashscope`、`groq`、`openrouter`、`custom`。
 
+每个提供商包含以下字段：
 
-
-|  |  |  |
+| 字段 | 类型 | 说明 |
 | :--- | :--- | :--- |
-| `api_key` | string | API  |
-| `api_base` | string | API  URL |
-| `extra_headers` | dict |  |
-| `models` | list[str] |  |
-| `openai_compatible` | bool |  OpenAI API true |
+| `api_key` | string | API Key。建议通过环境变量配置。 |
+| `api_base` | string | API Base URL。用于代理或自托管模型。 |
+| `extra_headers` | dict | 额外请求头（可选）。 |
+| `models` | list[str] | 此提供商支持的模型列表（可选）。 |
+| `openai_compatible` | bool | 是否兼容 OpenAI API 格式（默认：true）。 |
 
-****
+**内置提供商列表**：
 
-|  |  |  |  |
+| 提供商 | 说明 | 环境变量前缀 | 推荐模型 |
 | :--- | :--- | :--- | :--- |
-| `openai` | OpenAI  | `OPENAI_*` | gpt-5, gpt-5.2, o3-mini |
+| `openai` | OpenAI 官方 | `OPENAI_*` | gpt-5, gpt-5.2, o3-mini |
 | `anthropic` | Anthropic Claude | `ANTHROPIC_*` | claude-sonnet-4.5, claude-opus-4.6 |
 | `gemini` | Google Gemini | `GOOGLE_*` | gemini-2.5-flash |
 | `deepseek` | DeepSeek | `DEEPSEEK_*` | deepseek-chat, deepseek-reasoner |
-| `moonshot` | Moonshot (Kimi) | `MOONSHOT_*` | kimi-k1.5, kimi-k2.5 |
-| `dashscope` |  | `DASHSCOPE_*` | qwen-turbo, qwen-max |
+| `moonshot` | Moonshot（Kimi） | `MOONSHOT_*` | kimi-k1.5, kimi-k2.5 |
+| `dashscope` | 阿里云通义 | `DASHSCOPE_*` | qwen-turbo, qwen-max |
 | `groq` | Groq | `GROQ_*` | llama-4-scout, llama-4-maverick |
-| `openrouter` | OpenRouter | `OPENROUTER_*` | () |
-| `custom` |  |  | - |
+| `openrouter` | OpenRouter | `OPENROUTER_*` | （多种模型） |
+| `custom` | 自定义提供商 | 无 | - |
 
-### `tools` 
+### `tools` 配置
 
-|  |  |  |  |
+| 字段 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `restrict_to_workspace` | bool | `false` |  |
-| `web.search.max_results` | int | `5` |  |
-| `web.search.api_key` | string | - | Tavily  API Key |
-| `web.search.brave_api_key` | string | - | Brave  API Key |
-| `exec.timeout` | int | `60` | Shell  |
+| `restrict_to_workspace` | bool | `false` | 是否将文件操作限制在工作区内。建议启用以确保安全。 |
+| `web.search.max_results` | int | `5` | 每次查询的最大搜索结果数。 |
+| `web.search.api_key` | string | - | Tavily 搜索 API Key。 |
+| `web.search.brave_api_key` | string | - | Brave 搜索 API Key。 |
+| `exec.timeout` | int | `60` | Shell 命令执行超时时间（秒）。 |
 
 ---
 
-## 2. 
+## 2. 环境变量
 
- `FINCHBOT_` 
+所有配置项都可以通过环境变量覆盖。环境变量前缀通常为 `FINCHBOT_` 或提供商特定前缀。
 
- `__` Pydantic Settings 
+嵌套配置使用双下划线 `__` 分隔（Pydantic Settings 格式）。
 
-### LLM 
+### LLM 提供商
 
-|  | API Key  | API Base  |
+| 提供商 | API Key 变量 | API Base 变量 |
 | :--- | :--- | :--- |
 | OpenAI | `OPENAI_API_KEY` | `OPENAI_API_BASE` |
 | Anthropic | `ANTHROPIC_API_KEY` | `ANTHROPIC_API_BASE` |
@@ -99,17 +99,17 @@ FinchBot  ****  ****
 | DashScope | `DASHSCOPE_API_KEY` | `DASHSCOPE_API_BASE` |
 | OpenRouter | `OPENROUTER_API_KEY` | `OPENROUTER_API_BASE` |
 
-### 
+### 搜索工具
 
-|  | API Key  |  |
+| 工具 | API Key 变量 | 说明 |
 | :--- | :--- | :--- |
-| Tavily | `TAVILY_API_KEY` |  API Key |
-| Brave | `BRAVE_API_KEY` |  API Key |
-| DuckDuckGo | - |  API Key () |
+| Tavily | `TAVILY_API_KEY` | 质量最佳，需要 API Key |
+| Brave | `BRAVE_API_KEY` | 免费额度，需要 API Key |
+| DuckDuckGo | - | 无需 API Key（降级选项） |
 
-### 
+### 通用配置
 
-|  |  |  |
+| 变量名 | 对应配置项 | 示例 |
 | :--- | :--- | :--- |
 | `FINCHBOT_LANGUAGE` | `language` | `zh-CN` |
 | `FINCHBOT_DEFAULT_MODEL` | `default_model` | `gpt-4o` |
@@ -118,30 +118,30 @@ FinchBot  ****  ****
 
 ---
 
-## 3. 
+## 3. 快速配置
 
-### 
+### 方法一：交互式配置（推荐）
 
-
+运行配置向导：
 
 ```bash
 uv run finchbot config
 ```
 
+此命令启动交互式界面，引导您完成：
+- 语言选择
+- 默认模型设置
+- 提供商 API Key 配置
+- 工作区设置
 
-- 
-- 
--  API Key 
-- 
+### 方法二：手动配置文件
 
-### 
+1. 如果不存在配置文件，系统会自动创建默认配置
+2. 编辑 `~/.finchbot/config.json`
 
-1.  
-2.   `~/.finchbot/config.json`
+### 方法三：环境变量
 
-### 
-
- `.env` 
+在项目根目录的 `.env` 文件中设置：
 
 ```bash
 OPENAI_API_KEY=sk-...
@@ -152,9 +152,9 @@ FINCHBOT_DEFAULT_MODEL=gpt-5
 
 ---
 
-## 4. 
+## 4. 配置示例
 
-### 
+### 最小配置
 
 ```json
 {
@@ -168,7 +168,7 @@ FINCHBOT_DEFAULT_MODEL=gpt-5
 }
 ```
 
-### 
+### 完整配置示例
 
 ```json
 {
@@ -225,7 +225,7 @@ FINCHBOT_DEFAULT_MODEL=gpt-5
 }
 ```
 
-###  DeepSeek 
+### 使用 DeepSeek 配置
 
 ```json
 {
@@ -240,7 +240,7 @@ FINCHBOT_DEFAULT_MODEL=gpt-5
 }
 ```
 
-###  Ollama 
+### 使用本地 Ollama 配置
 
 ```json
 {
@@ -260,89 +260,89 @@ FINCHBOT_DEFAULT_MODEL=gpt-5
 
 ---
 
-## 5. 
+## 5. 高级配置
 
-### Bootstrap 
+### Bootstrap 文件系统
 
-FinchBot  Agent 
+FinchBot 使用文件系统管理 Agent 提示词和行为：
 
 ```
 ~/.finchbot/
- config.json         # 
- SYSTEM.md           # 
- MEMORY_GUIDE.md     # 
- SOUL.md             # 
- AGENT_CONFIG.md     # Agent 
+ config.json         # 主配置文件
+ SYSTEM.md           # 角色定义
+ MEMORY_GUIDE.md     # 记忆使用指南
+ SOUL.md             # 灵魂定义（性格）
+ AGENT_CONFIG.md     # Agent 配置
  workspace/
-     checkpoints.db  # 
-     memories.db     # 
-     chroma/         # 
-     skills/         # 
+     checkpoints.db  # 对话状态持久化
+     memories.db     # 记忆存储
+     chroma/         # 向量数据库
+     skills/         # 自定义技能
          my-skill/
              SKILL.md
 ```
 
-###  SYSTEM.md
+### 自定义 SYSTEM.md
 
 ```markdown
-# 
+# 角色定义
 
- AI  FinchBot
+你是一个名为 FinchBot 的专业 AI 助手。
 
-## 
-- 
-- 
-- 
-- 
+## 核心能力
+- 智能对话和问答
+- 文件操作和管理
+- 网页搜索和信息提取
+- 长期记忆管理
 
-## 
-- 
-- 
-- 
+## 行为准则
+- 始终保持专业和友好
+- 主动使用工具解决问题
+- 合理使用记忆功能存储重要信息
 ```
 
-###  SOUL.md
+### 自定义 SOUL.md
 
 ```markdown
-# 
+# 灵魂定义
 
-## 
-- 
-- 
-- 
+## 性格特征
+- 热情助人
+- 严谨细致
+- 渴望学习、持续进步
 
-## 
-- 
-- 
-- 
+## 沟通风格
+- 简洁明了
+- 适当使用表情符号增加亲和力
+- 必要时提供详细解释
 ```
 
-### 
+### 日志级别配置
 
-
+通过命令行参数控制日志输出：
 
 ```bash
-# WARNING 
+# 默认：WARNING 及以上
 finchbot chat
 
-# INFO 
+# INFO 及以上
 finchbot -v chat
 
-# DEBUG 
+# DEBUG 及以上（调试模式）
 finchbot -vv chat
 ```
 
 ---
 
-## 
+## 验证配置
 
-
+查看当前配置的提供商：
 
 ```bash
 uv run finchbot config
 ```
 
-
+或直接运行聊天测试：
 
 ```bash
 uv run finchbot chat
@@ -350,13 +350,13 @@ uv run finchbot chat
 
 ---
 
-## 
+## 配置文件位置
 
-| / |  |  |
+| 文件/目录 | 路径 | 说明 |
 | :--- | :--- | :--- |
-|  | `~/.finchbot/config.json` |  |
-|  |  `.env` |  |
-|  | `~/.finchbot/workspace/` |  |
-|  | `~/.finchbot/workspace/memories.db` | SQLite  |
-|  | `~/.finchbot/workspace/chroma/` | ChromaDB |
-|  | `~/.finchbot/workspace/checkpoints.db` | LangGraph  |
+| 用户配置 | `~/.finchbot/config.json` | 主配置文件 |
+| 环境变量 | 项目根目录的 `.env` | 可选 |
+| 工作区 | `~/.finchbot/workspace/` | 默认工作目录 |
+| 记忆数据库 | `~/.finchbot/workspace/memories.db` | SQLite 存储 |
+| 向量数据库 | `~/.finchbot/workspace/chroma/` | ChromaDB |
+| 对话状态 | `~/.finchbot/workspace/checkpoints.db` | LangGraph 持久化 |

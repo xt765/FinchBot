@@ -235,9 +235,9 @@ finchbot/
 ├── config/             # 配置管理
 │   ├── loader.py
 │   └── schema.py
+├── constants.py        # 统一常量定义
 ├── i18n/               # 国际化
-│   ├── loader.py
-│   ├── detector.py
+│   ├── loader.py      # 语言加载器
 │   └── locales/
 ├── memory/             # 记忆系统
 │   ├── manager.py
@@ -275,6 +275,7 @@ finchbot/
 │   ├── session_title.py
 │   └── search/
 └── utils/              # 工具函数
+    ├── cache.py       # 通用缓存基类
     ├── logger.py
     └── model_downloader.py
 ```
@@ -400,7 +401,7 @@ flowchart TB
     classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
 
     TR[ToolRegistry<br/>全局注册表]:::registry
-    Lock[双重检查锁<br/>线程安全单例]:::registry
+    Lock[单锁模式<br/>线程安全单例]:::registry
 
     File[文件操作<br/>read_file / write_file<br/>edit_file / list_dir]:::builtin
     Web[网络<br/>web_search / web_extract]:::builtin

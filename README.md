@@ -235,9 +235,9 @@ finchbot/
 ├── config/             # Configuration Management
 │   ├── loader.py
 │   └── schema.py
+├── constants.py        # Unified constants definition
 ├── i18n/               # Internationalization
-│   ├── loader.py
-│   ├── detector.py
+│   ├── loader.py      # Language loader
 │   └── locales/
 ├── memory/             # Memory System
 │   ├── manager.py
@@ -275,6 +275,7 @@ finchbot/
 │   ├── session_title.py
 │   └── search/
 └── utils/              # Utility Functions
+    ├── cache.py       # Generic cache base class
     ├── logger.py
     └── model_downloader.py
 ```
@@ -400,7 +401,7 @@ flowchart TB
     classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
 
     TR[ToolRegistry<br/>Global Registry]:::registry
-    Lock[Double-checked Lock<br/>Thread Safe Singleton]:::registry
+    Lock[Single-Lock Pattern<br/>Thread-Safe Singleton]:::registry
 
     File[File Operations<br/>read_file / write_file<br/>edit_file / list_dir]:::builtin
     Web[Network<br/>web_search / web_extract]:::builtin
