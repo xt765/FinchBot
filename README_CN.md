@@ -9,6 +9,8 @@
   具备持久记忆、动态提示词、无缝工具集成</em>
 </p>
 
+<p align="center">🌐 <strong>Language</strong>: <a href="README.md">English</a> | <a href="README_CN.md">中文</a></p>
+
 <p align="center">
   <a href="https://blog.csdn.net/Yunyi_Chi">
     <img src="https://img.shields.io/badge/CSDN-玄同765-orange?style=flat-square&logo=csdn" alt="CSDN Blog">
@@ -28,10 +30,6 @@
   <img src="https://img.shields.io/badge/Basedpyright-TypeCheck-purple?style=flat-square&logo=python" alt="Basedpyright">
   <img src="https://img.shields.io/badge/Docker-Containerized-blue?style=flat-square&logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square&logo=open-source-initiative" alt="License">
-</p>
-
-<p align="center">
-  <a href="docs/zh-CN/README.md">中文文档</a> | <a href="README.md">English Documentation</a>
 </p>
 
 **FinchBot (雀翎)** 是一个轻量级、模块化的 AI Agent 框架，基于 **LangChain v1.2** 和 **LangGraph v1.0** 构建。它不是又一个简单的 LLM 封装，而是一个深思熟虑的架构设计，专注于三个核心问题：

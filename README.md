@@ -9,6 +9,8 @@
   with persistent memory, dynamic prompts, and seamless tool integration</em>
 </p>
 
+<p align="center">🌐 <strong>Language</strong>: <a href="README.md">English</a> | <a href="README_CN.md">中文</a></p>
+
 <p align="center">
   <a href="https://blog.csdn.net/Yunyi_Chi">
     <img src="https://img.shields.io/badge/CSDN-玄同765-orange?style=flat-square&logo=csdn" alt="CSDN Blog">
@@ -28,10 +30,6 @@
   <img src="https://img.shields.io/badge/Basedpyright-TypeCheck-purple?style=flat-square&logo=python" alt="Basedpyright">
   <img src="https://img.shields.io/badge/Docker-Containerized-blue?style=flat-square&logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square&logo=open-source-initiative" alt="License">
-</p>
-
-<p align="center">
-  <a href="README_CN.md">中文文档</a> | <a href="docs/en-US/README.md">English Documentation</a>
 </p>
 
 **FinchBot** is a lightweight, modular AI Agent framework built on **LangChain v1.2** and **LangGraph v1.0**. It's not just another LLM wrapper—it's a thoughtfully designed architecture focused on three core challenges:
