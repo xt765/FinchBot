@@ -85,8 +85,9 @@ finchbot/
  config/             # 
     loader.py
     schema.py
- i18n/               # 国际化
-    loader.py        # 语言检测和加载
+ i18n/               # 
+    loader.py
+    detector.py
     locales/
  memory/             # 
     manager.py

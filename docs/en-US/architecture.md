@@ -86,7 +86,8 @@ finchbot/
     loader.py
     schema.py
  i18n/               # Internationalization
-    loader.py        # Language detection and loading
+    loader.py
+    detector.py
     locales/
  memory/             # Memory System
     manager.py
