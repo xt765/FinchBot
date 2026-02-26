@@ -20,6 +20,7 @@ dependencies = [
     "langchain-openai>=0.3.0",
     "langchain-anthropic>=0.3.0",
     "langchain-google-genai>=2.0.0",
+    "langchain-mcp-adapters>=0.2.0",
     "langgraph>=1.0.8",
     "langgraph-checkpoint-sqlite>=2.0.0",
     "langgraph-cli[inmem]>=0.1.0",
@@ -38,8 +39,6 @@ dependencies = [
     "langchain-chroma>=1.1.0",
     "rank-bm25>=0.2.2",
     "aiosqlite>=0.20.0",
-    "mcp>=1.0.0",
-    "discord-py>=2.4.0",
 ]
 
 [project.optional-dependencies]

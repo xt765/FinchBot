@@ -367,6 +367,8 @@ uv run finchbot chat
 
 MCP (Model Context Protocol) allows integration of external tool servers to dynamically extend Agent capabilities.
 
+FinchBot uses the official `langchain-mcp-adapters` library for MCP integration, supporting both **stdio** and **HTTP** transports.
+
 ### `mcp` Configuration
 
 | Field | Type | Default | Description |
@@ -377,11 +379,41 @@ MCP (Model Context Protocol) allows integration of external tool servers to dyna
 
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
-| `command` | string | ✓ | Command to start the MCP server |
-| `args` | list[str] | | Command line arguments |
-| `env` | dict | | Environment variables |
+| `command` | string | stdio required | Command to start the MCP server |
+| `args` | list[str] | | Command line arguments for stdio transport |
+| `env` | dict | | Environment variables for stdio transport |
+| `url` | string | HTTP required | MCP server HTTP URL |
+| `headers` | dict | | HTTP request headers (e.g., authentication) |
+| `disabled` | bool | `false` | Whether to disable this server |
 
-### MCP Configuration Example
+### Transport Types
+
+#### stdio Transport
+
+Suitable for local MCP servers, started via command line:
+
+```json
+{
+  "command": "mcp-filesystem",
+  "args": ["/path/to/allowed/dir"],
+  "env": {}
+}
+```
+
+#### HTTP Transport
+
+Suitable for remote MCP servers, connected via HTTP:
+
+```json
+{
+  "url": "https://api.example.com/mcp",
+  "headers": {
+    "Authorization": "Bearer your-token"
+  }
+}
+```
+
+### Full MCP Configuration Example
 
 ```json
 {
@@ -392,16 +424,37 @@ MCP (Model Context Protocol) allows integration of external tool servers to dyna
         "args": ["/path/to/allowed/dir"],
         "env": {}
       },
+      "remote-api": {
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer your-token"
+        }
+      },
       "github": {
         "command": "mcp-github",
         "args": [],
         "env": {
           "GITHUB_TOKEN": "ghp_..."
-        }
+        },
+        "disabled": true
       }
     }
   }
 }
+```
+
+### Dependencies
+
+MCP functionality requires installing `langchain-mcp-adapters`:
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+Or using uv:
+
+```bash
+uv add langchain-mcp-adapters
 ```
 
 ### Configure MCP via CLI
@@ -415,55 +468,42 @@ finchbot config
 
 ## 7. Channel Configuration
 
-Multi-platform messaging channel configuration, supporting Discord, Feishu, DingTalk, WeChat, Email, etc.
+> **Note**: Multi-platform messaging functionality has been migrated to the [LangBot](https://github.com/langbot-app/LangBot) platform.
+> 
+> LangBot supports **QQ, WeChat, WeCom, Feishu, DingTalk, Discord, Telegram, Slack, LINE, KOOK** and 12+ other platforms.
+> 
+> Please use LangBot's WebUI to configure platforms: https://langbot.app
 
-### `channels` Configuration
+### LangBot Quick Start
 
-#### Discord Configuration
+```bash
+# Install LangBot
+uvx langbot
 
-| Field | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | Whether to enable |
-| `token` | string | `""` | Bot Token |
+# Access WebUI at http://localhost:5300
+# Configure your platforms and connect to FinchBot
+```
 
-#### Feishu Configuration
+### Retained Configuration (Compatibility)
 
-| Field | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | Whether to enable |
-| `app_id` | string | `""` | App ID |
-| `app_secret` | string | `""` | App Secret |
-
-#### DingTalk Configuration
-
-| Field | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | Whether to enable |
-| `client_id` | string | `""` | Client ID |
-| `client_secret` | string | `""` | Client Secret |
-
-#### WeChat Configuration
+The following configuration fields are retained for backward compatibility and will be removed in future versions:
 
 | Field | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | Whether to enable |
-| `corp_id` | string | `""` | Corporation ID |
-| `agent_id` | string | `""` | Agent ID |
-| `secret` | string | `""` | Agent Secret |
+| `langbot_enabled` | bool | `false` | Whether to enable LangBot integration |
 
-#### Email Configuration
+```json
+{
+  "channels": {
+    "langbot_enabled": true
+  }
+}
+```
 
-| Field | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | Whether to enable |
-| `smtp_host` | string | `""` | SMTP server address |
-| `smtp_port` | int | `587` | SMTP port |
-| `smtp_user` | string | `""` | SMTP username |
-| `smtp_password` | string | `""` | SMTP password |
-| `from_address` | string | `""` | Sender address |
-| `use_tls` | bool | `true` | Whether to use TLS |
+### Legacy Configuration Example (Deprecated)
 
-### Full Channel Configuration Example
+<details>
+<summary>Click to view legacy configuration (for reference only)</summary>
 
 ```json
 {
@@ -501,9 +541,4 @@ Multi-platform messaging channel configuration, supporting Discord, Feishu, Ding
 }
 ```
 
-### Configure Channel via CLI
-
-```bash
-finchbot config
-# Select "Channel Configuration" option
-```
+</details>

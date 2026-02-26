@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from langchain_core.language_models import BaseChatModel
 from langgraph.graph.state import CompiledStateGraph
+from loguru import logger
 
 from finchbot.agent.core import create_finch_agent
 from finchbot.tools.factory import ToolFactory
@@ -18,6 +19,7 @@ class AgentFactory:
     """Agent 工厂类.
 
     负责组装 Agent，包括模型、工具和 checkpointer。
+    支持加载 MCP 工具（通过 langchain-mcp-adapters）。
     """
 
     @staticmethod
@@ -38,11 +40,12 @@ class AgentFactory:
         Returns:
             (agent, checkpointer, tools) 元组.
         """
-        # 1. 准备工具
+        # 1. 准备工具（包括 MCP 工具）
         tool_factory = ToolFactory(config, workspace, session_id)
 
-        loop = asyncio.get_running_loop()
-        tools = await loop.run_in_executor(None, tool_factory.create_default_tools)
+        # 使用异步方法加载所有工具
+        tools = await tool_factory.create_all_tools()
+        logger.info(f"Created {len(tools)} tools for session {session_id}")
 
         # 2. 创建 Agent
         agent, checkpointer = await create_finch_agent(

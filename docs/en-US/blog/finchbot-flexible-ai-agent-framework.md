@@ -89,19 +89,32 @@ graph BT
 
 ### Multi-Platform Messaging Support
 
-FinchBot's unified message routing architecture — develop once, deploy everywhere:
+FinchBot provides production-grade multi-platform support via [LangBot](https://github.com/langbot-app/LangBot):
 
-- Discord
-- DingTalk (Webhook)
-- Feishu (Bot API)
-- WeChat (Enterprise WeChat)
-- Email (SMTP/IMAP)
+![QQ](https://img.shields.io/badge/QQ-supported-blue)
+![WeChat](https://img.shields.io/badge/WeChat-supported-green)
+![Feishu](https://img.shields.io/badge/Feishu-supported-blue)
+![DingTalk](https://img.shields.io/badge/DingTalk-supported-blue)
+![Discord](https://img.shields.io/badge/Discord-supported-purple)
+![Telegram](https://img.shields.io/badge/Telegram-supported-blue)
+![Slack](https://img.shields.io/badge/Slack-supported-red)
+
+```bash
+# Install LangBot
+uvx langbot
+
+# Access WebUI at http://localhost:5300
+# Configure your platforms and connect to FinchBot
+```
 
 ### MCP (Model Context Protocol) Support
 
-FinchBot supports MCP protocol for seamless integration of external tools and services:
+FinchBot uses the official `langchain-mcp-adapters` library for MCP integration, supporting both **stdio** and **HTTP** transports:
 
 ```bash
+# Install dependency
+uv add langchain-mcp-adapters
+
 # Configure MCP servers
 finchbot config
 # Select "MCP Configuration" option
@@ -109,6 +122,7 @@ finchbot config
 
 MCP Features:
 - Dynamic tool discovery and registration
+- stdio and HTTP transports
 - Standardized tool calling interface
 - Support for multiple MCP servers
 
@@ -223,17 +237,12 @@ finchbot/
 │   ├── factory.py     # AgentFactory component assembly
 │   ├── context.py     # ContextBuilder prompt assembly
 │   └── skills.py      # SkillsLoader Markdown skill loading
-├── channels/           # Multi-platform messaging
+├── channels/           # Multi-platform messaging (via LangBot)
 │   ├── base.py        # BaseChannel abstract base class
 │   ├── bus.py         # MessageBus async router
 │   ├── manager.py     # ChannelManager coordinator
 │   ├── schema.py      # Message models
-│   └── implementations/  # Channel implementations
-│       ├── discord.py
-│       ├── feishu.py
-│       ├── dingtalk.py
-│       ├── wechat.py
-│       └── email.py
+│   └── langbot_integration.py  # LangBot integration guide
 ├── cli/                # Command Line Interface
 │   ├── chat_session.py
 │   ├── config_manager.py
@@ -265,9 +274,8 @@ finchbot/
 │   └── weather/
 ├── tools/              # Tool System
 │   ├── base.py
-│   ├── factory.py     # ToolFactory tool creation
+│   ├── factory.py     # ToolFactory (MCP tools via langchain-mcp-adapters)
 │   ├── registry.py
-│   ├── mcp.py         # MCP Tool Support
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -410,9 +418,9 @@ flowchart TB
         System[System<br/>exec/session_title]:::builtin
     end
 
-    subgraph MCP [MCP Tools - Dynamic Loading]
-        MCPConfig[MCPConfig<br/>Server Config]:::mcp
-        MCPLoader[MCPLoader<br/>Tool Discovery]:::mcp
+    subgraph MCP [MCP Tools - langchain-mcp-adapters]
+        MCPConfig[MCPServerConfig<br/>stdio/HTTP Config]:::mcp
+        MCPClient[MultiServerMCPClient<br/>Official Client]:::mcp
         MCPTools[MCP Tools<br/>External Tools]:::mcp
     end
 
@@ -420,7 +428,7 @@ flowchart TB
 
     TR --> Lock
     Lock --> BuiltIn
-    MCPConfig --> MCPLoader --> MCPTools --> TR
+    MCPConfig --> MCPClient --> MCPTools --> TR
     TR --> Agent
 ```
 
@@ -536,7 +544,7 @@ skills/
 
 ### 3.5 Channel System: Multi-Platform Messaging Support
 
-FinchBot's channel system provides unified multi-platform messaging support.
+FinchBot provides production-grade multi-platform messaging support via [LangBot](https://github.com/langbot-app/LangBot).
 
 ```mermaid
 flowchart LR
@@ -544,18 +552,26 @@ flowchart LR
     classDef manager fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef channel fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    Bus[MessageBus<br/>Inbound/Outbound Queue]:::bus
-    CM[ChannelManager<br/>Channel Coordination]:::manager
+    FinchBot[FinchBot<br/>Agent Core]:::bus
+    LangBot[LangBot<br/>Platform Layer]:::manager
 
-    Discord[Discord<br/>Bot API]:::channel
-    DingTalk[DingTalk<br/>Webhook]:::channel
-    Feishu[Feishu<br/>Bot API]:::channel
-    WeChat[WeChat<br/>Enterprise WeChat]:::channel
-    Email[Email<br/>SMTP/IMAP]:::channel
+    QQ[QQ]:::channel
+    WeChat[WeChat]:::channel
+    Feishu[Feishu]:::channel
+    DingTalk[DingTalk]:::channel
+    Discord[Discord]:::channel
+    Telegram[Telegram]:::channel
+    Slack[Slack]:::channel
 
-    Bus <--> CM
-    CM <--> Discord & DingTalk & Feishu & WeChat & Email
+    FinchBot <--> LangBot
+    LangBot <--> QQ & WeChat & Feishu & DingTalk & Discord & Telegram & Slack
 ```
+
+**LangBot Features**:
+- **15k+ GitHub Stars**, actively maintained
+- **Supports 12+ platforms**: QQ, WeChat, WeCom, Feishu, DingTalk, Discord, Telegram, Slack, LINE, KOOK, Satori
+- **Built-in WebUI**: Visual configuration for all platforms
+- **Plugin ecosystem**: Supports MCP and other extensions
 
 ### 3.6 LangChain 1.2 Architecture Practice
 
@@ -708,7 +724,8 @@ docker exec -it finchbot finchbot chat
 |  **Flexible Extension** | Inherit FinchTool or create SKILL.md to extend, no core code changes      |
 |  **Model Agnostic**   | Supports OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq, etc.        |
 |   **Thread Safe**     | Tool registry uses single lock mode, thread-safe                           |
-| **Multi-Platform**    | Channel system supports Discord, DingTalk, Feishu, WeChat, Email    |
+| **Multi-Platform**    | Via LangBot supports QQ, WeChat, Feishu, DingTalk, Discord, Telegram, Slack and 12+ platforms |
+| **MCP Support**       | Via official langchain-mcp-adapters supporting stdio and HTTP transports |
 
 ---
 

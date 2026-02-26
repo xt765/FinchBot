@@ -261,7 +261,9 @@ sys_cmd = "系统命令"
 net_tools = "网络工具"
 mem_mgmt = "记忆管理"
 session_mgmt = "会话管理"
+mcp = "MCP 工具"
 others = "其他工具"
+no_description = "无描述"
 
 [tools.read_file]
 name = "read_file"
@@ -683,3 +685,65 @@ soul_md = """# 自我认知 (Soul)
 - **隐私**：严格保护用户数据安全。
 - **透明**：对自己的能力和局限性保持诚实。
 """
+
+# ========================================
+# 能力信息翻译 (Capabilities)
+# ========================================
+
+[capabilities.mcp]
+title = "MCP (Model Context Protocol) 配置"
+configured_servers = "你已配置以下 MCP 服务器，它们提供了额外的工具能力："
+available_tools = "可用 MCP 工具"
+tools_intro = "以下工具来自 MCP 服务器，扩展了你的能力："
+how_to_add = "如何新增 MCP 服务器"
+add_steps = """用户可以通过以下方式新增 MCP 服务器：
+1. 运行 `finchbot config` 命令
+2. 选择 'MCP 服务器' 选项
+3. 选择预设模板（如 Filesystem、GitHub、Brave Search）或自定义配置"""
+no_description = "无描述"
+
+[capabilities.channel]
+title = "消息渠道 (Channel)"
+langbot_enabled = "当前已启用 LangBot 平台集成。"
+langbot_url = "配置地址：https://langbot.app"
+langbot_migration = "消息渠道功能已迁移到 LangBot 平台。"
+langbot_steps = """如需多平台消息支持，请：
+1. 访问 https://langbot.app
+2. 配置所需平台
+3. 在配置中启用 `langbot_enabled: true`"""
+configured_platforms = "已配置的平台"
+supported_platforms = "支持的平台"
+platforms_list = """- QQ
+- 微信 (WeChat)
+- 飞书 (Feishu/Lark)
+- 钉钉 (DingTalk)
+- Discord
+- Telegram
+- Slack
+- 企业微信 (WeChat Work)
+- 邮件 (Email)"""
+
+[capabilities.status]
+enabled = "已启用"
+disabled = "已禁用"
+
+[capabilities.platform]
+discord = "Discord"
+feishu = "飞书"
+dingtalk = "钉钉"
+wechat = "企业微信"
+email = "邮件"
+
+[capabilities.extension]
+title = "如何扩展我的能力"
+add_mcp = "新增 MCP 服务器"
+mcp_steps = """1. 运行 `finchbot config`
+2. 选择 "MCP 服务器"
+3. 选择预设模板或自定义配置"""
+add_skill = "新增技能"
+skill_steps = """1. 在工作目录的 `skills/` 文件夹中创建新目录
+2. 创建 `SKILL.md` 文件描述技能"""
+configure_channel = "配置消息渠道"
+channel_steps = """1. 访问 https://langbot.app
+2. 配置所需平台（QQ、微信、飞书等）
+3. 在配置中启用 `langbot_enabled: true`"""

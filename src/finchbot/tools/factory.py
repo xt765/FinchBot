@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from langchain_core.tools import BaseTool
+from loguru import logger
 
 from finchbot.agent.skills import BUILTIN_SKILLS_DIR
 from finchbot.memory import MemoryManager
@@ -30,6 +31,7 @@ class ToolFactory:
     """工具工厂类.
 
     负责根据配置创建和组装工具列表。
+    支持加载内置工具和 MCP 工具（通过 langchain-mcp-adapters）。
     """
 
     def __init__(self, config: Config, workspace: Path, session_id: str = "default") -> None:
@@ -43,6 +45,7 @@ class ToolFactory:
         self.config = config
         self.workspace = workspace
         self.session_id = session_id
+        self._mcp_client = None
 
     def create_default_tools(self) -> list[BaseTool]:
         """创建默认工具集.
@@ -90,6 +93,102 @@ class ToolFactory:
             tools.append(web_search_tool)
 
         return tools
+
+    async def create_all_tools(self) -> list[BaseTool]:
+        """创建所有工具（包括 MCP 工具）.
+
+        Returns:
+            工具列表.
+        """
+        tools = self.create_default_tools()
+
+        # 加载 MCP 工具
+        mcp_tools = await self._load_mcp_tools()
+        tools.extend(mcp_tools)
+
+        return tools
+
+    async def _load_mcp_tools(self) -> list[BaseTool]:
+        """加载 MCP 工具.
+
+        使用 langchain-mcp-adapters 官方库加载 MCP 服务器提供的工具。
+
+        Returns:
+            MCP 工具列表.
+        """
+        if not self._has_mcp_config():
+            return []
+
+        try:
+            from langchain_mcp_adapters.client import MultiServerMCPClient
+
+            server_config = self._build_mcp_server_config()
+            if not server_config:
+                return []
+
+            self._mcp_client = MultiServerMCPClient(server_config)
+            tools = await self._mcp_client.get_tools()
+
+            logger.info(f"Loaded {len(tools)} MCP tools from {len(server_config)} servers")
+            return tools
+
+        except ImportError:
+            logger.warning(
+                "langchain-mcp-adapters not installed. "
+                "Run: pip install langchain-mcp-adapters"
+            )
+            return []
+        except Exception as e:
+            logger.error(f"Failed to load MCP tools: {e}")
+            return []
+
+    def _has_mcp_config(self) -> bool:
+        """检查是否有 MCP 配置."""
+        return bool(self.config.mcp.servers)
+
+    def _build_mcp_server_config(self) -> dict:
+        """构建 MCP 服务器配置.
+
+        将 FinchBot 的 MCPServerConfig 转换为 langchain-mcp-adapters 需要的格式。
+
+        Returns:
+            MCP 服务器配置字典.
+        """
+        config = {}
+
+        for name, server in self.config.mcp.servers.items():
+            if server.disabled:
+                continue
+
+            server_cfg = {}
+
+            # stdio 传输
+            if server.command:
+                server_cfg = {
+                    "command": server.command,
+                    "args": server.args or [],
+                    "transport": "stdio",
+                }
+                if server.env:
+                    server_cfg["env"] = server.env
+
+            # HTTP 传输
+            elif server.url:
+                server_cfg = {
+                    "url": server.url,
+                    "transport": "http",
+                }
+                if server.headers:
+                    server_cfg["headers"] = server.headers
+
+            if server_cfg:
+                config[name] = server_cfg
+
+        return config
+
+    async def close(self) -> None:
+        """清理 MCP 资源."""
+        self._mcp_client = None
 
     def _create_web_search_tool(self) -> WebSearchTool | None:
         """创建网页搜索工具.

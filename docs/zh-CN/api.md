@@ -660,45 +660,49 @@ model = create_chat_model(
 
 ---
 
-## 9. MCP 模块 (`finchbot.mcp`)
+## 9. MCP 模块
 
-### 9.1 `MCPClient`
+FinchBot 使用官方 `langchain-mcp-adapters` 库集成 MCP（Model Context Protocol）支持，支持 stdio 和 HTTP 两种传输方式。
 
-MCP（Model Context Protocol）客户端，用于连接外部 MCP 服务器并加载工具。
+### 9.1 概述
+
+MCP 工具通过 `ToolFactory` 类自动加载，无需手动管理客户端连接。
 
 ```python
-class MCPClient:
-    def __init__(self, config: MCPConfig): ...
-    
-    async def connect(self) -> None: ...
-    async def disconnect(self) -> None: ...
-    async def list_tools(self) -> list[MCPTool]: ...
-    async def call_tool(self, name: str, arguments: dict) -> Any: ...
-```
+from finchbot.tools.factory import ToolFactory
+from finchbot.config import load_config
+from pathlib import Path
 
-**方法**：
-- `connect()`：建立与 MCP 服务器的连接
-- `disconnect()`：断开连接并清理资源
-- `list_tools()`：获取 MCP 服务器提供的所有工具
-- `call_tool()`：调用指定的 MCP 工具
+config = load_config()
+factory = ToolFactory(config, Path("./workspace"))
+
+# 创建所有工具（包括 MCP 工具）
+all_tools = await factory.create_all_tools()
+```
 
 ---
 
-### 9.2 `MCPToolLoader`
-
-MCP 工具加载器，将 MCP 工具转换为 LangChain 工具格式。
+### 9.2 `ToolFactory` MCP 方法
 
 ```python
-class MCPToolLoader:
-    def __init__(self, config: Config): ...
+class ToolFactory:
+    async def create_all_tools(self) -> list[BaseTool]:
+        """创建所有工具（包括 MCP 工具）"""
+        ...
     
-    async def load_tools(self) -> list[BaseTool]: ...
-    def get_tool_names(self) -> list[str]: ...
+    async def _load_mcp_tools(self) -> list[BaseTool]:
+        """使用 langchain-mcp-adapters 加载 MCP 工具"""
+        ...
+    
+    def _build_mcp_server_config(self) -> dict:
+        """构建 MCP 服务器配置"""
+        ...
 ```
 
-**方法**：
-- `load_tools()`：加载所有配置的 MCP 服务器工具
-- `get_tool_names()`：获取已加载的工具名称列表
+**方法说明**：
+- `create_all_tools()`：创建内置工具 + MCP 工具的完整列表
+- `_load_mcp_tools()`：内部方法，使用 `MultiServerMCPClient` 加载 MCP 工具
+- `_build_mcp_server_config()`：将 FinchBot 配置转换为 langchain-mcp-adapters 格式
 
 ---
 
@@ -706,11 +710,16 @@ class MCPToolLoader:
 
 ```python
 class MCPServerConfig(BaseModel):
-    """单个 MCP 服务器配置"""
-    command: str
-    args: list[str] = []
-    env: dict[str, str] = {}
-    disabled: bool = False
+    """单个 MCP 服务器配置
+    
+    支持 stdio 和 HTTP 两种传输方式。
+    """
+    command: str = ""           # stdio 传输的启动命令
+    args: list[str] = []        # stdio 传输的命令参数
+    env: dict[str, str] | None = None  # stdio 传输的环境变量
+    url: str = ""               # HTTP 传输的服务器 URL
+    headers: dict[str, str] | None = None  # HTTP 传输的请求头
+    disabled: bool = False      # 是否禁用此服务器
 
 class MCPConfig(BaseModel):
     """MCP 总配置"""
@@ -719,43 +728,103 @@ class MCPConfig(BaseModel):
 
 ---
 
-### 9.4 使用示例
+### 9.4 传输方式
 
-```python
-from finchbot.mcp import MCPClient, MCPToolLoader
-from finchbot.config import load_config
+#### stdio 传输
 
-config = load_config()
+适用于本地 MCP 服务器，通过命令行启动：
 
-# 加载 MCP 工具
-loader = MCPToolLoader(config)
-mcp_tools = await loader.load_tools()
+```json
+{
+  "command": "mcp-server-filesystem",
+  "args": ["/path/to/workspace"],
+  "env": {}
+}
+```
 
-# 所有工具（内置 + MCP）
-all_tools = default_tools + mcp_tools
+#### HTTP 传输
+
+适用于远程 MCP 服务器，通过 HTTP 连接：
+
+```json
+{
+  "url": "https://api.example.com/mcp",
+  "headers": {
+    "Authorization": "Bearer your-token"
+  }
+}
 ```
 
 ---
 
-### 9.5 配置示例
+### 9.5 使用示例
+
+```python
+import asyncio
+from pathlib import Path
+from finchbot.tools.factory import ToolFactory
+from finchbot.config import load_config
+
+async def main():
+    config = load_config()
+    factory = ToolFactory(config, Path("./workspace"))
+    
+    # 获取所有工具（内置 + MCP）
+    tools = await factory.create_all_tools()
+    
+    print(f"加载了 {len(tools)} 个工具")
+    
+    # 清理资源
+    await factory.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+### 9.6 配置示例
 
 ```json
 {
   "mcp": {
     "servers": {
       "filesystem": {
-        "command": "mcp-server-filesystem",
-        "args": ["/path/to/workspace"],
+        "command": "mcp-filesystem",
+        "args": ["/path/to/allowed/dir"],
         "env": {}
       },
+      "remote-api": {
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer your-token"
+        }
+      },
       "github": {
-        "command": "mcp-server-github",
+        "command": "mcp-github",
         "args": [],
         "env": {
-          "GITHUB_TOKEN": "your-token"
-        }
+          "GITHUB_TOKEN": "ghp_..."
+        },
+        "disabled": true
       }
     }
   }
 }
+```
+
+---
+
+### 9.7 依赖
+
+MCP 功能需要安装 `langchain-mcp-adapters`：
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+或使用 uv：
+
+```bash
+uv add langchain-mcp-adapters
 ```

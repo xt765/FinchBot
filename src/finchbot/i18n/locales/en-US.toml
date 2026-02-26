@@ -253,7 +253,9 @@ sys_cmd = "System Commands"
 net_tools = "Network Tools"
 mem_mgmt = "Memory Management"
 session_mgmt = "Session Management"
+mcp = "MCP Tools"
 others = "Other Tools"
+no_description = "No description"
 
 [tools.read_file]
 name = "read_file"
@@ -717,6 +719,68 @@ I am FinchBot, a lightweight, privacy-focused AI assistant.
 - **Privacy**: Strictly protect user data and safety.
 - **Transparency**: Be honest about capabilities and limitations.
 """
+
+# ========================================
+# Capabilities Translations
+# ========================================
+
+[capabilities.mcp]
+title = "MCP (Model Context Protocol) Configuration"
+configured_servers = "You have the following MCP servers configured, providing additional tool capabilities:"
+available_tools = "Available MCP Tools"
+tools_intro = "The following tools are from MCP servers, extending your capabilities:"
+how_to_add = "How to Add MCP Servers"
+add_steps = """Users can add MCP servers by:
+1. Running `finchbot config` command
+2. Selecting 'MCP Servers' option
+3. Choosing a preset template (e.g., Filesystem, GitHub, Brave Search) or custom configuration"""
+no_description = "No description"
+
+[capabilities.channel]
+title = "Message Channels"
+langbot_enabled = "LangBot platform integration is currently enabled."
+langbot_url = "Configuration URL: https://langbot.app"
+langbot_migration = "Message channel functionality has been migrated to the LangBot platform."
+langbot_steps = """For multi-platform messaging support:
+1. Visit https://langbot.app
+2. Configure desired platforms
+3. Enable `langbot_enabled: true` in configuration"""
+configured_platforms = "Configured Platforms"
+supported_platforms = "Supported Platforms"
+platforms_list = """- QQ
+- WeChat
+- Feishu/Lark
+- DingTalk
+- Discord
+- Telegram
+- Slack
+- WeChat Work
+- Email"""
+
+[capabilities.status]
+enabled = "Enabled"
+disabled = "Disabled"
+
+[capabilities.platform]
+discord = "Discord"
+feishu = "Feishu"
+dingtalk = "DingTalk"
+wechat = "WeChat Work"
+email = "Email"
+
+[capabilities.extension]
+title = "How to Extend My Capabilities"
+add_mcp = "Add MCP Server"
+mcp_steps = """1. Run `finchbot config`
+2. Select "MCP Servers"
+3. Choose a preset template or custom configuration"""
+add_skill = "Add Skill"
+skill_steps = """1. Create a new directory in the workspace's `skills/` folder
+2. Create a `SKILL.md` file describing the skill"""
+configure_channel = "Configure Message Channel"
+channel_steps = """1. Visit https://langbot.app
+2. Configure desired platforms (QQ, WeChat, Feishu, etc.)
+3. Enable `langbot_enabled: true` in configuration"""
 
 memory_md = """# Memory System Guide
 

@@ -2,6 +2,7 @@
 
 使用 LangChain 官方推荐的 create_agent 构建。
 支持对话持久化存储和动态工具注册。
+集成 MCP 和 Channel 能力信息注入。
 """
 
 import asyncio
@@ -12,6 +13,7 @@ from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import aiosqlite
 from langchain.agents import create_agent
@@ -24,6 +26,9 @@ from loguru import logger
 
 from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
+
+if TYPE_CHECKING:
+    from finchbot.config.schema import Config
 
 _tools_registered: bool = False
 _tools_lock = threading.Lock()
@@ -109,19 +114,23 @@ def build_system_prompt(
     workspace: Path,
     use_cache: bool = True,
     tools: Sequence[BaseTool] | None = None,
+    config: "Config | None" = None,
 ) -> str:
     """构建系统提示.
 
     支持 Bootstrap 文件和技能系统，集成 ToolRegistry 动态工具发现。
+    注入 MCP 和 Channel 能力信息，让智能体"知道"自己的能力。
 
     Args:
         workspace: 工作目录路径。
         use_cache: 是否使用缓存。
         tools: 可选的工具列表，如果提供则直接注册，避免重新创建。
+        config: 可选的配置对象，用于构建能力信息。
 
     Returns:
         系统提示字符串。
     """
+    from finchbot.agent.capabilities import build_capabilities_prompt
     from finchbot.tools.tools_generator import ToolsGenerator
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M (%A)")
@@ -143,8 +152,8 @@ def build_system_prompt(
     # 确保默认工具已注册（懒加载，只在首次调用时注册）
     _ensure_tools_registered(workspace=workspace, tools=tools)
 
-    # 生成工具文档（从 ToolRegistry 动态发现）
-    tools_generator = ToolsGenerator(workspace)
+    # 生成工具文档（从 ToolRegistry 动态发现 + 外部工具）
+    tools_generator = ToolsGenerator(workspace, tools=tools)
     tools_content = tools_generator.generate_tools_content()
 
     # 将工具文档写入工作区文件，供 Agent 查看
@@ -153,6 +162,16 @@ def build_system_prompt(
         logger.debug(f"工具文档已生成: {tools_file}")
 
     prompt_parts.append(tools_content)
+
+    # 注入能力信息（MCP、Channel、扩展指南）
+    if config is None:
+        from finchbot.config import load_config
+        config = load_config()
+
+    capabilities_prompt = build_capabilities_prompt(config, tools)
+    if capabilities_prompt:
+        prompt_parts.append(capabilities_prompt)
+        logger.debug("已注入 MCP 和 Channel 能力信息到系统提示词")
 
     return "\n\n".join(prompt_parts)
 
@@ -225,6 +244,7 @@ async def create_finch_agent(
     workspace: Path,
     tools: Sequence[BaseTool] | None = None,
     use_persistent: bool = True,
+    config: "Config | None" = None,
 ) -> tuple[CompiledStateGraph, AsyncSqliteSaver | MemorySaver]:
     """创建 FinchBot Agent.
 
@@ -233,6 +253,7 @@ async def create_finch_agent(
         workspace: 工作目录路径。
         tools: 可选的工具列表。
         use_persistent: 是否使用持久化 checkpointer（默认 True）。
+        config: 可选的配置对象。
 
     Returns:
         (agent, checkpointer) 元组。
@@ -247,9 +268,17 @@ async def create_finch_agent(
     else:
         checkpointer = get_memory_checkpointer()
 
-    # Move synchronous build_system_prompt to thread pool
+    # Load config if not provided
+    if config is None:
+        from finchbot.config import load_config
+        config = load_config()
+
+    # Build system prompt with capabilities info
+    def _build_prompt():
+        return build_system_prompt(workspace, True, tools, config)
+
     loop = asyncio.get_running_loop()
-    system_prompt = await loop.run_in_executor(None, build_system_prompt, workspace, True, tools)
+    system_prompt = await loop.run_in_executor(None, _build_prompt)
 
     agent = create_agent(
         model=model,

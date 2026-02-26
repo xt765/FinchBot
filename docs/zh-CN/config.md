@@ -367,6 +367,8 @@ uv run finchbot chat
 
 MCP (Model Context Protocol) 允许集成外部工具服务器，动态扩展 Agent 能力。
 
+FinchBot 使用官方 `langchain-mcp-adapters` 库集成 MCP，支持 **stdio** 和 **HTTP** 两种传输方式。
+
 ### `mcp` 配置
 
 | 字段 | 类型 | 默认值 | 说明 |
@@ -377,11 +379,41 @@ MCP (Model Context Protocol) 允许集成外部工具服务器，动态扩展 Ag
 
 | 字段 | 类型 | 必需 | 说明 |
 | :--- | :--- | :---: | :--- |
-| `command` | string | ✓ | 启动 MCP 服务器的命令 |
-| `args` | list[str] | | 命令行参数 |
-| `env` | dict | | 环境变量 |
+| `command` | string | stdio 传输必需 | 启动 MCP 服务器的命令 |
+| `args` | list[str] | | stdio 传输的命令行参数 |
+| `env` | dict | | stdio 传输的环境变量 |
+| `url` | string | HTTP 传输必需 | MCP 服务器 HTTP URL |
+| `headers` | dict | | HTTP 传输的请求头（如认证） |
+| `disabled` | bool | `false` | 是否禁用此服务器 |
 
-### MCP 配置示例
+### 传输方式
+
+#### stdio 传输
+
+适用于本地 MCP 服务器，通过命令行启动：
+
+```json
+{
+  "command": "mcp-filesystem",
+  "args": ["/path/to/allowed/dir"],
+  "env": {}
+}
+```
+
+#### HTTP 传输
+
+适用于远程 MCP 服务器，通过 HTTP 连接：
+
+```json
+{
+  "url": "https://api.example.com/mcp",
+  "headers": {
+    "Authorization": "Bearer your-token"
+  }
+}
+```
+
+### MCP 完整配置示例
 
 ```json
 {
@@ -392,16 +424,37 @@ MCP (Model Context Protocol) 允许集成外部工具服务器，动态扩展 Ag
         "args": ["/path/to/allowed/dir"],
         "env": {}
       },
+      "remote-api": {
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer your-token"
+        }
+      },
       "github": {
         "command": "mcp-github",
         "args": [],
         "env": {
           "GITHUB_TOKEN": "ghp_..."
-        }
+        },
+        "disabled": true
       }
     }
   }
 }
+```
+
+### 依赖
+
+MCP 功能需要安装 `langchain-mcp-adapters`：
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+或使用 uv：
+
+```bash
+uv add langchain-mcp-adapters
 ```
 
 ### 通过 CLI 配置 MCP
@@ -415,55 +468,42 @@ finchbot config
 
 ## 7. Channel 配置
 
-多平台消息渠道配置，支持 Discord、飞书、钉钉、企业微信、邮件等。
+> **注意**：多平台消息功能已迁移到 [LangBot](https://github.com/langbot-app/LangBot) 平台。
+> 
+> LangBot 支持 **QQ、微信、企业微信、飞书、钉钉、Discord、Telegram、Slack、LINE、KOOK** 等 12+ 平台。
+> 
+> 请使用 LangBot 的 WebUI 配置各平台：https://langbot.app
 
-### `channels` 配置
+### LangBot 快速开始
 
-#### Discord 配置
+```bash
+# 安装 LangBot
+uvx langbot
 
-| 字段 | 类型 | 默认值 | 说明 |
-| :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | 是否启用 |
-| `token` | string | `""` | Bot Token |
+# 访问 WebUI http://localhost:5300
+# 配置你的平台并连接到 FinchBot
+```
 
-#### 飞书配置
+### 保留配置（兼容性）
 
-| 字段 | 类型 | 默认值 | 说明 |
-| :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | 是否启用 |
-| `app_id` | string | `""` | 应用 ID |
-| `app_secret` | string | `""` | 应用密钥 |
-
-#### 钉钉配置
-
-| 字段 | 类型 | 默认值 | 说明 |
-| :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | 是否启用 |
-| `client_id` | string | `""` | 客户端 ID |
-| `client_secret` | string | `""` | 客户端密钥 |
-
-#### 企业微信配置
+以下配置字段保留用于向后兼容，后续版本将移除：
 
 | 字段 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | 是否启用 |
-| `corp_id` | string | `""` | 企业 ID |
-| `agent_id` | string | `""` | 应用 ID |
-| `secret` | string | `""` | 应用密钥 |
+| `langbot_enabled` | bool | `false` | 是否启用 LangBot 集成 |
 
-#### 邮件配置
+```json
+{
+  "channels": {
+    "langbot_enabled": true
+  }
+}
+```
 
-| 字段 | 类型 | 默认值 | 说明 |
-| :--- | :--- | :--- | :--- |
-| `enabled` | bool | `false` | 是否启用 |
-| `smtp_host` | string | `""` | SMTP 服务器地址 |
-| `smtp_port` | int | `587` | SMTP 端口 |
-| `smtp_user` | string | `""` | SMTP 用户名 |
-| `smtp_password` | string | `""` | SMTP 密码 |
-| `from_address` | string | `""` | 发件人地址 |
-| `use_tls` | bool | `true` | 是否使用 TLS |
+### 旧版配置示例（已弃用）
 
-### Channel 完整配置示例
+<details>
+<summary>点击查看旧版配置（仅供参考）</summary>
 
 ```json
 {
@@ -501,9 +541,4 @@ finchbot config
 }
 ```
 
-### 通过 CLI 配置 Channel
-
-```bash
-finchbot config
-# 选择 "Channel Configuration" 选项
-```
+</details>

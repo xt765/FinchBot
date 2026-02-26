@@ -199,7 +199,9 @@ sys_cmd = "系統命令"
 net_tools = "網絡工具"
 mem_mgmt = "記憶管理"
 session_mgmt = "會話管理"
+mcp = "MCP 工具"
 others = "其他工具"
+no_description = "無描述"
 
 [tools.read_file]
 name = "read_file"

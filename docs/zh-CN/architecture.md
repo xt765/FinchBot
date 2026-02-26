@@ -66,17 +66,12 @@ finchbot/
 │   ├── factory.py     # AgentFactory（并发线程池）
 │   ├── context.py     # ContextBuilder 提示词组装
 │   └── skills.py      # SkillsLoader Markdown 技能加载
-├── channels/           # 多平台消息
+├── channels/           # 多平台消息（通过 LangBot）
 │   ├── base.py        # BaseChannel 抽象基类
 │   ├── bus.py         # MessageBus 异步路由器
 │   ├── manager.py     # ChannelManager 协调器
 │   ├── schema.py      # 消息模型
-│   └── implementations/  # 通道实现
-│       ├── discord.py
-│       ├── feishu.py
-│       ├── dingtalk.py
-│       ├── wechat.py
-│       └── email.py
+│   └── langbot_integration.py  # LangBot 集成指南
 ├── cli/                # 命令行界面
 │   ├── chat_session.py # 异步会话管理
 │   ├── config_manager.py
@@ -108,9 +103,8 @@ finchbot/
 │   └── weather/
 ├── tools/              # 工具系统
 │   ├── base.py
-│   ├── factory.py     # ToolFactory
+│   ├── factory.py     # ToolFactory（MCP 工具通过 langchain-mcp-adapters）
 │   ├── registry.py
-│   ├── mcp.py         # MCP 工具支持
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -371,11 +365,11 @@ class MemoryManager:
 
 #### 注册机制与工厂模式
 
-* **ToolFactory（`factory.py`）**：负责根据配置创建和组装工具列表。处理 WebSearchTool 的自动降级逻辑（Tavily/Brave/DuckDuckGo）
+* **ToolFactory（`factory.py`）**：负责根据配置创建和组装工具列表。处理 WebSearchTool 的自动降级逻辑（Tavily/Brave/DuckDuckGo），并通过 `langchain-mcp-adapters` 加载 MCP 工具
 * **ToolRegistry**：单例注册表，管理所有可用工具
 * **延迟加载**：默认工具（文件、搜索等）由 Factory 创建，Agent 启动时自动注册
 * **OpenAI 兼容**：支持导出 OpenAI Function Calling 格式的工具定义
-* **MCP 支持**：通过 `mcp.py` 支持 MCP 协议，动态加载外部工具
+* **MCP 支持**：通过官方 `langchain-mcp-adapters` 库支持 MCP 协议，支持 stdio 和 HTTP 传输
 
 #### 工具系统架构
 
@@ -396,9 +390,9 @@ flowchart TB
         System[系统<br/>exec/session_title]:::builtin
     end
 
-    subgraph MCP [MCP 工具 - 动态加载]
-        MCPConfig[MCPConfig<br/>服务器配置]:::mcp
-        MCPLoader[MCPLoader<br/>工具发现]:::mcp
+    subgraph MCP [MCP 工具 - langchain-mcp-adapters]
+        MCPConfig[MCPServerConfig<br/>stdio/HTTP 配置]:::mcp
+        MCPClient[MultiServerMCPClient<br/>官方客户端]:::mcp
         MCPTools[MCP Tools<br/>外部工具]:::mcp
     end
 
@@ -406,7 +400,7 @@ flowchart TB
 
     TR --> Lock
     Lock --> BuiltIn
-    MCPConfig --> MCPLoader --> MCPTools --> TR
+    MCPConfig --> MCPClient --> MCPTools --> TR
     TR --> Agent
 ```
 
@@ -496,9 +490,16 @@ flowchart TD
 
 **实现位置**：`src/finchbot/channels/`
 
-通道系统是 FinchBot 的多平台消息基础设施，提供统一的消息路由和平台抽象。
+通道系统已迁移到 [LangBot](https://github.com/langbot-app/LangBot) 平台，提供生产级的多平台消息支持。
 
-#### 通道系统架构
+#### 为什么选择 LangBot？
+
+- **15k+ GitHub Stars**，活跃维护
+- **支持 12+ 平台**：QQ、微信、企业微信、飞书、钉钉、Discord、Telegram、Slack、LINE、KOOK、Satori
+- **内置 WebUI**：可视化配置各平台
+- **插件生态**：支持 MCP 等扩展
+
+#### LangBot 集成架构
 
 ```mermaid
 flowchart LR
@@ -506,20 +507,34 @@ flowchart LR
     classDef manager fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef channel fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    Bus[MessageBus<br/>入站/出站队列]:::bus
-    CM[ChannelManager<br/>通道协调]:::manager
+    FinchBot[FinchBot<br/>Agent 核心]:::bus
+    LangBot[LangBot<br/>平台层]:::manager
 
-    Discord[Discord<br/>Bot API]:::channel
-    DingTalk[钉钉<br/>Webhook]:::channel
-    Feishu[飞书<br/>Bot API]:::channel
-    WeChat[微信<br/>企业微信]:::channel
-    Email[邮件<br/>SMTP/IMAP]:::channel
+    QQ[QQ]:::channel
+    WeChat[微信]:::channel
+    Feishu[飞书]:::channel
+    DingTalk[钉钉]:::channel
+    Discord[Discord]:::channel
+    Telegram[Telegram]:::channel
+    Slack[Slack]:::channel
 
-    Bus <--> CM
-    CM <--> Discord & DingTalk & Feishu & WeChat & Email
+    FinchBot <--> LangBot
+    LangBot <--> QQ & WeChat & Feishu & DingTalk & Discord & Telegram & Slack
 ```
 
-#### 核心组件
+#### 快速开始
+
+```bash
+# 安装 LangBot
+uvx langbot
+
+# 访问 WebUI http://localhost:5300
+# 配置你的平台并连接到 FinchBot
+```
+
+更多详情请参阅 [LangBot 文档](https://docs.langbot.app)。
+
+#### 核心组件（保留用于兼容性）
 
 | 组件 | 文件 | 功能 |
 |:---|:---|:---|
@@ -548,12 +563,6 @@ class OutboundMessage(BaseModel):
     session_id: str | None   # 会话 ID
     metadata: dict = {}      # 附加元数据
 ```
-
-#### 扩展新通道
-
-1. 继承 `BaseChannel` 类
-2. 实现必要方法：`start()`、`stop()`、`send()`、`receive()`
-3. 注册到 `ChannelManager`
 
 ---
 
@@ -664,38 +673,51 @@ Config（根）
 ├── mcp                    # MCP 配置
 │   └── servers
 │       └── {server_name}
-│           ├── command
-│           ├── args
-│           └── env
-└── channels               # 渠道配置
+│           ├── command    # stdio 传输命令
+│           ├── args       # 命令参数
+│           ├── env        # 环境变量
+│           ├── url        # HTTP 传输 URL
+│           ├── headers    # HTTP 请求头
+│           └── disabled   # 是否禁用
+└── channels               # 渠道配置（已迁移到 LangBot）
     ├── discord
     ├── feishu
     ├── dingtalk
     ├── wechat
-    └── email
+    ├── email
+    └── langbot_enabled
 ```
 
 #### MCP 配置示例
 
 ```python
 class MCPServerConfig(BaseModel):
-    command: str           # 启动命令
-    args: list[str]        # 命令参数
-    env: dict[str, str]    # 环境变量
+    """单个 MCP 服务器配置
+    
+    支持 stdio 和 HTTP 两种传输方式。
+    """
+    command: str = ""           # stdio 传输的启动命令
+    args: list[str] = []        # stdio 传输的命令参数
+    env: dict[str, str] | None = None  # stdio 传输的环境变量
+    url: str = ""               # HTTP 传输的服务器 URL
+    headers: dict[str, str] | None = None  # HTTP 传输的请求头
+    disabled: bool = False      # 是否禁用此服务器
 
 class MCPConfig(BaseModel):
+    """MCP 总配置
+    
+    使用 langchain-mcp-adapters 官方库加载 MCP 工具。
+    """
     servers: dict[str, MCPServerConfig]
 ```
 
-#### Channel 配置示例
+#### Channel 配置说明
 
-| 渠道 | 必需配置 | 说明 |
-|------|----------|------|
-| Discord | `token` | Bot Token |
-| 飞书 | `app_id`, `app_secret` | 应用凭证 |
-| 钉钉 | `client_id`, `client_secret` | 客户端凭证 |
-| 企业微信 | `corp_id`, `agent_id`, `secret` | 企业应用配置 |
-| 邮件 | `smtp_host`, `smtp_user`, `smtp_password` | SMTP 配置 |
+渠道功能已迁移到 LangBot 平台。LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台。
+
+请使用 LangBot 的 WebUI 配置各平台：https://langbot.app
+
+此配置保留用于兼容性，后续版本将移除。
 
 ---
 
@@ -841,25 +863,29 @@ FinchBot 将"开箱即用"作为核心设计原则：
 
 继承 `FinchTool` 基类，实现 `_run()` 方法，然后注册到 `ToolRegistry`。
 
-### 5.2 添加新技能
+### 5.2 添加 MCP 工具
+
+在配置文件中添加 MCP 服务器配置，支持 stdio 和 HTTP 传输。MCP 工具通过 `langchain-mcp-adapters` 自动加载。
+
+### 5.3 添加新技能
 
 在 `~/.finchbot/workspace/skills/{skill-name}/` 下创建 `SKILL.md` 文件。
 
-### 5.3 添加新的 LLM 提供商
+### 5.4 添加新的 LLM 提供商
 
 在 `providers/factory.py` 中添加新的 Provider 类。
 
-### 5.4 添加新通道
+### 5.5 多平台消息支持
 
-1. 继承 `BaseChannel` 类
-2. 实现必要方法：`start()`、`stop()`、`send()`、`receive()`
-3. 注册到 `ChannelManager`
+使用 [LangBot](https://github.com/langbot-app/LangBot) 实现多平台支持。LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台。
 
-### 5.5 自定义记忆检索策略
+详见 [LangBot 文档](https://docs.langbot.app)。
+
+### 5.6 自定义记忆检索策略
 
 继承 `RetrievalService` 或修改 `search()` 方法。
 
-### 5.6 添加新语言
+### 5.7 添加新语言
 
 在 `i18n/locales/` 下添加新的 `.toml` 文件。
 
@@ -872,4 +898,5 @@ FinchBot 的架构设计聚焦于：
 - **可靠性**：降级策略、重试机制、线程安全
 - **可维护性**：类型安全、完整日志、模块化设计
 - **隐私性**：敏感数据本地处理
-- **多平台支持**：通道系统支持 Web、Discord、钉钉、飞书、微信、邮件
+- **多平台支持**：通过 LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台
+- **MCP 支持**：通过官方 langchain-mcp-adapters 支持 stdio 和 HTTP 传输

@@ -130,19 +130,29 @@ class ToolsConfig(BaseModel):
 class MCPServerConfig(BaseModel):
     """MCP Server 配置.
 
+    支持 stdio 和 HTTP 两种传输方式。
+
     Attributes:
-        command: 启动命令。
-        args: 命令参数。
-        env: 环境变量。
+        command: stdio 传输的启动命令。
+        args: stdio 传输的命令参数。
+        env: stdio 传输的环境变量。
+        url: HTTP 传输的服务器 URL。
+        headers: HTTP 传输的请求头（用于认证等）。
+        disabled: 是否禁用此服务器。
     """
 
     command: str = ""
     args: list[str] = Field(default_factory=list)
     env: dict[str, str] | None = None
+    url: str = ""
+    headers: dict[str, str] | None = None
+    disabled: bool = False
 
 
 class MCPConfig(BaseModel):
     """MCP 配置集合.
+
+    使用 langchain-mcp-adapters 官方库加载 MCP 工具。
 
     Attributes:
         servers: MCP 服务器配置字典。
@@ -232,12 +242,11 @@ class EmailChannelConfig(BaseModel):
 class ChannelsConfig(BaseModel):
     """渠道配置集合.
 
-    Attributes:
-        discord: Discord 配置。
-        feishu: 飞书配置。
-        dingtalk: 钉钉配置。
-        wechat: 企业微信配置。
-        email: 邮件配置。
+    注意：渠道功能已迁移到 LangBot 平台。
+    LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台。
+    请使用 LangBot 的 WebUI 配置各平台：https://langbot.app
+
+    此配置保留用于兼容性，后续版本将移除。
     """
 
     discord: DiscordChannelConfig = Field(default_factory=DiscordChannelConfig)
@@ -245,6 +254,7 @@ class ChannelsConfig(BaseModel):
     dingtalk: DingTalkChannelConfig = Field(default_factory=DingTalkChannelConfig)
     wechat: WeChatWorkChannelConfig = Field(default_factory=WeChatWorkChannelConfig)
     email: EmailChannelConfig = Field(default_factory=EmailChannelConfig)
+    langbot_enabled: bool = False
 
 
 class Config(BaseSettings):

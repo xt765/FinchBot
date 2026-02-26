@@ -87,15 +87,26 @@ graph BT
     P & M & D & S & O === Roof
 ```
 
-### 多平台消息支持
+### 多平台消息支持（通过 LangBot）
 
-FinchBot 统一消息路由架构，一次开发，多端触达：
+FinchBot 集成 [LangBot](https://github.com/langbot-app/LangBot) 实现多平台消息支持，一次开发，多端触达：
 
-![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![钉钉](https://img.shields.io/badge/钉钉-Webhook-0089FF?logo=dingtalk&logoColor=white) ![飞书](https://img.shields.io/badge/飞书-Bot_API-00D6D9?logo=lark&logoColor=white) ![微信](https://img.shields.io/badge/微信-企业微信-07C160?logo=wechat&logoColor=white) ![邮件](https://img.shields.io/badge/邮件-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
+![QQ](https://img.shields.io/badge/QQ-OneBot11-12B7F5?logo=tencent-qq&logoColor=white) ![微信](https://img.shields.io/badge/微信-公众号/企业微信-07C160?logo=wechat&logoColor=white) ![飞书](https://img.shields.io/badge/飞书-Bot_API-00D6D9?logo=lark&logoColor=white) ![钉钉](https://img.shields.io/badge/钉钉-Webhook-0089FF?logo=dingtalk&logoColor=white) ![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white) ![Slack](https://img.shields.io/badge/Slack-App-4A154B?logo=slack&logoColor=white)
+
+**LangBot**（15k+ GitHub Stars）是一个生产级多平台机器人框架，支持 12+ 消息平台。
+
+快速开始：
+```bash
+# 安装 LangBot
+uvx langbot
+
+# 访问 WebUI http://localhost:5300
+# 配置你的平台并连接到 FinchBot
+```
 
 ### MCP (Model Context Protocol) 支持
 
-FinchBot 支持 MCP 协议，可以轻松集成外部工具和服务：
+FinchBot 使用官方 `langchain-mcp-adapters` 库集成 MCP：
 
 ```bash
 # 配置 MCP 服务器
@@ -106,6 +117,7 @@ finchbot config
 支持的 MCP 功能：
 - 动态工具发现和注册
 - 标准化的工具调用接口
+- 支持 stdio 和 HTTP 传输
 - 支持多种 MCP 服务器
 
 ### 命令行界面
@@ -219,17 +231,12 @@ finchbot/
 │   ├── factory.py     # AgentFactory 组件装配
 │   ├── context.py     # ContextBuilder 提示词组装
 │   └── skills.py      # SkillsLoader Markdown 技能加载
-├── channels/           # 多平台消息
+├── channels/           # 多平台消息（通过 LangBot）
 │   ├── base.py        # BaseChannel 抽象基类
 │   ├── bus.py         # MessageBus 异步路由器
 │   ├── manager.py     # ChannelManager 协调器
 │   ├── schema.py      # 消息模型
-│   └── implementations/  # 通道实现
-│       ├── discord.py
-│       ├── feishu.py
-│       ├── dingtalk.py
-│       ├── wechat.py
-│       └── email.py
+│   └── langbot_integration.py  # LangBot 集成指南
 ├── cli/                # 命令行界面
 │   ├── chat_session.py
 │   ├── config_manager.py
@@ -260,9 +267,8 @@ finchbot/
 │   └── weather/
 ├── tools/              # 工具系统
 │   ├── base.py
-│   ├── factory.py
+│   ├── factory.py     # MCP 工具通过 langchain-mcp-adapters
 │   ├── registry.py
-│   ├── mcp.py         # MCP 工具支持
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -531,9 +537,15 @@ skills/
 |  **缓存失效检测**  | 基于文件修改时间，智能缓存        |
 |   **渐进式加载**   | 常驻技能优先，按需加载其他        |
 
-### 5. 通道系统：多平台消息支持
+### 5. 通道系统：多平台消息支持（通过 LangBot）
 
-FinchBot 的通道系统提供统一的多平台消息支持。
+FinchBot 集成 [LangBot](https://github.com/langbot-app/LangBot) 实现生产级多平台消息支持。
+
+**为什么选择 LangBot？**
+- 15k+ GitHub Stars，活跃维护
+- 支持 12+ 平台：QQ、微信、企业微信、飞书、钉钉、Discord、Telegram、Slack、LINE、KOOK、Satori
+- 内置 WebUI，可视化配置
+- 插件生态，支持 MCP 等扩展
 
 ```mermaid
 flowchart LR
@@ -541,28 +553,32 @@ flowchart LR
     classDef manager fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef channel fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    Bus[MessageBus<br/>入站/出站队列]:::bus
-    CM[ChannelManager<br/>通道协调]:::manager
+    FinchBot[FinchBot<br/>Agent 核心]:::bus
+    LangBot[LangBot<br/>平台层]:::manager
 
-    Discord[Discord<br/>Bot API]:::channel
-    DingTalk[钉钉<br/>Webhook]:::channel
-    Feishu[飞书<br/>Bot API]:::channel
-    WeChat[微信<br/>企业微信]:::channel
-    Email[邮件<br/>SMTP/IMAP]:::channel
+    QQ[QQ]:::channel
+    WeChat[微信]:::channel
+    Feishu[飞书]:::channel
+    DingTalk[钉钉]:::channel
+    Discord[Discord]:::channel
+    Telegram[Telegram]:::channel
+    Slack[Slack]:::channel
 
-    Bus <--> CM
-    CM <--> Discord & DingTalk & Feishu & WeChat & Email
+    FinchBot <--> LangBot
+    LangBot <--> QQ & WeChat & Feishu & DingTalk & Discord & Telegram & Slack
 ```
 
-#### 通道架构
+#### LangBot 快速开始
 
-|    组件    | 说明                         |
-| :--------: | :--------------------------- |
-| **BaseChannel** | 抽象基类，定义通道接口       |
-| **MessageBus** | 异步消息路由器，入站/出站队列 |
-| **ChannelManager** | 协调多通道和消息路由         |
-| **InboundMessage** | 标准化入站消息格式           |
-| **OutboundMessage** | 标准化出站消息格式           |
+```bash
+# 安装 LangBot
+uvx langbot
+
+# 访问 WebUI http://localhost:5300
+# 配置你的平台并连接到 FinchBot
+```
+
+更多详情请参阅 [LangBot 文档](https://docs.langbot.app)。
 
 ### 6. LangChain 1.2 架构实践
 
@@ -777,6 +793,10 @@ EOF
 
 继承 `FinchTool` 基类，实现 `_run()` 方法，然后注册到 `ToolRegistry`。
 
+### 添加 MCP 工具
+
+在 `finchbot config` 中配置 MCP 服务器，或直接编辑配置文件。MCP 工具通过 `langchain-mcp-adapters` 自动加载。
+
 ### 添加新技能
 
 在 `~/.finchbot/workspace/skills/{skill-name}/` 下创建 `SKILL.md` 文件。
@@ -789,9 +809,9 @@ EOF
 
 在 `i18n/locales/` 下添加新的 `.toml` 文件。
 
-### 添加新通道
+### 多平台消息支持
 
-继承 `BaseChannel` 类，实现必要方法，注册到 `ChannelManager`。
+使用 [LangBot](https://github.com/langbot-app/LangBot) 实现多平台支持。详见 [LangBot 文档](https://docs.langbot.app)。
 
 ---
 
@@ -805,7 +825,8 @@ EOF
 |  **灵活扩展**  | 继承 FinchTool 或创建 SKILL.md 即可扩展，无需修改核心代码   |
 |  **模型无关**  | 支持 OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq 等 |
 |  **并发安全**  | 工具注册使用双重检查锁定模式，线程安全                      |
-| **多平台支持** | 通道系统支持 Web、Discord、钉钉、飞书、微信、邮件           |
+| **多平台支持** | 通过 LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台 |
+| **MCP 支持** | 通过官方 langchain-mcp-adapters 支持 stdio 和 HTTP 传输 |
 
 ---
 

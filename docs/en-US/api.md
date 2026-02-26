@@ -660,45 +660,49 @@ model = create_chat_model(
 
 ---
 
-## 9. MCP Module (`finchbot.mcp`)
+## 9. MCP Module
 
-### 9.1 `MCPClient`
+FinchBot uses the official `langchain-mcp-adapters` library for MCP (Model Context Protocol) integration, supporting both stdio and HTTP transports.
 
-MCP (Model Context Protocol) client for connecting to external MCP servers and loading tools.
+### 9.1 Overview
+
+MCP tools are automatically loaded through the `ToolFactory` class, no manual client connection management needed.
 
 ```python
-class MCPClient:
-    def __init__(self, config: MCPConfig): ...
-    
-    async def connect(self) -> None: ...
-    async def disconnect(self) -> None: ...
-    async def list_tools(self) -> list[MCPTool]: ...
-    async def call_tool(self, name: str, arguments: dict) -> Any: ...
-```
+from finchbot.tools.factory import ToolFactory
+from finchbot.config import load_config
+from pathlib import Path
 
-**Methods**:
-- `connect()`: Establish connection to MCP server
-- `disconnect()`: Disconnect and cleanup resources
-- `list_tools()`: Get all tools provided by MCP server
-- `call_tool()`: Call specified MCP tool
+config = load_config()
+factory = ToolFactory(config, Path("./workspace"))
+
+# Create all tools (including MCP tools)
+all_tools = await factory.create_all_tools()
+```
 
 ---
 
-### 9.2 `MCPToolLoader`
-
-MCP tool loader that converts MCP tools to LangChain tool format.
+### 9.2 `ToolFactory` MCP Methods
 
 ```python
-class MCPToolLoader:
-    def __init__(self, config: Config): ...
+class ToolFactory:
+    async def create_all_tools(self) -> list[BaseTool]:
+        """Create all tools (including MCP tools)"""
+        ...
     
-    async def load_tools(self) -> list[BaseTool]: ...
-    def get_tool_names(self) -> list[str]: ...
+    async def _load_mcp_tools(self) -> list[BaseTool]:
+        """Load MCP tools using langchain-mcp-adapters"""
+        ...
+    
+    def _build_mcp_server_config(self) -> dict:
+        """Build MCP server configuration"""
+        ...
 ```
 
-**Methods**:
-- `load_tools()`: Load tools from all configured MCP servers
-- `get_tool_names()`: Get list of loaded tool names
+**Method Descriptions**:
+- `create_all_tools()`: Creates complete list of built-in + MCP tools
+- `_load_mcp_tools()`: Internal method, uses `MultiServerMCPClient` to load MCP tools
+- `_build_mcp_server_config()`: Converts FinchBot config to langchain-mcp-adapters format
 
 ---
 
@@ -706,11 +710,16 @@ class MCPToolLoader:
 
 ```python
 class MCPServerConfig(BaseModel):
-    """Single MCP server configuration"""
-    command: str
-    args: list[str] = []
-    env: dict[str, str] = {}
-    disabled: bool = False
+    """Single MCP server configuration
+    
+    Supports both stdio and HTTP transports.
+    """
+    command: str = ""           # Startup command for stdio transport
+    args: list[str] = []        # Command arguments for stdio transport
+    env: dict[str, str] | None = None  # Environment variables for stdio transport
+    url: str = ""               # Server URL for HTTP transport
+    headers: dict[str, str] | None = None  # Request headers for HTTP transport
+    disabled: bool = False      # Whether to disable this server
 
 class MCPConfig(BaseModel):
     """MCP total configuration"""
@@ -719,43 +728,103 @@ class MCPConfig(BaseModel):
 
 ---
 
-### 9.4 Usage Example
+### 9.4 Transport Types
 
-```python
-from finchbot.mcp import MCPClient, MCPToolLoader
-from finchbot.config import load_config
+#### stdio Transport
 
-config = load_config()
+Suitable for local MCP servers, started via command line:
 
-# Load MCP tools
-loader = MCPToolLoader(config)
-mcp_tools = await loader.load_tools()
+```json
+{
+  "command": "mcp-server-filesystem",
+  "args": ["/path/to/workspace"],
+  "env": {}
+}
+```
 
-# All tools (built-in + MCP)
-all_tools = default_tools + mcp_tools
+#### HTTP Transport
+
+Suitable for remote MCP servers, connected via HTTP:
+
+```json
+{
+  "url": "https://api.example.com/mcp",
+  "headers": {
+    "Authorization": "Bearer your-token"
+  }
+}
 ```
 
 ---
 
-### 9.5 Configuration Example
+### 9.5 Usage Example
+
+```python
+import asyncio
+from pathlib import Path
+from finchbot.tools.factory import ToolFactory
+from finchbot.config import load_config
+
+async def main():
+    config = load_config()
+    factory = ToolFactory(config, Path("./workspace"))
+    
+    # Get all tools (built-in + MCP)
+    tools = await factory.create_all_tools()
+    
+    print(f"Loaded {len(tools)} tools")
+    
+    # Cleanup resources
+    await factory.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+### 9.6 Configuration Example
 
 ```json
 {
   "mcp": {
     "servers": {
       "filesystem": {
-        "command": "mcp-server-filesystem",
-        "args": ["/path/to/workspace"],
+        "command": "mcp-filesystem",
+        "args": ["/path/to/allowed/dir"],
         "env": {}
       },
+      "remote-api": {
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer your-token"
+        }
+      },
       "github": {
-        "command": "mcp-server-github",
+        "command": "mcp-github",
         "args": [],
         "env": {
-          "GITHUB_TOKEN": "your-token"
-        }
+          "GITHUB_TOKEN": "ghp_..."
+        },
+        "disabled": true
       }
     }
   }
 }
+```
+
+---
+
+### 9.7 Dependencies
+
+MCP functionality requires installing `langchain-mcp-adapters`:
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+Or using uv:
+
+```bash
+uv add langchain-mcp-adapters
 ```

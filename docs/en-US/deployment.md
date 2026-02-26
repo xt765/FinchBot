@@ -210,23 +210,24 @@ flowchart TB
     classDef userLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
     classDef appLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef dataLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef langbot fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
 
     subgraph Users [User Layer]
         U[User]:::userLayer
     end
 
-    subgraph Channels [Channel Layer]
-        Discord[Discord]:::appLayer
-        Feishu[Feishu]:::appLayer
-        DingTalk[DingTalk]:::appLayer
-        WeChat[WeChat]:::appLayer
-        Email[Email]:::appLayer
+    subgraph LangBot [LangBot Platform Layer]
+        QQ[QQ]:::langbot
+        WeChat[WeChat]:::langbot
+        Feishu[Feishu]:::langbot
+        DingTalk[DingTalk]:::langbot
+        Discord[Discord]:::langbot
+        Telegram[Telegram]:::langbot
     end
 
     subgraph App [Application Layer]
-        Bus[MessageBus<br/>Message Router]:::appLayer
-        Agent[Agent<br/>LangGraph]:::appLayer
-        MCP[MCP Client<br/>External Tools]:::appLayer
+        Agent[FinchBot Agent<br/>LangGraph]:::appLayer
+        MCP[MCP Tools<br/>langchain-mcp-adapters]:::appLayer
     end
 
     subgraph Data [Data Layer]
@@ -235,9 +236,8 @@ flowchart TB
         Redis[(Redis<br/>Cache)]:::dataLayer
     end
 
-    U --> Discord & Feishu & DingTalk & WeChat & Email
-    Discord & Feishu & DingTalk & WeChat & Email --> Bus
-    Bus --> Agent
+    U --> QQ & WeChat & Feishu & DingTalk & Discord & Telegram
+    QQ & WeChat & Feishu & DingTalk & Discord & Telegram --> Agent
     Agent --> MCP
     Agent --> PG & Vector & Redis
 ```
