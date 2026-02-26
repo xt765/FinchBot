@@ -30,8 +30,8 @@
 ![Banner](https://i-blog.csdnimg.cn/direct/89e72e3b66ff4adc8ab8aa90400385ef.png)
 
 > Author: Xuantong 765 (xt765)
-> Project: [GitHub - FinchBot](https://github.com/xt765/finchbot)
-> Mirror: [Gitee - FinchBot](https://gitee.com/xt765/finchbot)
+> Project: [GitHub - FinchBot](https://github.com/xt765/FinchBot)
+> Mirror: [Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
 
 ## Abstract
 
@@ -525,7 +525,7 @@ FinchBot provides complete Docker support with one-click deployment:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/xt765/finchbot.git
+git clone https://github.com/xt765/FinchBot.git
 cd finchbot
 
 # 2. Configure environment variables
@@ -628,9 +628,9 @@ FinchBot is worth a try.
 
 ## Links
 
-*  **Project**: [GitHub - FinchBot](https://github.com/xt765/finchbot) | [Gitee - FinchBot](https://gitee.com/xt765/finchbot)
-*  **Docs**: [FinchBot Docs](https://github.com/xt765/finchbot/tree/main/docs)
-*  **Issues**: [GitHub Issues](https://github.com/xt765/finchbot/issues)
+*  **Project**: [GitHub - FinchBot](https://github.com/xt765/FinchBot) | [Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
+*  **Docs**: [FinchBot Docs](https://github.com/xt765/FinchBot/tree/main/docs)
+*  **Issues**: [GitHub Issues](https://github.com/xt765/FinchBot/issues)
 
 ---
 

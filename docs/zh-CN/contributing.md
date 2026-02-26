@@ -258,8 +258,8 @@ flowchart TD
 
 ## 联系方式
 
-- **Issues**: [GitHub Issues](https://github.com/xt765/finchbot/issues)
-- **Pull Requests**: [GitHub PRs](https://github.com/xt765/finchbot/pulls)
-- **Gitee**: [Gitee 仓库](https://gitee.com/xt765/finchbot)
+- **Issues**: [GitHub Issues](https://github.com/xt765/FinchBot/issues)
+- **Pull Requests**: [GitHub PRs](https://github.com/xt765/FinchBot/pulls)
+- **Gitee**: [Gitee 仓库](https://gitee.com/xt765/FinchBot)
 
 感谢您的贡献！

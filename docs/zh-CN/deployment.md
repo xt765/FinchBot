@@ -26,8 +26,8 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://gitee.com/xt765/finchbot.git
-# 或 git clone https://github.com/xt765/finchbot.git
+git clone https://gitee.com/xt765/FinchBot.git
+# 或 git clone https://github.com/xt765/FinchBot.git
 
 cd finchbot
 
@@ -51,7 +51,7 @@ FinchBot 提供完整的 Docker 支持，可一键部署。
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/xt765/finchbot.git
+git clone https://github.com/xt765/FinchBot.git
 cd finchbot
 
 # 2. 配置环境变量

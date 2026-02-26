@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://i-blog.csdnimg.cn/direct/8abea218c2804256a17cc8f2d6c81630.jpeg" width="150" >
-  <h1><strong>玄通 765 (xt765)</strong></h1>
+  <h1><strong>玄同 765 (xt765)</strong></h1>
   <p><strong>LLM 开发工程师 | 中国传媒大学 · 数字媒体技术</strong></p>
   <p>
     <a href="https://blog.csdn.net/Yunyi_Chi" target="_blank" style="text-decoration: none;">
@@ -29,9 +29,9 @@
 
 ![Banner](https://i-blog.csdnimg.cn/direct/89e72e3b66ff4adc8ab8aa90400385ef.png)
 
-> 作者：玄通 765 (xt765)
-> 项目：[GitHub - FinchBot](https://github.com/xt765/finchbot)
-> 镜像：[Gitee - FinchBot](https://gitee.com/xt765/finchbot)
+> 作者：玄同 765 (xt765)
+> 项目：[GitHub - FinchBot](https://github.com/xt765/FinchBot)
+> 镜像：[Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
 
 ## 摘要
 
@@ -506,7 +506,7 @@ FinchBot 提供完整的 Docker 支持，一键部署：
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/xt765/finchbot.git
+git clone https://github.com/xt765/FinchBot.git
 cd finchbot
 
 # 2. 配置环境变量
@@ -609,9 +609,9 @@ FinchBot 是一个精心设计的 Agent 框架：
 
 ## 链接
 
-* **项目地址**：[GitHub - FinchBot](https://github.com/xt765/finchbot) | [Gitee - FinchBot](https://gitee.com/xt765/finchbot)
-* **文档**：[FinchBot 文档](https://github.com/xt765/finchbot/tree/main/docs)
-* **问题反馈**：[GitHub Issues](https://github.com/xt765/finchbot/issues)
+* **项目地址**：[GitHub - FinchBot](https://github.com/xt765/FinchBot) | [Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
+* **文档**：[FinchBot 文档](https://github.com/xt765/FinchBot/tree/main/docs)
+* **问题反馈**：[GitHub Issues](https://github.com/xt765/FinchBot/issues)
 
 ---
 

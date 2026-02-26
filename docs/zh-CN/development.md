@@ -30,10 +30,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```bash
 # Gitee（国内用户推荐）
-git clone https://gitee.com/xt765/finchbot.git
-
-# 或 GitHub
-git clone https://github.com/xt765/finchbot.git
+git clone https://gitee.com/xt765/FinchBot.git
+# 或 git clone https://github.com/xt765/FinchBot.git
 
 cd finchbot
 ```

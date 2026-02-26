@@ -27,7 +27,7 @@ This document covers FinchBot deployment methods, including local deployment, Do
 ```bash
 # 1. Clone repository
 git clone https://gitee.com/xt765/finchbot.git
-# or git clone https://github.com/xt765/finchbot.git
+# or git clone https://github.com/xt765/FinchBot.git
 
 cd finchbot
 
