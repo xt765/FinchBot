@@ -206,8 +206,9 @@ finchbot/
     config/            # Configuration management
        loader.py
        schema.py
+    constants.py       # Unified constants definition
     i18n/              # Internationalization
-       loader.py
+       loader.py      # Language loader
        locales/
     providers/         # LLM providers
        factory.py
@@ -216,6 +217,7 @@ finchbot/
        loop.py       # AgentLoop
     sessions/          # Session management
     utils/             # Utility functions
+        cache.py      # Generic cache base class
         logger.py
         model_downloader.py
  tests/                 # Test directory
@@ -267,7 +269,7 @@ This design avoids build isolation issues and ensures good download experience f
 
 ### 5.2 Tool Lazy Loading
 
-Tool registration uses **Double-checked locking** for thread-safe lazy loading:
+Tool registration uses **single-lock pattern** for thread-safe lazy loading:
 
 ```python
 def _register_default_tools() -> None:

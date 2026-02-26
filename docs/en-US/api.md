@@ -77,7 +77,7 @@ from langchain_openai import ChatOpenAI
 from finchbot.agent import create_finch_agent
 
 async def main():
-    model = ChatOpenAI(model="gpt-4")
+    model = ChatOpenAI(model="gpt-5")
     workspace = Path("./workspace")
     agent, checkpointer = await create_finch_agent(model, workspace)
 

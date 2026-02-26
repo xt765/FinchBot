@@ -229,7 +229,7 @@ Agent Core is the brain of FinchBot, responsible for decision-making, planning, 
 
 #### Thread Safety Mechanism
 
-Tool registration uses the **Double-checked locking pattern** for lazy loading, ensuring thread safety:
+Tool registration uses the **single-lock pattern** for lazy loading, ensuring thread safety:
 
 ```python
 def _register_default_tools() -> None:
@@ -812,7 +812,7 @@ FinchBot makes "Out of the Box" a core design principle:
 
 ### 4.5 Defensive Programming
 
-- Double-checked locking prevents concurrency issues
+- Single-lock pattern prevents concurrency issues
 - Vector store failure doesn't affect SQLite writes (degradation strategy)
 - Timeout control prevents tool hanging
 - Complete error logging (Loguru)
