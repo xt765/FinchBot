@@ -27,6 +27,46 @@ except ImportError:
         DDGS_AVAILABLE = False
 
 
+_PRIMP_SUPPORTED_IMPERSONATES = (
+    "chrome_144",
+    "chrome_145",
+    "edge_144",
+    "edge_145",
+    "opera_126",
+    "opera_127",
+    "safari_18.5",
+    "safari_26",
+    "firefox_140",
+    "firefox_146",
+    "random",
+)
+
+
+def _patch_ddgs_impersonates() -> None:
+    """修复 ddgs 库与 primp 版本不兼容的问题.
+
+    ddgs 库的 HttpClient._impersonates 列表包含了一些 primp 不支持的版本，
+    导致警告 "Impersonate 'xxx' does not exist, using 'random'"。
+
+    此函数将 ddgs 的 _impersonates 列表替换为 primp 支持的版本。
+    """
+    if not DDGS_AVAILABLE:
+        return
+
+    try:
+        from ddgs.http_client import HttpClient
+    except ImportError:
+        return
+
+    if hasattr(HttpClient, "_impersonates"):
+        current = HttpClient._impersonates
+        if current != _PRIMP_SUPPORTED_IMPERSONATES:
+            HttpClient._impersonates = _PRIMP_SUPPORTED_IMPERSONATES
+
+
+_patch_ddgs_impersonates()
+
+
 class DuckDuckGoSearchEngine(BaseSearchEngine):
     """DuckDuckGo 搜索引擎.
 
