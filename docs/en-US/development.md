@@ -104,11 +104,11 @@ uv run pytest -v tests/
 
 ```
 tests/
-├── test_agent.py        # Agent related tests
-├── test_memory.py       # Memory system tests
-├── test_tools.py        # Tool tests
-├── test_config.py       # Configuration tests
-└── conftest.py          # Test configuration and fixtures
+ test_agent.py        # Agent related tests
+ test_memory.py       # Memory system tests
+ test_tools.py        # Tool tests
+ test_config.py       # Configuration tests
+ conftest.py          # Test configuration and fixtures
 ```
 
 ---
@@ -179,55 +179,55 @@ repos:
 
 ```
 finchbot/
-├── src/finchbot/          # Source code
-│   ├── agent/             # Agent logic
-│   │   ├── core.py       # Agent creation and execution
-│   │   ├── factory.py    # AgentFactory
-│   │   ├── context.py    # ContextBuilder
-│   │   └── skills.py     # SkillsLoader
-│   ├── memory/            # Memory system
-│   │   ├── manager.py    # MemoryManager
-│   │   ├── types.py      # Type definitions
-│   │   ├── services/     # Service layer
-│   │   └── storage/      # Storage layer
-│   ├── tools/             # Tool collection
-│   │   ├── base.py       # FinchTool base class
-│   │   ├── factory.py    # ToolFactory
-│   │   ├── registry.py   # ToolRegistry
-│   │   └── *.py          # Tool implementations
-│   ├── channels/          # Multi-platform messaging
-│   │   ├── base.py       # BaseChannel
-│   │   ├── bus.py        # MessageBus
-│   │   └── manager.py    # ChannelManager
-│   ├── cli/               # Command line interface
-│   │   ├── chat_session.py
-│   │   ├── config_manager.py
-│   │   └── ui.py
-│   ├── config/            # Configuration management
-│   │   ├── loader.py
-│   │   └── schema.py
-│   ├── i18n/              # Internationalization
-│   │   ├── loader.py
-│   │   └── locales/
-│   ├── providers/         # LLM providers
-│   │   └── factory.py
-│   ├── server/            # Web server
-│   │   ├── main.py       # FastAPI
-│   │   └── loop.py       # AgentLoop
-│   ├── sessions/          # Session management
-│   └── utils/             # Utility functions
-│       ├── logger.py
-│       └── model_downloader.py
-├── tests/                 # Test directory
-├── docs/                  # Documentation
-│   ├── zh-CN/            # Chinese docs
-│   └── en-US/            # English docs
-├── web/                   # Web frontend
-│   ├── src/
-│   └── package.json
-├── .models/               # Local model cache (auto-generated)
-├── pyproject.toml         # Project configuration
-└── uv.lock               # Dependency lock
+ src/finchbot/          # Source code
+    agent/             # Agent logic
+       core.py       # Agent creation and execution
+       factory.py    # AgentFactory
+       context.py    # ContextBuilder
+       skills.py     # SkillsLoader
+    memory/            # Memory system
+       manager.py    # MemoryManager
+       types.py      # Type definitions
+       services/     # Service layer
+       storage/      # Storage layer
+    tools/             # Tool collection
+       base.py       # FinchTool base class
+       factory.py    # ToolFactory
+       registry.py   # ToolRegistry
+       *.py          # Tool implementations
+    channels/          # Multi-platform messaging
+       base.py       # BaseChannel
+       bus.py        # MessageBus
+       manager.py    # ChannelManager
+    cli/               # Command line interface
+       chat_session.py
+       config_manager.py
+       ui.py
+    config/            # Configuration management
+       loader.py
+       schema.py
+    i18n/              # Internationalization
+       loader.py
+       locales/
+    providers/         # LLM providers
+       factory.py
+    server/            # Web server
+       main.py       # FastAPI
+       loop.py       # AgentLoop
+    sessions/          # Session management
+    utils/             # Utility functions
+        logger.py
+        model_downloader.py
+ tests/                 # Test directory
+ docs/                  # Documentation
+    zh-CN/            # Chinese docs
+    en-US/            # English docs
+ web/                   # Web frontend
+    src/
+    package.json
+ .models/               # Local model cache (auto-generated)
+ pyproject.toml         # Project configuration
+ uv.lock               # Dependency lock
 ```
 
 ---
@@ -289,10 +289,10 @@ FinchBot uses `asyncio` + `ThreadPoolExecutor` for concurrent initialization:
 
 | Task | Duration | Concurrent |
 | :--- | :--- | :---: |
-| LLM Model Init | ~2-5s | ✅ |
-| SQLite Connection | ~0.1s | ✅ |
-| Workspace Check | ~0.1s | ✅ |
-| Tool Creation | ~0.5s | ✅ |
+| LLM Model Init | ~2-5s |  |
+| SQLite Connection | ~0.1s |  |
+| Workspace Check | ~0.1s |  |
+| Tool Creation | ~0.5s |  |
 
 ---
 

@@ -1,11 +1,11 @@
-# FinchBot — A Lightweight, Flexible, and Infinitely Extensible AI Agent Framework
+# FinchBot - A Lightweight, Flexible, and Infinitely Extensible AI Agent Framework
 
 <p align="center">
   <img src="docs/image/image.png" alt="FinchBot Logo" width="600">
 </p>
 
 <p align="center">
-  <em>Built on LangChain v1.2 & LangGraph v1.0<br>
+  <em>Built on LangChain v1.2 and LangGraph v1.0<br>
   with persistent memory, dynamic prompts, and seamless tool integration</em>
 </p>
 
@@ -29,11 +29,11 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square&logo=open-source-initiative" alt="License">
 </p>
 
-**FinchBot** is a lightweight, modular AI Agent framework built on **LangChain v1.2** and **LangGraph v1.0**. It's not just another LLM wrapper—it's a thoughtfully designed architecture focused on three core challenges:
+**FinchBot** is a lightweight, modular AI Agent framework built on **LangChain v1.2** and **LangGraph v1.0**. It is not just another LLM wrapper. It is a thoughtfully designed architecture focused on three core challenges:
 
-1. **How to enable infinite Agent extensibility?** — Through a dual-layer extension mechanism of Skills and Tools
-2. **How to give Agents real memory?** — Through a dual-layer storage architecture + Agentic RAG
-3. **How to make Agent behavior customizable?** — Through a dynamic prompt file system
+1. **How to enable infinite Agent extensibility?** - Through a dual-layer extension mechanism of Skills and Tools
+2. **How to give Agents real memory?** - Through a dual-layer storage architecture and Agentic RAG
+3. **How to make Agent behavior customizable?** - Through a dynamic prompt file system
 
 [中文文档](README_CN.md) | [English Documentation](docs/en-US/README.md)
 
@@ -53,13 +53,13 @@
 
 ### Pain Points of Existing Frameworks
 
-|           Pain Point           | Traditional Approach         | FinchBot Solution                                  |
-| :-----------------------------: | :--------------------------- | :------------------------------------------------- |
-|    **Hard to Extend**    | Requires modifying core code | Inherit base class or create Markdown files        |
-|    **Fragile Memory**    | Relies on LLM context window | Dual-layer persistent storage + semantic retrieval |
-|     **Rigid Prompts**     | Hardcoded in source code     | File system with hot reloading                     |
-|     **Slow Startup**     | Synchronous blocking I/O     | Fully async + Thread pool concurrency              |
-| **Outdated Architecture** | Based on old LangChain APIs  | LangChain v1.2 + LangGraph v1.0                    |
+| Pain Point | Traditional Approach | FinchBot Solution |
+|------------|---------------------|-------------------|
+| Hard to Extend | Requires modifying core code | Inherit base class or create Markdown files |
+| Fragile Memory | Relies on LLM context window | Dual-layer persistent storage and semantic retrieval |
+| Rigid Prompts | Hardcoded in source code | File system with hot reloading |
+| Slow Startup | Synchronous blocking I/O | Fully async with Thread pool concurrency |
+| Outdated Architecture | Based on old LangChain APIs | LangChain v1.2 and LangGraph v1.0 |
 
 ### Design Philosophy
 
@@ -69,7 +69,7 @@ graph BT
     classDef pillar fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1,rx:8,ry:8;
     classDef base fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px,color:#1b5e20,rx:10,ry:10;
 
-    Roof("FinchBot Framework<br/>Lightweight • Flexible • Extensible"):::roof
+    Roof("FinchBot Framework<br/>Lightweight - Flexible - Extensible"):::roof
 
     subgraph Pillars [Core Philosophy]
         direction LR
@@ -80,7 +80,7 @@ graph BT
         O("Out of Box<br/>Zero Config<br/>Auto Fallback"):::pillar
     end
 
-    Base("Tech Foundation<br/>LangChain v1.2 • LangGraph v1.0 • Python 3.13"):::base
+    Base("Tech Foundation<br/>LangChain v1.2 - LangGraph v1.0 - Python 3.13"):::base
 
     Base === P & M & D & S & O
     P & M & D & S & O === Roof
@@ -94,7 +94,7 @@ FinchBot unified message routing architecture - develop once, reach everywhere:
 
 ### Web Interface (Beta)
 
-FinchBot provides a modern Web interface built with React + Vite + FastAPI:
+FinchBot provides a modern Web interface built with React, Vite, and FastAPI:
 
 ```bash
 # Start the backend server
@@ -126,11 +126,11 @@ uv run finchbot sessions
 uv run finchbot chat
 ```
 
-|             Feature             | Description                                                                                               |
-| :-----------------------------: | :-------------------------------------------------------------------------------------------------------- |
-| **Environment Variables** | All configurations can be set via environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.) |
-|     **i18n Support**     | Built-in Chinese/English support, auto-detects system language                                            |
-|     **Auto Fallback**     | Web search automatically falls back through Tavily → Brave → DuckDuckGo                                 |
+| Feature | Description |
+|---------|-------------|
+| Environment Variables | All configurations can be set via environment variables (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.) |
+| i18n Support | Built-in Chinese/English support, auto-detects system language |
+| Auto Fallback | Web search automatically falls back through Tavily to Brave to DuckDuckGo |
 
 ---
 
@@ -235,9 +235,9 @@ finchbot/
 ├── config/             # Configuration Management
 │   ├── loader.py
 │   └── schema.py
+├── constants.py        # Centralized constants
 ├── i18n/               # Internationalization
-│   ├── loader.py
-│   ├── detector.py
+│   ├── loader.py      # Language detection and loading
 │   └── locales/
 ├── memory/             # Memory System
 │   ├── manager.py
@@ -275,6 +275,7 @@ finchbot/
 │   ├── session_title.py
 │   └── search/
 └── utils/              # Utility Functions
+    ├── cache.py       # File-based caching
     ├── logger.py
     └── model_downloader.py
 ```
@@ -283,19 +284,19 @@ finchbot/
 
 ## Core Components
 
-### 1. Memory Architecture: Dual-Layer Storage + Agentic RAG
+### 1. Memory Architecture: Dual-Layer Storage and Agentic RAG
 
 FinchBot implements an advanced **dual-layer memory architecture** that solves LLM context window limits and long-term forgetting issues.
 
 #### Why Agentic RAG?
 
-|          Dimension          | Traditional RAG         | Agentic RAG (FinchBot)                       |
-| :--------------------------: | :---------------------- | :------------------------------------------- |
-| **Retrieval Trigger** | Fixed pipeline          | Agent autonomous decision                    |
-| **Retrieval Strategy** | Single vector retrieval | Hybrid retrieval + dynamic weight adjustment |
-| **Memory Management** | Passive storage         | Active remember/recall/forget                |
-|   **Classification**   | None                    | Auto-classification + importance scoring     |
-|  **Update Mechanism**  | Full rebuild            | Incremental sync                             |
+| Dimension | Traditional RAG | Agentic RAG (FinchBot) |
+|-----------|-----------------|------------------------|
+| Retrieval Trigger | Fixed pipeline | Agent autonomous decision |
+| Retrieval Strategy | Single vector retrieval | Hybrid retrieval with dynamic weight adjustment |
+| Memory Management | Passive storage | Active remember/recall/forget |
+| Classification | None | Auto-classification and importance scoring |
+| Update Mechanism | Full rebuild | Incremental sync |
 
 #### Dual-Layer Storage Architecture
 
@@ -342,7 +343,7 @@ class QueryType(StrEnum):
 
 ### 2. Dynamic Prompt System: User-Editable Agent Brain
 
-FinchBot's prompt system uses **file system + modular assembly** design.
+FinchBot's prompt system uses **file system and modular assembly** design.
 
 #### Bootstrap File System
 
@@ -397,223 +398,131 @@ flowchart TB
     classDef registry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef builtin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef custom fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
 
-    TR[ToolRegistry<br/>Global Registry]:::registry
-    Lock[Double-checked Lock<br/>Thread Safe Singleton]:::registry
+    Registry[ToolRegistry<br/>Global Registration]:::registry
 
-    File[File Operations<br/>read_file / write_file<br/>edit_file / list_dir]:::builtin
-    Web[Network<br/>web_search / web_extract]:::builtin
-    Memory[Memory<br/>remember / recall / forget]:::builtin
-    System[System<br/>exec / session_title]:::builtin
+    subgraph Built-in [11 Built-in Tools]
+        File[File System<br/>read/write/edit/list]:::builtin
+        Shell[Shell<br/>exec with guardrails]:::builtin
+        Web[Web Search<br/>Tavily/Brave/DDG]:::builtin
+        Mem[Memory<br/>remember/recall/forget]:::builtin
+        Title[Session Title<br/>Auto-generate]:::builtin
+    end
 
-    Inherit[Inherit FinchTool<br/>Implement _run()]:::custom
-    Register[Register to Registry]:::custom
+    subgraph Custom [Custom Tools]
+        CT1[Custom Tool 1]:::custom
+        CT2[Custom Tool 2]:::custom
+    end
 
-    Agent[Agent Call]:::agent
-
-    TR --> Lock
-    Lock --> File & Web & Memory & System
-    Lock --> Inherit --> Register
-
-    File --> Agent
-    Web --> Agent
-    Memory --> Agent
-    System --> Agent
-    Register --> Agent
+    Registry --> File & Shell & Web & Mem & Title
+    Registry --> CT1 & CT2
 ```
 
-#### Built-in Tools
+#### Built-in Tools Overview
 
-|      Category      | Tool              | Function                      |
-| :----------------: | :---------------- | :---------------------------- |
-| **File Ops** | `read_file`     | Read local files              |
-|                    | `write_file`    | Write local files             |
-|                    | `edit_file`     | Edit file content             |
-|                    | `list_dir`      | List directory contents       |
-| **Network** | `web_search`    | Web search (Tavily/Brave/DDG) |
-|                    | `web_extract`   | Web content extraction        |
-|  **Memory**  | `remember`      | Proactively store memories    |
-|                    | `recall`        | Retrieve memories             |
-|                    | `forget`        | Delete/archive memories       |
-|  **System**  | `exec`          | Secure shell execution        |
-|                    | `session_title` | Manage session titles         |
+| Tool | Description | Use Case |
+|------|-------------|----------|
+| read_file | Read file content | Code review, file analysis |
+| write_file | Write file content | Code generation, document creation |
+| edit_file | Edit file content | Code refactoring, text replacement |
+| list_dir | List directory contents | Project exploration |
+| exec | Execute shell command | System operations, git commands |
+| web_search | Search the web | Information retrieval, fact checking |
+| remember | Store memory | Long-term knowledge retention |
+| recall | Retrieve memory | Context-aware information retrieval |
+| forget | Delete memory | Memory management |
+| generate_session_title | Generate session title | Auto-naming chat sessions |
 
-#### Web Search: Three-Engine Fallback Design
+#### Creating Custom Tools
 
-```mermaid
-flowchart TD
-    classDef check fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef engine fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef fallback fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+```python
+from finchbot.tools.base import FinchTool
+from pydantic import Field
 
-    Start[Web Search Request]:::check
+class MyTool(FinchTool):
+    """Tool description"""
+    name: str = "my_tool"
+    description: str = "What this tool does"
     
-    Check1{TAVILY_API_KEY<br/>Set?}:::check
-    Tavily[Tavily<br/>Best Quality<br/>AI-Optimized]:::engine
+    arg1: str = Field(description="Argument description")
     
-    Check2{BRAVE_API_KEY<br/>Set?}:::check
-    Brave[Brave Search<br/>Privacy Friendly<br/>Large Free Tier]:::engine
-    
-    DDG[DuckDuckGo<br/>Zero Config<br/>Always Available]:::fallback
-
-    Start --> Check1
-    Check1 -->|Yes| Tavily
-    Check1 -->|No| Check2
-    Check2 -->|Yes| Brave
-    Check2 -->|No| DDG
+    def _run(self, arg1: str) -> str:
+        # Tool implementation
+        return f"Result: {arg1}"
 ```
 
-| Priority |         Engine         |   API Key   | Features                                |
-| :------: | :--------------------: | :----------: | :-------------------------------------- |
-|    1    |    **Tavily**    |   Required   | Best quality, AI-optimized, deep search |
-|    2    | **Brave Search** |   Required   | Large free tier, privacy-friendly       |
-|    3    |  **DuckDuckGo**  | Not required | Always available, zero config           |
+### 4. Skill System: Natural Language Capability Extension
 
-**How it works**:
+Skills are FinchBot's unique **natural language extension mechanism**. Unlike Tools (code-level), Skills extend Agent capabilities through Markdown files.
 
-1. If `TAVILY_API_KEY` is set → Use Tavily (best quality)
-2. Else if `BRAVE_API_KEY` is set → Use Brave Search
-3. Else → Use DuckDuckGo (no API key needed, always works)
+#### Skill vs Tool
 
-This design ensures **web search works out of the box** even without any API key configuration!
+| Dimension | Tool | Skill |
+|-----------|------|-------|
+| Extension Level | Code | Natural Language |
+| Implementation | Python class | Markdown file |
+| Capability | Execute actions | Provide knowledge and workflows |
+| Hot Reload | No (requires restart) | Yes (file change detection) |
+| Use Case | File operations, API calls | Domain expertise, task templates |
 
-#### Session Title: Smart Naming, Out of the Box
+#### Skill File Format
 
-The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
+```markdown
+---
+name: weather
+description: Get weather information for any city
+alwaysOn: false
+---
 
-|         Method         | Description                                                        | Example                                  |
-| :---------------------: | :----------------------------------------------------------------- | :--------------------------------------- |
-| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion"    |
-| **Agent Modify** | Tell Agent "Change session title to XXX"                           | Agent calls tool to modify automatically |
-| **Manual Rename** | Press `r` key in session manager to rename                       | User manually enters new title           |
+# Weather Skill
 
-This design lets users **manage sessions without technical details**—whether automatic or manual.
+## Overview
 
-### 4. Skill System: Define Agent Capabilities with Markdown
+This skill helps you get weather information for any city worldwide.
 
-Skills are FinchBot's unique innovation—**defining Agent capabilities through Markdown files**.
+## Workflow
 
-#### Key Feature: Agent Auto-Creates Skills
+1. Identify the city mentioned by the user
+2. Use web_search to find current weather
+3. Summarize the weather information
+4. Provide recommendations if needed
 
-FinchBot includes a built-in **skill-creator** skill, the ultimate expression of the out-of-the-box philosophy:
+## Example
 
-> **Just tell the Agent what skill you want, and it will create it automatically!**
+User: "What's the weather like in Beijing?"
 
-```
-User: Help me create a translation skill that can translate Chinese to English
-
-Agent: Okay, I'll create a translation skill for you...
-       [Invokes skill-creator skill]
-       ✅ Created skills/translator/SKILL.md
-       You can now use the translation feature directly!
+Assistant: [Uses web_search to find Beijing weather, then responds]
 ```
 
-No manual file creation, no coding—**extend Agent capabilities with just one sentence**!
+### 5. Multi-Platform Channel System
 
-#### Skill File Structure
-
-```
-skills/
-├── skill-creator/        # Skill creator (Built-in) - Core of out-of-the-box
-│   └── SKILL.md
-├── summarize/            # Intelligent summarization (Built-in)
-│   └── SKILL.md
-├── weather/              # Weather query (Built-in)
-│   └── SKILL.md
-└── my-custom-skill/      # Agent auto-created or user-defined
-    └── SKILL.md
-```
-
-#### Core Design Highlights
-
-|            Feature            | Description                                       |
-| :---------------------------: | :------------------------------------------------ |
-|  **Agent Auto-Create**  | Tell Agent your needs, auto-generates skill files |
-|  **Dual Skill Source**  | Workspace skills first, built-in skills fallback  |
-|  **Dependency Check**  | Auto-check CLI tools and environment variables    |
-| **Cache Invalidation** | Smart caching based on file modification time     |
-| **Progressive Loading** | Always-on skills first, others on demand          |
-
-### 5. Channel System: Multi-Platform Messaging
-
-FinchBot's Channel system provides unified messaging across multiple platforms.
-
-```mermaid
-flowchart LR
-    classDef bus fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
-    classDef manager fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef channel fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-
-    Bus[MessageBus<br/>Inbound/Outbound Queues]:::bus
-    CM[ChannelManager<br/>Channel Coordination]:::manager
-
-    Web[Web<br/>WebSocket]:::channel
-    Discord[Discord<br/>Bot API]:::channel
-    DingTalk[DingTalk<br/>Webhook]:::channel
-    Feishu[Feishu<br/>Bot API]:::channel
-    WeChat[WeChat<br/>Enterprise]:::channel
-    Email[Email<br/>SMTP/IMAP]:::channel
-
-    Bus <--> CM
-    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
-```
+FinchBot's channel system uses **MessageBus + ChannelManager** architecture for unified multi-platform support.
 
 #### Channel Architecture
 
-|         Component         | Description                                       |
-| :-----------------------: | :------------------------------------------------ |
-|   **BaseChannel**   | Abstract base class defining channel interface    |
-|   **MessageBus**   | Async message router with inbound/outbound queues |
-| **ChannelManager** | Coordinates multiple channels and message routing |
-| **InboundMessage** | Standardized incoming message format              |
-| **OutboundMessage** | Standardized outgoing message format              |
+```mermaid
+graph TB
+    classDef channel fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef bus fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef agent fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-### 6. LangChain v1.2 Architecture Practice
+    subgraph Channels [Channel Layer]
+        CLI[CLI Channel]:::channel
+        Web[WebSocket Channel]:::channel
+        Discord[Discord Bot]:::channel
+        Ding[DingTalk Bot]:::channel
+        Feishu[Feishu Bot]:::channel
+    end
 
-FinchBot is built on **LangChain v1.2** and **LangGraph v1.0**, using the latest Agent architecture.
+    Bus[MessageBus<br/>Async Router]:::bus
+    Manager[ChannelManager<br/>Lifecycle]:::bus
 
-```python
-from langchain.agents import create_agent
-from langgraph.checkpoint.sqlite import SqliteSaver
+    Agent[Agent Core]:::agent
 
-def create_finch_agent(
-    model: BaseChatModel,
-    workspace: Path,
-    tools: Sequence[BaseTool] | None = None,
-    use_persistent: bool = True,
-) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
-
-    # 1. Initialize checkpoint (persistent state)
-    if use_persistent:
-        checkpointer = SqliteSaver.from_conn_string(str(db_path))
-    else:
-        checkpointer = MemorySaver()
-
-    # 2. Build system prompt
-    system_prompt = build_system_prompt(workspace)
-
-    # 3. Create Agent (using LangChain official API)
-    agent = create_agent(
-        model=model,
-        tools=list(tools) if tools else None,
-        system_prompt=system_prompt,
-        checkpointer=checkpointer,
-    )
-
-    return agent, checkpointer
+    CLI & Web & Discord & Ding & Feishu --> Bus
+    Bus --> Manager
+    Manager --> Agent
 ```
-
-#### Supported LLM Providers
-
-| Provider | Models                      | Features                  |
-| :-------: | :-------------------------- | :------------------------ |
-|  OpenAI  | GPT-5, GPT-5.2, O3-mini     | Best overall capability   |
-| Anthropic | Claude Sonnet 4.5, Opus 4.6 | High safety, long context |
-| DeepSeek | DeepSeek Chat, Reasoner     | Chinese, cost-effective   |
-|  Gemini  | Gemini 2.5 Flash            | Google's latest           |
-|   Groq   | Llama 4 Scout/Maverick      | Ultra-fast inference      |
-| Moonshot | Kimi K1.5/K2.5              | Long context, Chinese     |
 
 ---
 
@@ -621,226 +530,112 @@ def create_finch_agent(
 
 ### Prerequisites
 
-|      Item      | Requirement             |
-| :-------------: | :---------------------- |
-|       OS       | Windows / Linux / macOS |
-|     Python     | 3.13+                   |
-| Package Manager | uv (Recommended)        |
+- Python 3.13+
+- UV package manager (recommended)
+- API keys for LLM providers (OpenAI, Anthropic, or DeepSeek)
 
 ### Installation
 
 ```bash
-# Clone repository (choose one)
-# Gitee (recommended for users in China)
-git clone https://gitee.com/xt765/finchbot.git
-# or GitHub
-git clone https://github.com/xt765/finchbot.git
+# Clone the repository
+git clone https://github.com/xt765/FinchBot.git
+cd FinchBot
 
-cd finchbot
-
-# Install dependencies
+# Install dependencies with UV
 uv sync
+
+# Or use pip
+pip install -e ".[dev]"
 ```
 
-> **Note**: The embedding model (~95MB) will be automatically downloaded to the local cache when you run the application for the first time (e.g., `finchbot chat`). No manual intervention required.
-
-<details>
-<summary>Development Installation</summary>
-
-For development, install with dev dependencies:
+### Configuration
 
 ```bash
-uv sync --extra dev
-```
-
-This includes: pytest, ruff, basedpyright
-
-</details>
-
-### Best Practice: Three Commands to Get Started
-
-```bash
-# Step 1: Configure API keys and default model
+# Interactive configuration
 uv run finchbot config
 
-# Step 2: Manage your sessions
-uv run finchbot sessions
-
-# Step 3: Start chatting
-uv run finchbot chat
-```
-
-That's it! These three commands cover the complete workflow:
-
-- `finchbot config` — Interactive configuration for LLM providers, API keys, and settings
-- `finchbot sessions` — Full-screen session manager for creating, renaming, deleting sessions
-- `finchbot chat` — Start or continue an interactive conversation
-
-### Docker Deployment
-
-FinchBot provides official Docker support for easy deployment:
-
-```bash
-# Clone repository
-git clone https://github.com/xt765/finchbot.git
-cd finchbot
-
-# Create .env file with your API keys
-cp .env.example .env
-# Edit .env and add your API keys
-
-# Build and run
-docker-compose up -d
-
-# Access the Web interface
-# http://localhost:8000
-```
-
-| Feature | Description |
-| :-----: | :---------- |
-| **One-command Deploy** | `docker-compose up -d` |
-| **Persistent Storage** | Workspace and model cache via volumes |
-| **Health Check** | Built-in container health monitoring |
-| **Multi-arch Support** | Works on x86_64 and ARM64 |
-
-### Alternative: Environment Variables
-
-```bash
-# Or set environment variables directly
+# Or set environment variables
 export OPENAI_API_KEY="your-api-key"
+export MODEL_NAME="gpt-4o"
+```
+
+### Start Chatting
+
+```bash
+# Start interactive chat
 uv run finchbot chat
-```
 
-### Log Level Control
-
-```bash
-# Default: Show WARNING and above logs
-finchbot chat
-
-# Show INFO and above logs
-finchbot -v chat
-
-# Show DEBUG and above logs (debug mode)
-finchbot -vv chat
-```
-
-### Optional: Download Local Embedding Model
-
-```bash
-# For memory system semantic search (optional but recommended)
-uv run finchbot models download
-```
-
-### Create Custom Skill
-
-```bash
-# Create skill directory
-mkdir -p ~/.finchbot/workspace/skills/my-skill
-
-# Create skill file
-cat > ~/.finchbot/workspace/skills/my-skill/SKILL.md << 'EOF'
----
-name: my-skill
-description: My custom skill
-metadata:
-  finchbot:
-    emoji: ✨
-    always: false
----
-
-# My Custom Skill
-
-When user requests XXX, I should...
-EOF
+# With specific model
+uv run finchbot chat --model claude-sonnet-4-20250514
 ```
 
 ---
 
 ## Tech Stack
 
-|       Layer       | Technology        | Version |
-| :----------------: | :---------------- | :------: |
-|   Core Language   | Python            |  3.13+  |
-|  Agent Framework  | LangChain         | 1.2.10+ |
-|  State Management  | LangGraph         |  1.0.8+  |
-|  Data Validation  | Pydantic          |    v2    |
-|   Vector Storage   | ChromaDB          |  0.5.0+  |
-|  Local Embedding  | FastEmbed         |  0.4.0+  |
-| Search Enhancement | BM25              |  0.2.2+  |
-|   CLI Framework   | Typer             | 0.23.0+ |
-|     Rich Text     | Rich              | 14.3.0+ |
-|      Logging      | Loguru            |  0.7.3+  |
-|   Configuration   | Pydantic Settings | 2.12.0+ |
-|    Web Backend    | FastAPI           | 0.115.0+ |
-|    Web Frontend    | React + Vite      |  Latest  |
+### Core Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| LangChain | 1.2.10+ | LLM framework |
+| LangGraph | 1.0.8+ | Agent workflow |
+| FastEmbed | 0.6.0+ | Local embedding |
+| ChromaDB | 0.6.0+ | Vector storage |
+| FastAPI | 0.133.0+ | Web API |
+| Pydantic | 2.11.0+ | Data validation |
+
+### Development Tools
+
+| Tool | Purpose |
+|------|---------|
+| Ruff | Linting and formatting |
+| Basedpyright | Type checking |
+| Pytest | Testing |
+| Pre-commit | Git hooks |
 
 ---
 
 ## Extension Guide
 
-### Adding New Tools
+### Creating Custom Tools
 
-Inherit `FinchTool` base class, implement `_run()` method, then register with `ToolRegistry`.
+See [Tool Extension Guide](docs/en-US/guide/extension.md#tools)
 
-### Adding New Skills
+### Creating Custom Skills
 
-Create a `SKILL.md` file in `~/.finchbot/workspace/skills/{skill-name}/`.
-
-### Adding New LLM Providers
-
-Add a new Provider class in `providers/factory.py`.
-
-### Adding New Languages
-
-Add a new `.toml` file under `i18n/locales/`.
+See [Skill Extension Guide](docs/en-US/guide/extension.md#skills)
 
 ### Adding New Channels
 
-Inherit `BaseChannel` class, implement required methods, register with `ChannelManager`.
-
----
-
-## Key Advantages
-
-|          Advantage          | Description                                                                |
-| :--------------------------: | :------------------------------------------------------------------------- |
-|   **Privacy First**   | Uses FastEmbed locally for vector generation, no cloud upload              |
-|  **True Persistence**  | Dual-layer memory storage with semantic retrieval and precise queries      |
-|  **Production Ready**  | Double-checked locking, auto-retry, timeout control mechanisms             |
-| **Flexible Extension** | Inherit FinchTool or create SKILL.md to extend without modifying core code |
-|   **Model Agnostic**   | Supports OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq, etc.         |
-|    **Thread Safe**    | Tool registration uses double-checked locking pattern                      |
-|   **Multi-Platform**   | Channel system supports Web, Discord, DingTalk, Feishu, WeChat, Email      |
+See [Channel Extension Guide](docs/en-US/guide/extension.md#channels)
 
 ---
 
 ## Documentation
 
-| Document                                      | Description                   |
-| :-------------------------------------------- | :---------------------------- |
-| [User Guide](docs/en-US/guide/usage.md)          | CLI usage tutorial            |
-| [API Reference](docs/en-US/api.md)               | API reference                 |
-| [Configuration Guide](docs/en-US/config.md)      | Configuration options         |
-| [Extension Guide](docs/en-US/guide/extension.md) | Adding tools/skills           |
-| [Architecture](docs/en-US/architecture.md)       | System architecture           |
-| [Deployment Guide](docs/en-US/deployment.md)     | Deployment instructions       |
-| [Development Guide](docs/en-US/development.md)   | Development environment setup |
-| [Contributing Guide](docs/en-US/contributing.md) | Contribution guidelines       |
-
----
-
-## Contributing
-
-Contributions are welcome! Please read the [Contributing Guide](docs/en-US/contributing.md) for more information.
+- [Architecture](docs/en-US/architecture.md)
+- [Usage Guide](docs/en-US/guide/usage.md)
+- [Extension Guide](docs/en-US/guide/extension.md)
+- [Development Guide](docs/en-US/development.md)
+- [Deployment Guide](docs/en-US/deployment.md)
+- [Contributing](docs/en-US/contributing.md)
+- [API Reference](docs/en-US/api.md)
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+FinchBot is released under the [MIT License](LICENSE).
 
 ---
 
-## Star History
+## Acknowledgments
 
-If this project is helpful to you, please give it a Star ⭐️
+FinchBot is inspired by:
+- [LangChain](https://github.com/langchain-ai/langchain) - LLM framework
+- [LangGraph](https://github.com/langchain-ai/langgraph) - Agent workflows
+- [Nanobot](https://github.com/ischaojie/nanobot) - Skill system design
+
+---
+
+**Built with care by [Xuantong765](https://github.com/xt765)**

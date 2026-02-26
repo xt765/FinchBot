@@ -271,10 +271,10 @@ flowchart LR
 
 | Method | Security | Recommended For |
 | :--- | :---: | :--- |
-| Environment Variables | ✅ High | All environments |
-| Secret Management Service | ✅ High | Production |
-| Config File | ⚠️ Medium | Development |
-| Hardcoded | ❌ Low | Not recommended |
+| Environment Variables |  High | All environments |
+| Secret Management Service |  High | Production |
+| Config File |  Medium | Development |
+| Hardcoded |  Low | Not recommended |
 
 ### Shell Execution Security
 

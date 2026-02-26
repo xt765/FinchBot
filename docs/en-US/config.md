@@ -268,18 +268,18 @@ FinchBot uses a file system to manage Agent prompts and behaviors:
 
 ```
 ~/.finchbot/
-├── config.json         # Main configuration file
-├── SYSTEM.md           # Role definition
-├── MEMORY_GUIDE.md     # Memory usage guide
-├── SOUL.md             # Soul definition (personality)
-├── AGENT_CONFIG.md     # Agent configuration
-└── workspace/
-    ├── checkpoints.db  # Conversation state persistence
-    ├── memories.db     # Memory storage
-    ├── chroma/         # Vector database
-    └── skills/         # Custom skills
-        └── my-skill/
-            └── SKILL.md
+ config.json         # Main configuration file
+ SYSTEM.md           # Role definition
+ MEMORY_GUIDE.md     # Memory usage guide
+ SOUL.md             # Soul definition (personality)
+ AGENT_CONFIG.md     # Agent configuration
+ workspace/
+     checkpoints.db  # Conversation state persistence
+     memories.db     # Memory storage
+     chroma/         # Vector database
+     skills/         # Custom skills
+         my-skill/
+             SKILL.md
 ```
 
 ### Custom SYSTEM.md

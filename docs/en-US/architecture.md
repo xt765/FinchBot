@@ -61,69 +61,69 @@ graph TB
 
 ```
 finchbot/
-├── agent/              # Agent Core
-│   ├── core.py        # Agent creation and execution (Async Optimized)
-│   ├── factory.py     # AgentFactory (Concurrent Thread Pool)
-│   ├── context.py     # ContextBuilder for prompt assembly
-│   └── skills.py      # SkillsLoader for Markdown skills
-├── channels/           # Multi-Platform Messaging
-│   ├── base.py        # BaseChannel abstract class
-│   ├── bus.py         # MessageBus async router
-│   ├── manager.py     # ChannelManager coordinator
-│   └── schema.py      # InboundMessage/OutboundMessage models
-├── cli/                # CLI Interface
-│   ├── chat_session.py # Async Session Management
-│   ├── config_manager.py
-│   ├── providers.py
-│   └── ui.py
-├── server/             # API Server
-│   ├── main.py        # FastAPI Application
-│   └── loop.py        # AgentLoop Event Loop
-├── web/                # Web Frontend (React + Vite)
-│   ├── src/
-│   └── package.json
-├── config/             # Configuration Management
-│   ├── loader.py
-│   └── schema.py
-├── i18n/               # Internationalization
-│   ├── loader.py
-│   ├── detector.py
-│   └── locales/
-├── memory/             # Memory System
-│   ├── manager.py
-│   ├── types.py
-│   ├── services/       # Service Layer
-│   │   ├── classification.py
-│   │   ├── embedding.py
-│   │   ├── importance.py
-│   │   └── retrieval.py
-│   ├── storage/        # Storage Layer
-│   │   ├── sqlite.py
-│   │   └── vector.py
-│   └── vector_sync.py
-├── providers/          # LLM Providers
-│   └── factory.py
-├── sessions/           # Session Management
-│   ├── metadata.py
-│   ├── selector.py
-│   └── title_generator.py
-├── skills/             # Skill System
-│   ├── skill-creator/
-│   ├── summarize/
-│   └── weather/
-├── tools/              # Tool System
-│   ├── base.py
-│   ├── registry.py
-│   ├── factory.py     # ToolFactory
-│   ├── filesystem.py
-│   ├── memory.py
-│   ├── shell.py
-│   ├── web.py
-│   ├── session_title.py
-│   └── search/
-└── utils/              # Utility Functions
-    ├── logger.py
-    └── model_downloader.py
+ agent/              # Agent Core
+    core.py        # Agent creation and execution (Async Optimized)
+    factory.py     # AgentFactory (Concurrent Thread Pool)
+    context.py     # ContextBuilder for prompt assembly
+    skills.py      # SkillsLoader for Markdown skills
+ channels/           # Multi-Platform Messaging
+    base.py        # BaseChannel abstract class
+    bus.py         # MessageBus async router
+    manager.py     # ChannelManager coordinator
+    schema.py      # InboundMessage/OutboundMessage models
+ cli/                # CLI Interface
+    chat_session.py # Async Session Management
+    config_manager.py
+    providers.py
+    ui.py
+ server/             # API Server
+    main.py        # FastAPI Application
+    loop.py        # AgentLoop Event Loop
+ web/                # Web Frontend (React + Vite)
+    src/
+    package.json
+ config/             # Configuration Management
+    loader.py
+    schema.py
+ i18n/               # Internationalization
+    loader.py
+    detector.py
+    locales/
+ memory/             # Memory System
+    manager.py
+    types.py
+    services/       # Service Layer
+       classification.py
+       embedding.py
+       importance.py
+       retrieval.py
+    storage/        # Storage Layer
+       sqlite.py
+       vector.py
+    vector_sync.py
+ providers/          # LLM Providers
+    factory.py
+ sessions/           # Session Management
+    metadata.py
+    selector.py
+    title_generator.py
+ skills/             # Skill System
+    skill-creator/
+    summarize/
+    weather/
+ tools/              # Tool System
+    base.py
+    registry.py
+    factory.py     # ToolFactory
+    filesystem.py
+    memory.py
+    shell.py
+    web.py
+    session_title.py
+    search/
+ utils/              # Utility Functions
+     logger.py
+     model_downloader.py
 ```
 
 ---
@@ -262,7 +262,7 @@ User: Help me create a translation skill that can translate Chinese to English
 
 Agent: Okay, I'll create a translation skill for you...
        [Invokes skill-creator skill]
-       ✅ Created skills/translator/SKILL.md
+        Created skills/translator/SKILL.md
        You can now use the translation feature directly!
 ```
 
@@ -277,7 +277,7 @@ name: weather
 description: Query current weather and forecast (no API key required)
 metadata:
   finchbot:
-    emoji: 🌤️
+    emoji: 
     always: false
     requires:
       bins: [curl]
@@ -582,12 +582,12 @@ class OutboundMessage(BaseModel):
 
 ```
 ~/.finchbot/
-├── SYSTEM.md           # Role definition
-├── MEMORY_GUIDE.md     # Memory usage guide
-├── SOUL.md             # Personality settings
-├── AGENT_CONFIG.md     # Agent configuration
-└── workspace/
-    └── skills/         # Custom skills
+ SYSTEM.md           # Role definition
+ MEMORY_GUIDE.md     # Memory usage guide
+ SOUL.md             # Personality settings
+ AGENT_CONFIG.md     # Agent configuration
+ workspace/
+     skills/         # Custom skills
 ```
 
 #### Prompt Loading Flow
@@ -660,24 +660,24 @@ Uses Pydantic v2 + Pydantic Settings for type-safe configuration management.
 
 ```
 Config (Root)
-├── language
-├── default_model
-├── agents
-│   └── defaults (Agent defaults)
-├── providers
-│   ├── openai
-│   ├── anthropic
-│   ├── deepseek
-│   ├── moonshot
-│   ├── dashscope
-│   ├── groq
-│   ├── gemini
-│   ├── openrouter
-│   └── custom
-└── tools
-    ├── web.search (Search config)
-    ├── exec (Shell execution config)
-    └── restrict_to_workspace
+ language
+ default_model
+ agents
+    defaults (Agent defaults)
+ providers
+    openai
+    anthropic
+    deepseek
+    moonshot
+    dashscope
+    groq
+    gemini
+    openrouter
+    custom
+ tools
+     web.search (Search config)
+     exec (Shell execution config)
+     restrict_to_workspace
 ```
 
 ---

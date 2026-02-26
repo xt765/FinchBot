@@ -209,19 +209,19 @@ git commit -m "changes"
 
 ```
 docs/
-├── zh-CN/              # Chinese docs
-│   ├── architecture.md
-│   ├── api.md
-│   ├── config.md
-│   ├── deployment.md
-│   ├── development.md
-│   ├── contributing.md
-│   ├── guide/
-│   │   ├── usage.md
-│   │   └── extension.md
-│   └── blog/
-└── en-US/              # English docs
-    └── ...
+ zh-CN/              # Chinese docs
+    architecture.md
+    api.md
+    config.md
+    deployment.md
+    development.md
+    contributing.md
+    guide/
+       usage.md
+       extension.md
+    blog/
+ en-US/              # English docs
+     ...
 ```
 
 ### 5.2 Documentation Guidelines
@@ -262,4 +262,4 @@ flowchart TD
 - **Pull Requests**: [GitHub PRs](https://github.com/xt765/finchbot/pulls)
 - **Gitee**: [Gitee Repository](https://gitee.com/xt765/finchbot)
 
-Thank you for your contribution! 🎉
+Thank you for your contribution! 

@@ -132,15 +132,15 @@ View history messages of the current session.
 **Example Output**:
 
 ```
-─── Turn 1 ───
-┌─────────────────────────────────┐
-│ 👤 You                          │
-│ Hello, please remember my email is test@example.com
-└─────────────────────────────────┘
-┌─────────────────────────────────┐
-│ 🐦 FinchBot                     │
-│ I've saved your email address.  │
-└─────────────────────────────────┘
+ Turn 1 
+
+  You                          
+ Hello, please remember my email is test@example.com
+
+
+  FinchBot                     
+ I've saved your email address.  
+
 ```
 
 ### `/rollback <index> [new_session_id]`

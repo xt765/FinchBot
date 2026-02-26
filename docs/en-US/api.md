@@ -413,7 +413,7 @@ name: skill-name
 description: Skill description
 metadata:
   finchbot:
-    emoji: ✨
+    emoji: 
     always: false
     requires:
       bins: [curl, jq]
@@ -542,24 +542,24 @@ def load_config() -> Config: ...
 
 ```
 Config (Root)
-├── language
-├── default_model
-├── agents
-│   └── defaults
-├── providers
-│   ├── openai
-│   ├── anthropic
-│   ├── deepseek
-│   ├── moonshot
-│   ├── dashscope
-│   ├── groq
-│   ├── gemini
-│   ├── openrouter
-│   └── custom
-└── tools
-    ├── web.search
-    ├── exec
-    └── restrict_to_workspace
+ language
+ default_model
+ agents
+    defaults
+ providers
+    openai
+    anthropic
+    deepseek
+    moonshot
+    dashscope
+    groq
+    gemini
+    openrouter
+    custom
+ tools
+     web.search
+     exec
+     restrict_to_workspace
 ```
 
 ---

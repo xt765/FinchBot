@@ -159,7 +159,7 @@ User: Help me create a translation skill that can translate Chinese to English
 
 Agent: Okay, I'll create a translation skill for you...
        [Invokes skill-creator skill]
-       ✅ Created skills/translator/SKILL.md
+        Created skills/translator/SKILL.md
        You can now use the translation feature directly!
 ```
 
@@ -198,7 +198,7 @@ name: report-writing
 description: Guide Agent on how to write professional analysis reports
 metadata:
   finchbot:
-    emoji: 📝
+    emoji: 
     always: false  # Whether to always load this skill (true/false)
     requires:
       bins: []     # Required CLI tools
@@ -228,12 +228,12 @@ When user requests an analysis report, follow these structure and principles:
 
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
-| `name` | string | ✅ | Skill unique identifier |
-| `description` | string | ✅ | Skill description, used for Agent to decide when to use |
-| `metadata.finchbot.emoji` | string | ❌ | Skill icon |
-| `metadata.finchbot.always` | boolean | ❌ | Whether to always load (default false) |
-| `metadata.finchbot.requires.bins` | list | ❌ | Required CLI tools list |
-| `metadata.finchbot.requires.env` | list | ❌ | Required environment variables list |
+| `name` | string |  | Skill unique identifier |
+| `description` | string |  | Skill description, used for Agent to decide when to use |
+| `metadata.finchbot.emoji` | string |  | Skill icon |
+| `metadata.finchbot.always` | boolean |  | Whether to always load (default false) |
+| `metadata.finchbot.requires.bins` | list |  | Required CLI tools list |
+| `metadata.finchbot.requires.env` | list |  | Required environment variables list |
 
 ### Skill Loading Mechanism
 
@@ -360,10 +360,10 @@ flowchart TB
 
 | Scenario | Use Tools | Use Skills |
 | :--- | :---: | :---: |
-| Need to perform actions (network, read files, calculate) | ✅ | ❌ |
-| Need to follow processes or specific styles | ❌ | ✅ |
-| Need to call external APIs | ✅ | ❌ |
-| Need to teach Agent how to think | ❌ | ✅ |
+| Need to perform actions (network, read files, calculate) |  |  |
+| Need to follow processes or specific styles |  |  |
+| Need to call external APIs |  |  |
+| Need to teach Agent how to think |  |  |
 
 ### Tool Development Best Practices
 
