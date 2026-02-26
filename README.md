@@ -30,13 +30,15 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square&logo=open-source-initiative" alt="License">
 </p>
 
+<p align="center">
+  <a href="README_CN.md">中文文档</a> | <a href="docs/en-US/README.md">English Documentation</a>
+</p>
+
 **FinchBot** is a lightweight, modular AI Agent framework built on **LangChain v1.2** and **LangGraph v1.0**. It's not just another LLM wrapper—it's a thoughtfully designed architecture focused on three core challenges:
 
 1. **How to enable infinite Agent extensibility?** — Through a dual-layer extension mechanism of Skills and Tools
 2. **How to give Agents real memory?** — Through a dual-layer storage architecture + Agentic RAG
 3. **How to make Agent behavior customizable?** — Through a dynamic prompt file system
-
-[中文文档](README_CN.md) | [English Documentation](docs/en-US/README.md)
 
 ## Table of Contents
 

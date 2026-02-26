@@ -30,13 +30,15 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square&logo=open-source-initiative" alt="License">
 </p>
 
+<p align="center">
+  <a href="docs/zh-CN/README.md">中文文档</a> | <a href="README.md">English Documentation</a>
+</p>
+
 **FinchBot (雀翎)** 是一个轻量级、模块化的 AI Agent 框架，基于 **LangChain v1.2** 和 **LangGraph v1.0** 构建。它不是又一个简单的 LLM 封装，而是一个深思熟虑的架构设计，专注于三个核心问题：
 
 1. **如何让 Agent 的能力无限扩展？** — 通过技能 (Skill) 和工具 (Tool) 的双层扩展机制
 2. **如何让 Agent 拥有真正的记忆？** — 通过双层存储架构 + Agentic RAG
 3. **如何让 Agent 的行为可定制？** — 通过动态提示词文件系统
-
-[中文文档](docs/zh-CN/README.md) | [English Documentation](README.md)
 
 ## 目录
 
