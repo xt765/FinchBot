@@ -83,7 +83,7 @@ def load_config(config_path: Path | None = None) -> Config:
     Returns:
         加载的配置对象。
     """
-    from finchbot.i18n.detector import detect_system_language
+    from finchbot.i18n.loader import detect_system_language
 
     path = config_path or get_config_path()
 

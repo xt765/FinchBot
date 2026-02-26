@@ -12,6 +12,8 @@ from pathlib import Path
 
 from loguru import logger
 
+from finchbot.utils.cache import FileBasedCache
+
 BUILTIN_SKILLS_DIR = Path(__file__).parent.parent / "skills"
 
 
@@ -32,7 +34,7 @@ class SkillsLoader:
         self.workspace = workspace
         self.workspace_skills = workspace / "skills"
         self.builtin_skills = builtin_skills_dir or BUILTIN_SKILLS_DIR
-        self._skill_cache: dict[str, tuple[str, float]] = {}  # 技能名称 -> (内容, 修改时间)
+        self._cache = FileBasedCache[str](self._load_skill_content)
         logger.debug(
             f"SkillsLoader 初始化: workspace={workspace}, builtin_skills={self.builtin_skills}"
         )
@@ -114,6 +116,38 @@ class SkillsLoader:
 
         return skills
 
+    def _load_skill_content(self, name: str) -> str | None:
+        """加载技能内容（供缓存使用）.
+
+        Args:
+            name: 技能名称.
+
+        Returns:
+            技能内容字符串，未找到则返回 None.
+        """
+        # 首先检查工作区技能
+        workspace_skill = self.workspace_skills / name / "SKILL.md"
+        if workspace_skill.exists():
+            try:
+                content = workspace_skill.read_text(encoding="utf-8")
+                if self._validate_skill_content(content):
+                    return content
+            except Exception as e:
+                logger.error(f"读取工作区技能失败 {workspace_skill}: {e}")
+
+        # 然后检查内置技能
+        if self.builtin_skills:
+            builtin_skill = self.builtin_skills / name / "SKILL.md"
+            if builtin_skill.exists():
+                try:
+                    content = builtin_skill.read_text(encoding="utf-8")
+                    if self._validate_skill_content(content):
+                        return content
+                except Exception as e:
+                    logger.error(f"读取内置技能失败 {builtin_skill}: {e}")
+
+        return None
+
     def load_skill(self, name: str, use_cache: bool = True) -> str | None:
         """加载指定技能.
 
@@ -126,58 +160,14 @@ class SkillsLoader:
         """
         logger.debug(f"加载技能: {name}, use_cache={use_cache}")
 
-        # 检查缓存
-        if use_cache and name in self._skill_cache:
-            content, mtime = self._skill_cache[name]
-            # 检查文件是否已修改
+        if use_cache:
             file_path = self._get_skill_file_path(name)
-            if file_path and file_path.exists():
-                current_mtime = file_path.stat().st_mtime
-                if current_mtime <= mtime:
-                    logger.debug(f"从缓存加载技能: {name}")
-                    return content
-                else:
-                    logger.debug(f"技能文件已修改，清除缓存: {name}")
+            content = self._cache.get(name, file_path)
+            if content:
+                logger.debug(f"从缓存加载技能: {name}")
+            return content
 
-        # 首先检查工作区技能
-        workspace_skill = self.workspace_skills / name / "SKILL.md"
-        if workspace_skill.exists():
-            try:
-                content = workspace_skill.read_text(encoding="utf-8")
-                # 验证内容格式
-                if self._validate_skill_content(content):
-                    # 更新缓存
-                    mtime = workspace_skill.stat().st_mtime
-                    self._skill_cache[name] = (content, mtime)
-                    logger.debug(f"从工作区加载技能: {name}")
-                    return content
-                else:
-                    logger.warning(f"技能内容格式无效: {name}")
-            except Exception as e:
-                logger.error(f"读取工作区技能失败 {workspace_skill}: {e}")
-                return None
-
-        # 然后检查内置技能
-        if self.builtin_skills:
-            builtin_skill = self.builtin_skills / name / "SKILL.md"
-            if builtin_skill.exists():
-                try:
-                    content = builtin_skill.read_text(encoding="utf-8")
-                    # 验证内容格式
-                    if self._validate_skill_content(content):
-                        # 更新缓存
-                        mtime = builtin_skill.stat().st_mtime
-                        self._skill_cache[name] = (content, mtime)
-                        logger.debug(f"从内置技能加载: {name}")
-                        return content
-                    else:
-                        logger.warning(f"技能内容格式无效: {name}")
-                except Exception as e:
-                    logger.error(f"读取内置技能失败 {builtin_skill}: {e}")
-                    return None
-
-        logger.warning(f"技能未找到: {name}")
-        return None
+        return self._load_skill_content(name)
 
     def load_skills_for_context(self, skill_names: list[str]) -> str:
         """加载指定技能用于 Agent 上下文.
@@ -488,7 +478,7 @@ class SkillsLoader:
 
     def clear_cache(self) -> None:
         """清除技能缓存."""
-        self._skill_cache.clear()
+        self._cache.clear()
         logger.debug("技能缓存已清除")
 
     def get_cache_info(self) -> dict:
@@ -497,9 +487,4 @@ class SkillsLoader:
         Returns:
             缓存信息字典.
         """
-        return {
-            "cache_size": len(self._skill_cache),
-            "cached_skills": list(self._skill_cache.keys()),
-            "cache_hits": getattr(self, "_cache_hits", 0),
-            "cache_misses": getattr(self, "_cache_misses", 0),
-        }
+        return self._cache.get_info()

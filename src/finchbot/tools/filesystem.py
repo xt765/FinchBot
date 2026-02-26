@@ -30,29 +30,6 @@ def decode_output(data: bytes) -> str:
     return data.decode("latin-1", errors="replace")
 
 
-def _resolve_path(path: str, allowed_dirs: list[Path] | Path | None = None) -> Path:
-    """解析路径并可选地限制目录访问.
-
-    Args:
-        path: 要解析的路径字符串。
-        allowed_dirs: 允许访问的目录列表或单个目录，如果指定则限制路径必须在此目录下。
-
-    Returns:
-        解析后的绝对路径。
-
-    Raises:
-        PermissionError: 如果路径不在允许的目录内。
-    """
-    resolved = Path(path).expanduser().resolve()
-    if allowed_dirs is not None:
-        if isinstance(allowed_dirs, Path):
-            allowed_dirs = [allowed_dirs]
-        in_allowed = any(str(resolved).startswith(str(d.resolve())) for d in allowed_dirs)
-        if not in_allowed:
-            raise PermissionError(f"Path {path} not in allowed directories")
-    return resolved
-
-
 class ReadFileTool(FinchTool):
     """读取文件工具.
 

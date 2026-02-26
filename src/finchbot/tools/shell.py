@@ -4,6 +4,7 @@
 """
 
 import os
+import platform
 import re
 import subprocess
 from pathlib import Path
@@ -119,7 +120,11 @@ class ExecTool(FinchTool):
 
             def decode_output(data: bytes) -> str:
                 """智能解码输出，自动尝试多种编码."""
-                encodings = ["utf-8", "gbk", "cp936", "gb18030", "latin-1"]
+                # Windows 系统优先尝试 GBK/CP936 编码
+                if platform.system() == "Windows":
+                    encodings = ["gbk", "cp936", "utf-8", "gb18030", "latin-1"]
+                else:
+                    encodings = ["utf-8", "gbk", "cp936", "gb18030", "latin-1"]
                 for enc in encodings:
                     try:
                         return data.decode(enc)

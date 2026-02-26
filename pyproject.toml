@@ -37,7 +37,6 @@ dependencies = [
     "jieba>=0.42.1",
     "langchain-chroma>=1.1.0",
     "rank-bm25>=0.2.2",
-    "langchain-classic>=1.0.1",
     "fastapi>=0.133.0",
     "uvicorn>=0.41.0",
     "aiosqlite>=0.20.0",

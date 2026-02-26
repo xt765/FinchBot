@@ -6,6 +6,7 @@
 3. DuckDuckGo - 无依赖备选，始终可用
 """
 
+import os
 from typing import Any
 
 from pydantic import Field
@@ -154,8 +155,6 @@ class WebExtractTool(FinchTool):
         Returns:
             提取的内容字符串。
         """
-        import os
-
         try:
             import httpx
 

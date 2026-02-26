@@ -10,6 +10,7 @@ from typing import Any
 
 from loguru import logger
 
+from finchbot.constants import MEMORY_DEFAULTS
 from finchbot.memory.services.classification import ClassificationService
 from finchbot.memory.services.embedding import EmbeddingService
 from finchbot.memory.services.importance import ImportanceScorer
@@ -18,16 +19,6 @@ from finchbot.memory.storage.sqlite import SQLiteStore
 from finchbot.memory.storage.vector import VectorMemoryStore
 from finchbot.memory.types import QueryType
 from finchbot.memory.vector_sync import DataSyncManager
-
-DEFAULT_MAX_RETRIES = 3
-DEFAULT_TOP_K = 5
-DEFAULT_SIMILARITY_THRESHOLD = 0.5
-DEFAULT_FORGET_LIMIT = 1000
-DEFAULT_SEARCH_LIMIT = 100
-DEFAULT_RECENT_DAYS = 7
-DEFAULT_RECENT_LIMIT = 20
-DEFAULT_IMPORTANT_MIN_IMPORTANCE = 0.8
-DEFAULT_IMPORTANT_LIMIT = 20
 
 
 class MemoryManager:
@@ -87,7 +78,7 @@ class MemoryManager:
         self.sync_manager = DataSyncManager(
             sqlite_store=self.sqlite_store,
             vector_store=self.vector_store,
-            max_retries=DEFAULT_MAX_RETRIES,
+            max_retries=MEMORY_DEFAULTS.MAX_RETRIES,
         )
 
         logger.info(f"MemoryManager initialized at {self.workspace}")
@@ -165,10 +156,10 @@ class MemoryManager:
     def recall(
         self,
         query: str,
-        top_k: int = DEFAULT_TOP_K,
+        top_k: int = MEMORY_DEFAULTS.TOP_K,
         category: str | None = None,
         query_type: QueryType = QueryType.COMPLEX,
-        similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
+        similarity_threshold: float = MEMORY_DEFAULTS.SIMILARITY_THRESHOLD,
         include_archived: bool = False,
     ) -> list[dict[str, Any]]:
         """检索记忆.
@@ -213,7 +204,7 @@ class MemoryManager:
         memories = self.sqlite_store.search_memories(
             query=pattern,
             include_archived=True,
-            limit=DEFAULT_FORGET_LIMIT,
+            limit=MEMORY_DEFAULTS.FORGET_LIMIT,
         )
 
         deleted_count = 0
@@ -366,7 +357,7 @@ class MemoryManager:
         min_importance: float = 0.0,
         max_importance: float = 1.0,
         include_archived: bool = False,
-        limit: int = DEFAULT_SEARCH_LIMIT,
+        limit: int = MEMORY_DEFAULTS.SEARCH_LIMIT,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
         """搜索记忆（直接SQLite搜索）."""
@@ -381,15 +372,15 @@ class MemoryManager:
         )
 
     def get_recent_memories(
-        self, days: int = DEFAULT_RECENT_DAYS, limit: int = DEFAULT_RECENT_LIMIT
+        self, days: int = MEMORY_DEFAULTS.RECENT_DAYS, limit: int = MEMORY_DEFAULTS.RECENT_LIMIT
     ) -> list[dict[str, Any]]:
         """获取最近添加的记忆."""
         return self.sqlite_store.get_recent_memories(days=days, limit=limit)
 
     def get_important_memories(
         self,
-        min_importance: float = DEFAULT_IMPORTANT_MIN_IMPORTANCE,
-        limit: int = DEFAULT_IMPORTANT_LIMIT,
+        min_importance: float = MEMORY_DEFAULTS.IMPORTANT_MIN_IMPORTANCE,
+        limit: int = MEMORY_DEFAULTS.IMPORTANT_LIMIT,
     ) -> list[dict[str, Any]]:
         """获取重要记忆."""
         return self.sqlite_store.get_important_memories(min_importance=min_importance, limit=limit)

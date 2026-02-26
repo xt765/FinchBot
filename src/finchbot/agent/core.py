@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import os
 import platform
 import threading
 from collections.abc import AsyncIterator, Sequence
@@ -24,100 +25,56 @@ from loguru import logger
 from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
 
-_default_tools_registered: bool = False
-_tools_registration_lock = threading.Lock()
+_tools_registered: bool = False
+_tools_lock = threading.Lock()
 
 
-def _register_default_tools(workspace: Path) -> None:
-    """注册默认工具到全局工具注册表.
-
-    自动发现并注册所有 FinchBot 内置工具。
-    使用懒加载模式，只在首次调用时注册。
-
-    使用线程锁确保并发安全。
+def _ensure_tools_registered(
+    workspace: Path | None = None,
+    tools: Sequence[BaseTool] | None = None
+) -> None:
+    """确保工具已注册到全局注册表（线程安全）.
 
     Args:
-        workspace: 工作目录路径.
+        workspace: 工作目录路径（用于创建默认工具）
+        tools: 直接传入的工具列表（优先级高于workspace）
     """
-    global _default_tools_registered
+    global _tools_registered
 
-    # 双重检查锁定模式 (Double-checked locking)
-    if _default_tools_registered:
-        return
-
-    with _tools_registration_lock:
-        if _default_tools_registered:
-            return
-
-        from finchbot.config import load_config
-        from finchbot.tools import get_global_registry
-        from finchbot.tools.factory import ToolFactory
-
-        registry = get_global_registry()
-
-        # 检查是否已经有工具注册，避免重复注册
-        if len(registry) > 0:
-            logger.debug(f"工具注册表已有 {len(registry)} 个工具，跳过默认工具注册")
-            _default_tools_registered = True
-            return
-
-        try:
-            config = load_config()
-            factory = ToolFactory(config, workspace)
-            tools = factory.create_default_tools()
-
-            registered_count = 0
-            for tool in tools:
-                try:
-                    # 检查工具是否已存在，避免重复注册
-                    if registry.has(tool.name):
-                        logger.debug(f"工具 '{tool.name}' 已存在，跳过注册")
-                        continue
-                    registry.register(tool)
-                    registered_count += 1
-                    logger.debug(f"工具已注册: {tool.name}")
-                except Exception as e:
-                    logger.error(f"注册工具失败 {tool.name}: {e}")
-
-            _default_tools_registered = True
-            logger.info(f"默认工具注册完成: {registered_count}/{len(tools)} 个工具")
-        except Exception as e:
-            logger.error(f"创建默认工具失败: {e}")
-
-
-def _register_provided_tools(tools: Sequence[BaseTool]) -> None:
-    """注册提供的工具到全局工具注册表.
-
-    Args:
-        tools: 要注册的工具列表.
-    """
-    global _default_tools_registered
-
-    if _default_tools_registered:
-        return
-
-    with _tools_registration_lock:
-        if _default_tools_registered:
+    with _tools_lock:
+        if _tools_registered:
             return
 
         from finchbot.tools import get_global_registry
-
         registry = get_global_registry()
 
-        registered_count = 0
-        for tool in tools:
-            try:
-                if registry.has(tool.name):
-                    logger.debug(f"工具 '{tool.name}' 已存在，跳过注册")
-                    continue
+        # 获取工具列表
+        if tools:
+            tool_list = list(tools)
+        elif workspace:
+            tool_list = _create_default_tools(workspace)
+        else:
+            tool_list = []
+
+        # 批量注册
+        registered = 0
+        for tool in tool_list:
+            if not registry.has(tool.name):
                 registry.register(tool)
-                registered_count += 1
-                logger.debug(f"工具已注册: {tool.name}")
-            except Exception as e:
-                logger.error(f"注册工具失败 {tool.name}: {e}")
+                registered += 1
 
-        _default_tools_registered = True
-        logger.info(f"提供的工具注册完成: {registered_count}/{len(tools)} 个工具")
+        _tools_registered = True
+        logger.info(f"工具注册完成: {registered}/{len(tool_list)}")
+
+
+def _create_default_tools(workspace: Path) -> list[BaseTool]:
+    """创建默认工具列表."""
+    from finchbot.config import load_config
+    from finchbot.tools.factory import ToolFactory
+
+    config = load_config()
+    factory = ToolFactory(config, workspace)
+    return factory.create_default_tools()
 
 
 def _create_workspace_templates(workspace: Path) -> None:
@@ -184,10 +141,7 @@ def build_system_prompt(
     prompt_parts.append(f"## {t('agent.workspace')}\n{workspace}")
 
     # 确保默认工具已注册（懒加载，只在首次调用时注册）
-    if tools:
-        _register_provided_tools(tools)
-    else:
-        _register_default_tools(workspace)
+    _ensure_tools_registered(workspace=workspace, tools=tools)
 
     # 生成工具文档（从 ToolRegistry 动态发现）
     tools_generator = ToolsGenerator(workspace)

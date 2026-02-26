@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import os
+
 import questionary
 import readchar
 from loguru import logger

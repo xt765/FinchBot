@@ -27,12 +27,12 @@ from rich.table import Table
 from rich.text import Text
 
 from finchbot.config import load_config
+from finchbot.constants import EXIT_COMMANDS
 from finchbot.i18n import t
 from finchbot.sessions import SessionMetadataStore
 
 console = Console()
 
-EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q", "q"}
 GOODBYE_MESSAGE = "\n[dim]Goodbye! 👋[/dim]"
 
 
@@ -230,135 +230,7 @@ def _display_tool_call_with_result(
     _render_tool_message(tool_name, result, console, tool_args=tool_args, duration=duration)
 
 
-def _stream_ai_response(
-    agent: CompiledStateGraph,
-    user_input: str,
-    config: RunnableConfig,
-    console: Console,
-    render_markdown: bool = True,
-) -> list[BaseMessage]:
-    """流式输出 AI 响应，并显示详细的工具调用信息.
 
-    Args:
-        agent: LangGraph Agent
-        user_input: 用户输入
-        config: 运行配置
-        console: Rich Console
-        render_markdown: 是否渲染 Markdown
-
-    Returns:
-        所有消息列表
-    """
-    input_data = {"messages": [{"role": "user", "content": user_input}]}
-    full_content = ""
-    all_messages: list[BaseMessage] = []
-    pending_tool_calls: list[dict] = []
-    last_render_time: float = 0.0
-    render_interval = 0.1
-
-    def _render_ai_content(content: str) -> None:
-        """渲染 AI 响应内容."""
-        if content.strip():
-            body = Markdown(content) if render_markdown else Text(content)
-            console.print(
-                Panel(
-                    body,
-                    title="🐦 FinchBot",
-                    border_style="green",
-                    padding=(0, 1),
-                )
-            )
-
-    def _create_content_panel(content: str) -> Panel:
-        """创建内容 Panel，根据设置使用 Markdown 或纯文本."""
-        body = Markdown(content) if render_markdown else Text(content)
-        return Panel(
-            body,
-            title="🐦 FinchBot",
-            border_style="green",
-            padding=(0, 1),
-        )
-
-    with Live(
-        Panel(Text(""), title="🐦 FinchBot", border_style="green"),
-        console=console,
-        refresh_per_second=10,
-        transient=True,
-    ) as live:
-        for event in agent.stream(input_data, config=config, stream_mode=["messages", "updates"]):
-            if isinstance(event, tuple) and len(event) == 2:
-                mode, data = event
-                if mode == "messages":
-                    if isinstance(data, tuple) and len(data) == 2:
-                        msg_chunk, metadata = data
-                        node_name = (
-                            metadata.get("langgraph_node", "") if isinstance(metadata, dict) else ""
-                        )
-                        if node_name == "model" or node_name == "agent":
-                            token = getattr(msg_chunk, "content", "") or ""
-                            if token:
-                                full_content += token
-                                current_time = time.time()
-                                if current_time - last_render_time > render_interval:
-                                    live.update(_create_content_panel(full_content))
-                                    last_render_time = current_time
-                elif mode == "updates" and isinstance(data, dict):
-                    for _node_name, node_data in data.items():
-                        if not isinstance(node_data, dict):
-                            continue
-                        messages = node_data.get("messages", [])
-                        if not messages:
-                            continue
-                        for msg in messages:
-                            if hasattr(msg, "tool_calls") and msg.tool_calls:
-                                if full_content.strip():
-                                    _render_ai_content(full_content)
-                                    full_content = ""
-                                    live.update(
-                                        Panel(
-                                            Text(""),
-                                            title="🐦 FinchBot",
-                                            border_style="green",
-                                        )
-                                    )
-                                for tc in msg.tool_calls:
-                                    pending_tool_calls.append(
-                                        {
-                                            "name": tc.get("name") or "unknown",
-                                            "args": tc.get("args", {}),
-                                            "start_time": time.time(),
-                                        }
-                                    )
-                            elif hasattr(msg, "name") and msg.name:
-                                tool_name = msg.name
-                                for i, call_info in enumerate(pending_tool_calls):
-                                    if call_info["name"] == tool_name:
-                                        duration = time.time() - call_info["start_time"]
-                                        _display_tool_call_with_result(
-                                            call_info["name"],
-                                            call_info["args"],
-                                            str(msg.content),
-                                            duration,
-                                            console,
-                                        )
-                                        pending_tool_calls.pop(i)
-                                        live.update(
-                                            Panel(
-                                                Text(""),
-                                                title="🐦 FinchBot",
-                                                border_style="green",
-                                            )
-                                        )
-                                        break
-                            all_messages.append(msg)
-
-    if not full_content:
-        console.print("[yellow]No content generated[/yellow]")
-    else:
-        # Final render
-        console.print(_create_content_panel(full_content))
-
-    return all_messages
 
 
 def _display_messages_by_turn(
@@ -606,14 +478,14 @@ def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | N
     return None, None, None, None
 
 
-async def _stream_ai_response_async(
+async def _stream_ai_response(
     agent: CompiledStateGraph,
     message: str,
     runnable_config: RunnableConfig,
     console: Console,
     render_markdown: bool,
 ) -> list[BaseMessage]:
-    """流式输出 AI 响应，并显示详细的工具调用信息（异步版）.
+    """流式输出 AI 响应，并显示详细的工具调用信息.
 
     Args:
         agent: 编译好的 Agent 图.
@@ -736,31 +608,6 @@ async def _stream_ai_response_async(
         console.print(_create_content_panel(full_content))
 
     return all_messages
-
-
-def _stream_ai_response(
-    agent: CompiledStateGraph,
-    message: str,
-    runnable_config: RunnableConfig,
-    console: Console,
-    render_markdown: bool,
-) -> list[BaseMessage]:
-    """流式获取 AI 响应（同步版 - 保留用于兼容）.
-
-    Args:
-        agent: 编译好的 Agent 图.
-        message: 用户消息.
-        runnable_config: 运行配置.
-        console: Rich 控制台.
-        render_markdown: 是否渲染 Markdown.
-
-    Returns:
-        完整的消息列表.
-    """
-    # Simply run the async version in a loop if needed, but we should avoid calling this from async code
-    return asyncio.run(
-        _stream_ai_response_async(agent, message, runnable_config, console, render_markdown)
-    )
 
 
 def _run_chat_session(
@@ -896,11 +743,7 @@ async def _run_chat_session_async(
     if first_message:
         runnable_config: RunnableConfig = {"configurable": {"thread_id": session_id}}
         try:
-            # Use synchronous stream function (blocks loop)
-            # We need to make this async if possible, but for now wrap in executor or keep sync if library supports
-            # Since LangGraph agents can be sync or async, let's assume sync for now but run in thread
-            # Or better, convert _stream_ai_response to async
-            all_messages = await _stream_ai_response_async(
+            all_messages = await _stream_ai_response(
                 agent, first_message, runnable_config, console, render_markdown
             )
         except Exception as stream_error:
@@ -1059,11 +902,7 @@ async def _run_chat_session_async(
 
             config: RunnableConfig = {"configurable": {"thread_id": session_id}}
             try:
-                # Use synchronous stream function (blocks loop)
-                # We need to make this async if possible, but for now wrap in executor or keep sync if library supports
-                # Since LangGraph agents can be sync or async, let's assume sync for now but run in thread
-                # Or better, convert _stream_ai_response to async
-                all_messages = await _stream_ai_response_async(
+                all_messages = await _stream_ai_response(
                     agent, command, config, console, render_markdown
                 )
             except Exception as stream_error:
