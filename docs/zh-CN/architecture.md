@@ -18,35 +18,35 @@ FinchBot 基于 **LangChain v1.2** + **LangGraph v1.0** 构建，具备持久化
 
 1. **Agent 核心（大脑）**：负责决策、规划和工具调度，支持异步流式输出
 2. **记忆系统**：负责长期信息存储和检索，采用 SQLite + FastEmbed + ChromaDB 混合架构
-3. **工具生态**：负责与外部世界交互，支持延迟加载和线程池并发初始化
-4. **通道系统**：负责多平台消息路由，支持 Web、Discord、钉钉、飞书等
+3. **工具生态**：负责与外部世界交互，支持延迟加载和线程池并发初始化，支持 MCP 协议
+4. **通道系统**：负责多平台消息路由，支持 Discord、钉钉、飞书、微信、邮件等
 
 ### 1.1 整体架构图
 
 ```mermaid
 graph TB
+    classDef uiLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef coreLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef infraLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
     subgraph UI [用户交互层]
-        CLI[CLI 界面]
-        Web[Web 界面]
-        API[REST API]
-        Channels[多平台通道<br/>Discord/钉钉/飞书]
+        CLI[CLI 界面]:::uiLayer
+        Channels[多平台通道<br/>Discord/钉钉/飞书/微信/邮件]:::uiLayer
     end
 
-    subgraph Core [Agent 核心]
-        Agent[LangGraph Agent<br/>决策引擎]
-        Context[ContextBuilder<br/>上下文构建]
-        Tools[ToolRegistry<br/>11个内置工具]
-        Memory[MemoryManager<br/>双层记忆]
+    subgraph Core [Agent 核心层]
+        Agent[LangGraph Agent<br/>决策引擎]:::coreLayer
+        Context[ContextBuilder<br/>上下文构建]:::coreLayer
+        Tools[ToolRegistry<br/>12 内置工具 + MCP]:::coreLayer
+        Memory[MemoryManager<br/>双层记忆]:::coreLayer
     end
 
     subgraph Infra [基础设施层]
-        Storage[双层存储<br/>SQLite + VectorStore]
-        LLM[LLM 提供商<br/>OpenAI/Anthropic/DeepSeek]
+        Storage[双层存储<br/>SQLite + VectorStore]:::infraLayer
+        LLM[LLM 提供商<br/>OpenAI/Anthropic/DeepSeek]:::infraLayer
     end
 
     CLI --> Agent
-    Web --> Agent
-    API --> Agent
     Channels --> Agent
 
     Agent --> Context
@@ -70,8 +70,13 @@ finchbot/
 │   ├── base.py        # BaseChannel 抽象基类
 │   ├── bus.py         # MessageBus 异步路由器
 │   ├── manager.py     # ChannelManager 协调器
-│   ├── schema.py      # InboundMessage/OutboundMessage 模型
+│   ├── schema.py      # 消息模型
 │   └── implementations/  # 通道实现
+│       ├── discord.py
+│       ├── feishu.py
+│       ├── dingtalk.py
+│       ├── wechat.py
+│       └── email.py
 ├── cli/                # 命令行界面
 │   ├── chat_session.py # 异步会话管理
 │   ├── config_manager.py
@@ -79,7 +84,7 @@ finchbot/
 │   └── ui.py
 ├── config/             # 配置管理
 │   ├── loader.py
-│   ├── schema.py
+│   ├── schema.py      # 包含 MCPConfig, ChannelsConfig
 │   └── utils.py
 ├── constants.py        # 统一常量定义
 ├── i18n/               # 国际化
@@ -89,19 +94,10 @@ finchbot/
 │   ├── manager.py
 │   ├── types.py
 │   ├── services/       # 服务层
-│   │   ├── classification.py
-│   │   ├── embedding.py
-│   │   ├── importance.py
-│   │   └── retrieval.py
 │   ├── storage/        # 存储层
-│   │   ├── sqlite.py
-│   │   └── vector.py
 │   └── vector_sync.py
 ├── providers/          # LLM 提供商
 │   └── factory.py
-├── server/             # Web 服务器
-│   ├── main.py        # FastAPI 应用
-│   └── loop.py        # AgentLoop 事件循环
 ├── sessions/           # 会话管理
 │   ├── metadata.py
 │   ├── selector.py
@@ -114,6 +110,7 @@ finchbot/
 │   ├── base.py
 │   ├── factory.py     # ToolFactory
 │   ├── registry.py
+│   ├── mcp.py         # MCP 工具支持
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -121,7 +118,7 @@ finchbot/
 │   ├── session_title.py
 │   └── search/
 └── utils/              # 工具函数
-    ├── cache.py       # 通用缓存基类
+    ├── cache.py
     ├── logger.py
     └── model_downloader.py
 ```
@@ -163,34 +160,6 @@ sequenceDiagram
     Pool->>Loop: 返回 Agent 和工具
     
     Loop->>CLI: 初始化完成，进入交互循环
-```
-
-### 1.4 Web 界面交互流程
-
-Web 界面通过 WebSocket 与后端 API Server 通信，实现实时聊天和流式输出。
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant U as 用户
-    participant W as 前端（React）
-    participant API as API Server（FastAPI）
-    participant Loop as Agent Loop
-    participant Agent as LangGraph Agent
-
-    U->>W: 发送消息
-    W->>API: WebSocket（send）
-    API->>Loop: MessageBus（publish）
-    
-    loop 事件循环
-        Loop->>Loop: 消费消息
-        Loop->>Agent: 调用 Agent（stream）
-        Agent-->>Loop: 流式 Token/State
-        Loop->>API: MessageBus（publish response）
-    end
-    
-    API-->>W: WebSocket（receive）
-    W-->>U: 渲染 Markdown
 ```
 
 ---
@@ -406,6 +375,7 @@ class MemoryManager:
 * **ToolRegistry**：单例注册表，管理所有可用工具
 * **延迟加载**：默认工具（文件、搜索等）由 Factory 创建，Agent 启动时自动注册
 * **OpenAI 兼容**：支持导出 OpenAI Function Calling 格式的工具定义
+* **MCP 支持**：通过 `mcp.py` 支持 MCP 协议，动态加载外部工具
 
 #### 工具系统架构
 
@@ -413,31 +383,31 @@ class MemoryManager:
 flowchart TB
     classDef registry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef builtin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef custom fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef mcp fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef agent fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
     TR[ToolRegistry<br/>全局注册表]:::registry
     Lock[单锁模式<br/>线程安全单例]:::registry
 
-    File[文件操作<br/>read_file / write_file<br/>edit_file / list_dir]:::builtin
-    Web[网络<br/>web_search / web_extract]:::builtin
-    Memory[记忆<br/>remember / recall / forget]:::builtin
-    System[系统<br/>exec / session_title]:::builtin
+    subgraph BuiltIn [内置工具 - 12个]
+        File[文件操作<br/>read/write/edit/list]:::builtin
+        Web[网络<br/>search/extract]:::builtin
+        Memory[记忆<br/>remember/recall/forget]:::builtin
+        System[系统<br/>exec/session_title]:::builtin
+    end
 
-    Inherit[继承 FinchTool<br/>实现 _run]:::custom
-    Register[注册到 Registry]:::custom
+    subgraph MCP [MCP 工具 - 动态加载]
+        MCPConfig[MCPConfig<br/>服务器配置]:::mcp
+        MCPLoader[MCPLoader<br/>工具发现]:::mcp
+        MCPTools[MCP Tools<br/>外部工具]:::mcp
+    end
 
     Agent[Agent 调用]:::agent
 
     TR --> Lock
-    Lock --> File & Web & Memory & System
-    Lock --> Inherit --> Register
-
-    File --> Agent
-    Web --> Agent
-    Memory --> Agent
-    System --> Agent
-    Register --> Agent
+    Lock --> BuiltIn
+    MCPConfig --> MCPLoader --> MCPTools --> TR
+    TR --> Agent
 ```
 
 #### 工具基类
@@ -539,7 +509,6 @@ flowchart LR
     Bus[MessageBus<br/>入站/出站队列]:::bus
     CM[ChannelManager<br/>通道协调]:::manager
 
-    Web[Web<br/>WebSocket]:::channel
     Discord[Discord<br/>Bot API]:::channel
     DingTalk[钉钉<br/>Webhook]:::channel
     Feishu[飞书<br/>Bot API]:::channel
@@ -547,7 +516,7 @@ flowchart LR
     Email[邮件<br/>SMTP/IMAP]:::channel
 
     Bus <--> CM
-    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
+    CM <--> Discord & DingTalk & Feishu & WeChat & Email
 ```
 
 #### 核心组件
@@ -688,11 +657,45 @@ Config（根）
 │   ├── gemini
 │   ├── openrouter
 │   └── custom
-└── tools
-    ├── web.search（搜索配置）
-    ├── exec（Shell 执行配置）
-    └── restrict_to_workspace
+├── tools
+│   ├── web.search（搜索配置）
+│   ├── exec（Shell 执行配置）
+│   └── restrict_to_workspace
+├── mcp                    # MCP 配置
+│   └── servers
+│       └── {server_name}
+│           ├── command
+│           ├── args
+│           └── env
+└── channels               # 渠道配置
+    ├── discord
+    ├── feishu
+    ├── dingtalk
+    ├── wechat
+    └── email
 ```
+
+#### MCP 配置示例
+
+```python
+class MCPServerConfig(BaseModel):
+    command: str           # 启动命令
+    args: list[str]        # 命令参数
+    env: dict[str, str]    # 环境变量
+
+class MCPConfig(BaseModel):
+    servers: dict[str, MCPServerConfig]
+```
+
+#### Channel 配置示例
+
+| 渠道 | 必需配置 | 说明 |
+|------|----------|------|
+| Discord | `token` | Bot Token |
+| 飞书 | `app_id`, `app_secret` | 应用凭证 |
+| 钉钉 | `client_id`, `client_secret` | 客户端凭证 |
+| 企业微信 | `corp_id`, `agent_id`, `secret` | 企业应用配置 |
+| 邮件 | `smtp_host`, `smtp_user`, `smtp_password` | SMTP 配置 |
 
 ---
 

@@ -1,15 +1,13 @@
-from .web import WebChannel
-from .discord import DiscordChannel
-from .feishu import FeishuChannel
 from .dingtalk import DingTalkChannel
-from .wechat import WeChatWorkChannel
+from .discord import DiscordChannel
 from .email import EmailChannel
+from .feishu import FeishuChannel
+from .wechat import WeChatWorkChannel
 
 __all__ = [
-    "WebChannel", 
-    "DiscordChannel", 
-    "FeishuChannel", 
-    "DingTalkChannel", 
+    "DiscordChannel",
+    "FeishuChannel",
+    "DingTalkChannel",
     "WeChatWorkChannel",
     "EmailChannel"
 ]

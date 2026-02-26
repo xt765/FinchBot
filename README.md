@@ -91,26 +91,22 @@ graph BT
 
 FinchBot unified message routing architecture - develop once, reach everywhere:
 
-![Web](https://img.shields.io/badge/Web-WebSocket-blue?logo=googlechrome&logoColor=white) ![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![DingTalk](https://img.shields.io/badge/DingTalk-Webhook-0089FF?logo=dingtalk&logoColor=white) ![Feishu](https://img.shields.io/badge/Feishu-Bot_API-00D6D9?logo=lark&logoColor=white) ![WeChat](https://img.shields.io/badge/WeChat-Enterprise-07C160?logo=wechat&logoColor=white) ![Email](https://img.shields.io/badge/Email-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
+![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![DingTalk](https://img.shields.io/badge/DingTalk-Webhook-0089FF?logo=dingtalk&logoColor=white) ![Feishu](https://img.shields.io/badge/Feishu-Bot_API-00D6D9?logo=lark&logoColor=white) ![WeChat](https://img.shields.io/badge/WeChat-Enterprise-07C160?logo=wechat&logoColor=white) ![Email](https://img.shields.io/badge/Email-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
 
-### Web Interface (Beta)
+### MCP (Model Context Protocol) Support
 
-FinchBot provides a modern Web interface built with React + Vite + FastAPI:
+FinchBot supports MCP protocol for seamless integration of external tools and services:
 
 ```bash
-# Start the backend server
-uv run finchbot serve
-
-# In another terminal, start the frontend
-cd web
-npm install
-npm run dev
+# Configure MCP servers
+finchbot config
+# Select "MCP Configuration" option
 ```
 
-The Web interface supports:
-- Real-time chat via WebSocket
-- Multi-session management (coming soon)
-- Rich text rendering
+MCP Features:
+- Dynamic tool discovery and registration
+- Standardized tool calling interface
+- Support for multiple MCP servers
 
 ### Command Line Interface
 
@@ -143,28 +139,28 @@ FinchBot is built on **LangChain v1.2** and **LangGraph v1.0**, serving as an Ag
 
 ```mermaid
 graph TB
+    classDef uiLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef coreLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef infraLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
     subgraph UI [User Interaction Layer]
-        CLI[CLI Interface]
-        Web[Web Interface]
-        API[REST API]
-        Channels[Multi-platform Channels<br/>Discord/DingTalk/Feishu]
+        CLI[CLI Interface]:::uiLayer
+        Channels[Multi-platform Channels<br/>Discord/DingTalk/Feishu/WeChat/Email]:::uiLayer
     end
 
     subgraph Core [Agent Core]
-        Agent[LangGraph Agent<br/>Decision Engine]
-        Context[ContextBuilder<br/>Context Building]
-        Tools[ToolRegistry<br/>11 Built-in Tools]
-        Memory[MemoryManager<br/>Dual-layer Memory]
+        Agent[LangGraph Agent<br/>Decision Engine]:::coreLayer
+        Context[ContextBuilder<br/>Context Building]:::coreLayer
+        Tools[ToolRegistry<br/>12 Built-in Tools + MCP]:::coreLayer
+        Memory[MemoryManager<br/>Dual-layer Memory]:::coreLayer
     end
 
     subgraph Infra [Infrastructure Layer]
-        Storage[Dual-layer Storage<br/>SQLite + VectorStore]
-        LLM[LLM Providers<br/>OpenAI/Anthropic/DeepSeek]
+        Storage[Dual-layer Storage<br/>SQLite + VectorStore]:::infraLayer
+        LLM[LLM Providers<br/>OpenAI/Anthropic/DeepSeek]:::infraLayer
     end
 
     CLI --> Agent
-    Web --> Agent
-    API --> Agent
     Channels --> Agent
 
     Agent --> Context
@@ -227,7 +223,13 @@ finchbot/
 │   ├── base.py        # BaseChannel abstract class
 │   ├── bus.py         # MessageBus async router
 │   ├── manager.py     # ChannelManager coordinator
-│   └── schema.py      # InboundMessage/OutboundMessage models
+│   ├── schema.py      # Message models
+│   └── implementations/  # Channel implementations
+│       ├── discord.py
+│       ├── feishu.py
+│       ├── dingtalk.py
+│       ├── wechat.py
+│       └── email.py
 ├── cli/                # CLI Interface
 │   ├── chat_session.py
 │   ├── config_manager.py
@@ -235,7 +237,8 @@ finchbot/
 │   └── ui.py
 ├── config/             # Configuration Management
 │   ├── loader.py
-│   └── schema.py
+│   ├── schema.py      # Includes MCPConfig, ChannelsConfig
+│   └── ...
 ├── constants.py        # Unified constants definition
 ├── i18n/               # Internationalization
 │   ├── loader.py      # Language loader
@@ -243,20 +246,10 @@ finchbot/
 ├── memory/             # Memory System
 │   ├── manager.py
 │   ├── types.py
-│   ├── services/       # Service Layer
-│   │   ├── classification.py
-│   │   ├── embedding.py
-│   │   ├── importance.py
-│   │   └── retrieval.py
-│   ├── storage/        # Storage Layer
-│   │   ├── sqlite.py
-│   │   └── vector.py
-│   └── vector_sync.py
+│   ├── services/
+│   └── storage/
 ├── providers/          # LLM Providers
 │   └── factory.py
-├── server/             # Web Server
-│   ├── main.py        # FastAPI application
-│   └── loop.py        # AgentLoop for WebSocket
 ├── sessions/           # Session Management
 │   ├── metadata.py
 │   ├── selector.py
@@ -267,8 +260,9 @@ finchbot/
 │   └── weather/
 ├── tools/              # Tool System
 │   ├── base.py
-│   ├── factory.py     # ToolFactory for tool creation
+│   ├── factory.py
 │   ├── registry.py
+│   ├── mcp.py         # MCP Tool Support
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -276,7 +270,7 @@ finchbot/
 │   ├── session_title.py
 │   └── search/
 └── utils/              # Utility Functions
-    ├── cache.py       # Generic cache base class
+    ├── cache.py
     ├── logger.py
     └── model_downloader.py
 ```
@@ -390,7 +384,7 @@ flowchart TD
 
 ### 3. Tool System: Code-Level Capability Extension
 
-Tools are the bridge for Agent to interact with the external world. FinchBot provides 11 built-in tools with easy extension.
+Tools are the bridge for Agent to interact with the external world. FinchBot provides 12 built-in tools with easy extension.
 
 #### Tool System Architecture
 
@@ -550,7 +544,6 @@ flowchart LR
     Bus[MessageBus<br/>Inbound/Outbound Queues]:::bus
     CM[ChannelManager<br/>Channel Coordination]:::manager
 
-    Web[Web<br/>WebSocket]:::channel
     Discord[Discord<br/>Bot API]:::channel
     DingTalk[DingTalk<br/>Webhook]:::channel
     Feishu[Feishu<br/>Bot API]:::channel
@@ -558,7 +551,7 @@ flowchart LR
     Email[Email<br/>SMTP/IMAP]:::channel
 
     Bus <--> CM
-    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
+    CM <--> Discord & DingTalk & Feishu & WeChat & Email
 ```
 
 #### Channel Architecture

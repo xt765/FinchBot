@@ -91,31 +91,26 @@ graph BT
 
 FinchBot 统一消息路由架构，一次开发，多端触达：
 
-- Web (WebSocket)
 - Discord
 - 钉钉 (Webhook)
 - 飞书 (Bot API)
 - 微信 (企业微信)
 - 邮件 (SMTP/IMAP)
 
-### Web 界面 (Beta)
+### MCP (Model Context Protocol) 支持
 
-FinchBot 提供基于 React + Vite + FastAPI 构建的现代化 Web 界面：
+FinchBot 支持 MCP 协议，可以轻松集成外部工具和服务：
 
 ```bash
-# 启动后端服务
-uv run finchbot serve
-
-# 在另一个终端启动前端
-cd web
-npm install
-npm run dev
+# 配置 MCP 服务器
+finchbot config
+# 选择 "MCP Configuration" 选项
 ```
 
-Web 界面支持：
-- WebSocket 实时聊天
-- 多会话管理 (即将推出)
-- 富文本渲染
+支持的 MCP 功能：
+- 动态工具发现和注册
+- 标准化的工具调用接口
+- 支持多种 MCP 服务器
 
 ### 命令行界面
 
@@ -148,28 +143,28 @@ FinchBot 采用 **LangChain v1.2** + **LangGraph v1.0** 构建，是一个具备
 
 ```mermaid
 graph TB
+    classDef uiLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef coreLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef infraLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
     subgraph UI [用户交互层]
-        CLI[CLI 界面]
-        Web[Web 界面]
-        API[REST API]
-        Channels[多平台通道<br/>Discord/钉钉/飞书]
+        CLI[CLI 界面]:::uiLayer
+        Channels[多平台通道<br/>Discord/钉钉/飞书/微信/邮件]:::uiLayer
     end
 
-    subgraph Core [Agent 核心]
-        Agent[LangGraph Agent<br/>决策引擎]
-        Context[ContextBuilder<br/>上下文构建]
-        Tools[ToolRegistry<br/>11个内置工具]
-        Memory[MemoryManager<br/>双层记忆]
+    subgraph Core [Agent 核心层]
+        Agent[LangGraph Agent<br/>决策引擎]:::coreLayer
+        Context[ContextBuilder<br/>上下文构建]:::coreLayer
+        Tools[ToolRegistry<br/>12 内置工具 + MCP]:::coreLayer
+        Memory[MemoryManager<br/>双层记忆]:::coreLayer
     end
 
     subgraph Infra [基础设施层]
-        Storage[双层存储<br/>SQLite + VectorStore]
-        LLM[LLM 提供商<br/>OpenAI/Anthropic/DeepSeek]
+        Storage[双层存储<br/>SQLite + VectorStore]:::infraLayer
+        LLM[LLM 提供商<br/>OpenAI/Anthropic/DeepSeek]:::infraLayer
     end
 
     CLI --> Agent
-    Web --> Agent
-    API --> Agent
     Channels --> Agent
 
     Agent --> Context
@@ -232,7 +227,13 @@ finchbot/
 │   ├── base.py        # BaseChannel 抽象基类
 │   ├── bus.py         # MessageBus 异步路由器
 │   ├── manager.py     # ChannelManager 协调器
-│   └── schema.py      # InboundMessage/OutboundMessage 模型
+│   ├── schema.py      # 消息模型
+│   └── implementations/  # 通道实现
+│       ├── discord.py
+│       ├── feishu.py
+│       ├── dingtalk.py
+│       ├── wechat.py
+│       └── email.py
 ├── cli/                # 命令行界面
 │   ├── chat_session.py
 │   ├── config_manager.py
@@ -240,7 +241,8 @@ finchbot/
 │   └── ui.py
 ├── config/             # 配置管理
 │   ├── loader.py
-│   └── schema.py
+│   ├── schema.py      # 包含 MCPConfig, ChannelsConfig
+│   └── utils.py
 ├── constants.py        # 统一常量定义
 ├── i18n/               # 国际化
 │   ├── loader.py      # 语言加载器
@@ -249,19 +251,10 @@ finchbot/
 │   ├── manager.py
 │   ├── types.py
 │   ├── services/       # 服务层
-│   │   ├── classification.py
-│   │   ├── embedding.py
-│   │   ├── importance.py
-│   │   └── retrieval.py
 │   ├── storage/        # 存储层
-│   │   ├── sqlite.py
-│   │   └── vector.py
 │   └── vector_sync.py
 ├── providers/          # LLM 提供商
 │   └── factory.py
-├── server/             # Web 服务器
-│   ├── main.py        # FastAPI 应用
-│   └── loop.py        # AgentLoop WebSocket 处理
 ├── sessions/           # 会话管理
 │   ├── metadata.py
 │   ├── selector.py
@@ -274,6 +267,7 @@ finchbot/
 │   ├── base.py
 │   ├── factory.py     # ToolFactory 工具创建
 │   ├── registry.py
+│   ├── mcp.py         # MCP 工具支持
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -281,7 +275,7 @@ finchbot/
 │   ├── session_title.py
 │   └── search/
 └── utils/              # 工具函数
-    ├── cache.py       # 通用缓存基类
+    ├── cache.py
     ├── logger.py
     └── model_downloader.py
 ```
@@ -395,7 +389,7 @@ flowchart TD
 
 ### 3.3 工具系统：代码级能力扩展
 
-工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 11 个内置工具，并支持轻松扩展。
+工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 12 个内置工具，并支持轻松扩展。
 
 #### 工具系统架构
 
@@ -403,31 +397,31 @@ flowchart TD
 flowchart TB
     classDef registry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef builtin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef custom fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef mcp fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef agent fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
     TR[ToolRegistry<br/>全局注册表]:::registry
     Lock[单锁模式<br/>线程安全单例]:::registry
 
-    File[文件操作<br/>read_file / write_file<br/>edit_file / list_dir]:::builtin
-    Web[网络<br/>web_search / web_extract]:::builtin
-    Memory[记忆<br/>remember / recall / forget]:::builtin
-    System[系统<br/>exec / session_title]:::builtin
+    subgraph BuiltIn [内置工具 - 12个]
+        File[文件操作<br/>read/write/edit/list]:::builtin
+        Web[网络<br/>search/extract]:::builtin
+        Memory[记忆<br/>remember/recall/forget]:::builtin
+        System[系统<br/>exec/session_title]:::builtin
+    end
 
-    Inherit[继承 FinchTool<br/>实现 _run]:::custom
-    Register[注册到 Registry]:::custom
+    subgraph MCP [MCP 工具 - 动态加载]
+        MCPConfig[MCPConfig<br/>服务器配置]:::mcp
+        MCPLoader[MCPLoader<br/>工具发现]:::mcp
+        MCPTools[MCP Tools<br/>外部工具]:::mcp
+    end
 
     Agent[Agent 调用]:::agent
 
     TR --> Lock
-    Lock --> File & Web & Memory & System
-    Lock --> Inherit --> Register
-
-    File --> Agent
-    Web --> Agent
-    Memory --> Agent
-    System --> Agent
-    Register --> Agent
+    Lock --> BuiltIn
+    MCPConfig --> MCPLoader --> MCPTools --> TR
+    TR --> Agent
 ```
 
 #### 内置工具一览
@@ -553,7 +547,6 @@ flowchart LR
     Bus[MessageBus<br/>入站/出站队列]:::bus
     CM[ChannelManager<br/>通道协调]:::manager
 
-    Web[Web<br/>WebSocket]:::channel
     Discord[Discord<br/>Bot API]:::channel
     DingTalk[钉钉<br/>Webhook]:::channel
     Feishu[飞书<br/>Bot API]:::channel
@@ -561,7 +554,7 @@ flowchart LR
     Email[邮件<br/>SMTP/IMAP]:::channel
 
     Bus <--> CM
-    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
+    CM <--> Discord & DingTalk & Feishu & WeChat & Email
 ```
 
 ### 3.6 LangChain 1.2 架构实践
@@ -674,8 +667,8 @@ cp .env.example .env
 # 构建并运行
 docker-compose up -d
 
-# 访问 Web 界面
-# http://localhost:8000
+# 使用 CLI
+docker exec -it finchbot finchbot chat
 ```
 
 | 特性 | 说明 |
@@ -702,8 +695,6 @@ docker-compose up -d
 |   富文本   | Rich              | 14.3.0+ |
 |    日志    | Loguru            | 0.7.3+ |
 |  配置管理  | Pydantic Settings | 2.12.0+ |
-| Web 后端  | FastAPI           | 0.115.0+ |
-| Web 前端  | React + Vite      | Latest  |
 
 ---
 
@@ -717,7 +708,7 @@ docker-compose up -d
 |  **灵活扩展**  | 继承 FinchTool 或创建 SKILL.md 即可扩展，无需修改核心代码   |
 |  **模型无关**  | 支持 OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq 等 |
 |  **并发安全**  | 工具注册使用单锁模式，线程安全                              |
-| **多平台支持** | 通道系统支持 Web、Discord、钉钉、飞书、微信、邮件           |
+| **多平台支持** | 通道系统支持 Discord、钉钉、飞书、微信、邮件           |
 
 ---
 

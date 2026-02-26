@@ -40,7 +40,7 @@ class AgentFactory:
         """
         # 1. 准备工具
         tool_factory = ToolFactory(config, workspace, session_id)
-        
+
         loop = asyncio.get_running_loop()
         tools = await loop.run_in_executor(None, tool_factory.create_default_tools)
 

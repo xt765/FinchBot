@@ -127,6 +127,126 @@ class ToolsConfig(BaseModel):
     restrict_to_workspace: bool = False
 
 
+class MCPServerConfig(BaseModel):
+    """MCP Server 配置.
+
+    Attributes:
+        command: 启动命令。
+        args: 命令参数。
+        env: 环境变量。
+    """
+
+    command: str = ""
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] | None = None
+
+
+class MCPConfig(BaseModel):
+    """MCP 配置集合.
+
+    Attributes:
+        servers: MCP 服务器配置字典。
+    """
+
+    servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
+
+
+class DiscordChannelConfig(BaseModel):
+    """Discord 渠道配置.
+
+    Attributes:
+        enabled: 是否启用。
+        token: Bot Token。
+    """
+
+    enabled: bool = False
+    token: str = ""
+
+
+class FeishuChannelConfig(BaseModel):
+    """飞书渠道配置.
+
+    Attributes:
+        enabled: 是否启用。
+        app_id: 应用 ID。
+        app_secret: 应用密钥。
+    """
+
+    enabled: bool = False
+    app_id: str = ""
+    app_secret: str = ""
+
+
+class DingTalkChannelConfig(BaseModel):
+    """钉钉渠道配置.
+
+    Attributes:
+        enabled: 是否启用。
+        client_id: 客户端 ID。
+        client_secret: 客户端密钥。
+    """
+
+    enabled: bool = False
+    client_id: str = ""
+    client_secret: str = ""
+
+
+class WeChatWorkChannelConfig(BaseModel):
+    """企业微信渠道配置.
+
+    Attributes:
+        enabled: 是否启用。
+        corp_id: 企业 ID。
+        agent_id: 应用 ID。
+        secret: 应用密钥。
+    """
+
+    enabled: bool = False
+    corp_id: str = ""
+    agent_id: str = ""
+    secret: str = ""
+
+
+class EmailChannelConfig(BaseModel):
+    """邮件渠道配置.
+
+    Attributes:
+        enabled: 是否启用。
+        smtp_host: SMTP 服务器地址。
+        smtp_port: SMTP 端口。
+        smtp_user: SMTP 用户名。
+        smtp_password: SMTP 密码。
+        from_address: 发件人地址。
+        use_tls: 是否使用 TLS。
+    """
+
+    enabled: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    from_address: str = ""
+    use_tls: bool = True
+
+
+class ChannelsConfig(BaseModel):
+    """渠道配置集合.
+
+    Attributes:
+        discord: Discord 配置。
+        feishu: 飞书配置。
+        dingtalk: 钉钉配置。
+        wechat: 企业微信配置。
+        email: 邮件配置。
+    """
+
+    discord: DiscordChannelConfig = Field(default_factory=DiscordChannelConfig)
+    feishu: FeishuChannelConfig = Field(default_factory=FeishuChannelConfig)
+    dingtalk: DingTalkChannelConfig = Field(default_factory=DingTalkChannelConfig)
+    wechat: WeChatWorkChannelConfig = Field(default_factory=WeChatWorkChannelConfig)
+    email: EmailChannelConfig = Field(default_factory=EmailChannelConfig)
+
+
 class Config(BaseSettings):
     """FinchBot 根配置.
 
@@ -138,6 +258,8 @@ class Config(BaseSettings):
         agents: Agent 配置。
         providers: 提供商配置。
         tools: 工具配置。
+        mcp: MCP 配置。
+        channels: 渠道配置。
     """
 
     language: str = "en-US"
@@ -147,6 +269,8 @@ class Config(BaseSettings):
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
+    channels: ChannelsConfig = Field(default_factory=ChannelsConfig)
 
     model_config = SettingsConfigDict(env_prefix="FINCHBOT_", env_nested_delimiter="__")
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
-
 # 退出命令
 EXIT_COMMANDS: Final[frozenset[str]] = frozenset({"exit", "quit", "/exit", "/quit", ":q", "q"})
 

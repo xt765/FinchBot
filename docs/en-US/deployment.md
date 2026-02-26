@@ -58,12 +58,11 @@ cd finchbot
 cp .env.example .env
 # Edit .env file and add your API keys
 
-# 3. Build and start
+# 3. Build and start (interactive mode)
 docker-compose up -d
 
-# 4. Access the service
-# Web UI: http://localhost:8000
-# Health check: http://localhost:8000/health
+# 4. Attach to container for interaction
+docker attach finchbot
 ```
 
 ### Dockerfile
@@ -77,8 +76,9 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
+    curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /root/.finchbot/workspace
 
 # Install Python package manager
 RUN pip install --no-cache-dir uv
@@ -90,19 +90,17 @@ COPY src/ ./src/
 # Create virtual environment and install dependencies
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+ENV VIRTUAL_ENV="/opt/venv"
 ENV PYTHONPATH="/app/src"
 RUN uv pip install --no-cache -e .
 
-# Build frontend
-COPY web/ ./web/
-RUN cd web && npm ci && npm run build
-
 # Configure environment
-ENV STATIC_DIR=/app/web/dist
-EXPOSE 8000
+ENV FINCHBOT_WORKSPACE=/root/.finchbot/workspace
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# Start service
-CMD ["uvicorn", "finchbot.server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start CLI
+CMD ["finchbot", "chat"]
 ```
 
 ### Docker Compose
@@ -116,8 +114,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: finchbot
-    ports:
-      - "8000:8000"
+    stdin_open: true
+    tty: true
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -126,11 +124,6 @@ services:
       - finchbot_workspace:/root/.finchbot/workspace
       - finchbot_models:/root/.cache/huggingface
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
   finchbot_workspace:
@@ -140,8 +133,14 @@ volumes:
 ### Common Commands
 
 ```bash
-# Start service
+# Start service (background)
 docker-compose up -d
+
+# Attach to container for interaction
+docker attach finchbot
+
+# Exit interaction (without stopping container)
+# Press Ctrl+P then Ctrl+Q
 
 # View logs
 docker logs -f finchbot
@@ -167,6 +166,7 @@ docker exec -it finchbot /bin/bash
 | `TAVILY_API_KEY` | Tavily search API key | No |
 | `FINCHBOT_LANGUAGE` | UI language (zh-CN/en-US) | No |
 | `FINCHBOT_DEFAULT_MODEL` | Default model name | No |
+| `FINCHBOT_WORKSPACE` | Workspace path | No |
 
 ### Persistent Storage
 

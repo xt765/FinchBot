@@ -1,11 +1,14 @@
 import asyncio
+
 from loguru import logger
+
 from .schema import InboundMessage, OutboundMessage
+
 
 class MessageBus:
     """
     Async message bus that decouples chat channels from the agent core.
-    
+
     Channels push messages to the inbound queue, and the agent processes
     them and pushes responses to the outbound queue.
     """

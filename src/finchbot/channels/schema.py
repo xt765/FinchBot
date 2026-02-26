@@ -1,6 +1,8 @@
-from typing import Any, List, Optional
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, Field
+
 
 class InboundMessage(BaseModel):
     """Message received from a chat channel."""
@@ -8,7 +10,7 @@ class InboundMessage(BaseModel):
     sender_id: str
     chat_id: str
     content: str
-    media: List[str] = Field(default_factory=list)
+    media: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.now)
 
@@ -22,6 +24,6 @@ class OutboundMessage(BaseModel):
     target_channel: str
     target_id: str
     content: str
-    files: List[str] = Field(default_factory=list)
-    reply_to: Optional[str] = None
+    files: list[str] = Field(default_factory=list)
+    reply_to: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)

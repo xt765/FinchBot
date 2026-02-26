@@ -6,15 +6,16 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Generic, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
 
 @dataclass
-class CacheEntry(Generic[T]):
+class CacheEntry[T]:
     """缓存条目."""
 
     value: T
@@ -22,7 +23,7 @@ class CacheEntry(Generic[T]):
     expires: float | None = None
 
 
-class FileBasedCache(Generic[T]):
+class FileBasedCache[T]:
     """基于文件修改时间的缓存.
 
     自动检测文件修改并刷新缓存.

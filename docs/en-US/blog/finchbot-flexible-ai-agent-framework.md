@@ -91,31 +91,26 @@ graph BT
 
 FinchBot's unified message routing architecture — develop once, deploy everywhere:
 
-- Web (WebSocket)
 - Discord
 - DingTalk (Webhook)
 - Feishu (Bot API)
 - WeChat (Enterprise WeChat)
 - Email (SMTP/IMAP)
 
-### Web Interface (Beta)
+### MCP (Model Context Protocol) Support
 
-FinchBot provides a modern Web interface based on React + Vite + FastAPI:
+FinchBot supports MCP protocol for seamless integration of external tools and services:
 
 ```bash
-# Start backend service
-uv run finchbot serve
-
-# Start frontend in another terminal
-cd web
-npm install
-npm run dev
+# Configure MCP servers
+finchbot config
+# Select "MCP Configuration" option
 ```
 
-Web interface features:
-- WebSocket real-time chat
-- Multi-session management (coming soon)
-- Rich text rendering
+MCP Features:
+- Dynamic tool discovery and registration
+- Standardized tool calling interface
+- Support for multiple MCP servers
 
 ### Command Line Interface
 
@@ -148,28 +143,28 @@ FinchBot is built on **LangChain v1.2** + **LangGraph v1.0**, an Agent system wi
 
 ```mermaid
 graph TB
+    classDef uiLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef coreLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef infraLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
     subgraph UI [User Interaction Layer]
-        CLI[CLI Interface]
-        Web[Web Interface]
-        API[REST API]
-        Channels[Multi-Platform<br/>Discord/DingTalk/Feishu]
+        CLI[CLI Interface]:::uiLayer
+        Channels[Multi-Platform<br/>Discord/DingTalk/Feishu/WeChat/Email]:::uiLayer
     end
 
-    subgraph Core [Agent Core]
-        Agent[LangGraph Agent<br/>Decision Engine]
-        Context[ContextBuilder<br/>Prompt Assembly]
-        Tools[ToolRegistry<br/>11 Built-in Tools]
-        Memory[MemoryManager<br/>Dual-Layer Memory]
+    subgraph Core [Agent Core Layer]
+        Agent[LangGraph Agent<br/>Decision Engine]:::coreLayer
+        Context[ContextBuilder<br/>Prompt Assembly]:::coreLayer
+        Tools[ToolRegistry<br/>12 Built-in Tools + MCP]:::coreLayer
+        Memory[MemoryManager<br/>Dual-Layer Memory]:::coreLayer
     end
 
     subgraph Infra [Infrastructure Layer]
-        Storage[Dual-Layer Storage<br/>SQLite + VectorStore]
-        LLM[LLM Providers<br/>OpenAI/Anthropic/DeepSeek]
+        Storage[Dual-Layer Storage<br/>SQLite + VectorStore]:::infraLayer
+        LLM[LLM Providers<br/>OpenAI/Anthropic/DeepSeek]:::infraLayer
     end
 
     CLI --> Agent
-    Web --> Agent
-    API --> Agent
     Channels --> Agent
 
     Agent --> Context
@@ -232,7 +227,13 @@ finchbot/
 │   ├── base.py        # BaseChannel abstract base class
 │   ├── bus.py         # MessageBus async router
 │   ├── manager.py     # ChannelManager coordinator
-│   └── schema.py      # InboundMessage/OutboundMessage models
+│   ├── schema.py      # Message models
+│   └── implementations/  # Channel implementations
+│       ├── discord.py
+│       ├── feishu.py
+│       ├── dingtalk.py
+│       ├── wechat.py
+│       └── email.py
 ├── cli/                # Command Line Interface
 │   ├── chat_session.py
 │   ├── config_manager.py
@@ -240,7 +241,8 @@ finchbot/
 │   └── ui.py
 ├── config/             # Configuration Management
 │   ├── loader.py
-│   └── schema.py
+│   ├── schema.py      # Includes MCPConfig, ChannelsConfig
+│   └── utils.py
 ├── constants.py        # Unified constants
 ├── i18n/               # Internationalization
 │   ├── loader.py      # Language loader
@@ -249,19 +251,10 @@ finchbot/
 │   ├── manager.py
 │   ├── types.py
 │   ├── services/       # Service Layer
-│   │   ├── classification.py
-│   │   ├── embedding.py
-│   │   ├── importance.py
-│   │   └── retrieval.py
 │   ├── storage/        # Storage Layer
-│   │   ├── sqlite.py
-│   │   └── vector.py
 │   └── vector_sync.py
 ├── providers/          # LLM Providers
 │   └── factory.py
-├── server/             # Web Server
-│   ├── main.py        # FastAPI application
-│   └── loop.py        # AgentLoop WebSocket handling
 ├── sessions/           # Session Management
 │   ├── metadata.py
 │   ├── selector.py
@@ -274,6 +267,7 @@ finchbot/
 │   ├── base.py
 │   ├── factory.py     # ToolFactory tool creation
 │   ├── registry.py
+│   ├── mcp.py         # MCP Tool Support
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -281,7 +275,7 @@ finchbot/
 │   ├── session_title.py
 │   └── search/
 └── utils/              # Utilities
-    ├── cache.py       # Common cache base class
+    ├── cache.py
     ├── logger.py
     └── model_downloader.py
 ```

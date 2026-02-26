@@ -672,8 +672,9 @@ async def _run_chat_session_async(
         # get_default_workspace can be slow (file I/O), move to thread pool
         ws_path = await loop.run_in_executor(None, get_default_workspace)
 
-    from finchbot.agent.factory import AgentFactory
     from functools import partial
+
+    from finchbot.agent.factory import AgentFactory
 
     # create_chat_model can be very slow (tiktoken loading etc.), move to thread pool
     chat_model = await loop.run_in_executor(
@@ -691,10 +692,10 @@ async def _run_chat_session_async(
     history_file.parent.mkdir(parents=True, exist_ok=True)
 
     console.print(f"\n[bold cyan]{t('cli.chat.title')}[/bold cyan]")
-    
+
     # Session store init involves SQLite connection, move to thread pool
     session_store = await loop.run_in_executor(None, SessionMetadataStore, ws_path)
-    
+
     if not await loop.run_in_executor(None, session_store.session_exists, session_id):
         await loop.run_in_executor(None, partial(session_store.create_session, session_id, title=session_id))
 

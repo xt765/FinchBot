@@ -142,29 +142,5 @@ def models_download() -> None:
         raise typer.Exit(1)
 
 
-@app.command()
-def serve(
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind"),
-    port: int = typer.Option(8000, "--port", "-p", help="Port to bind"),
-    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload"),
-) -> None:
-    """Start FinchBot server (Multi-channel mode)."""
-    import uvicorn
-    from finchbot.utils.logger import setup_logger
-
-    # Ensure logger is set up for server mode
-    setup_logger(console_level="INFO", console_enabled=True)
-
-    console.print(f"[bold green]Starting FinchBot Server on {host}:{port}[/bold green]")
-
-    uvicorn.run(
-        "finchbot.server.main:app",
-        host=host,
-        port=port,
-        reload=reload,
-        log_level="info"
-    )
-
-
 if __name__ == "__main__":
     app()

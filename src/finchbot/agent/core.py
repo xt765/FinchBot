@@ -158,8 +158,37 @@ def build_system_prompt(
 
 
 def get_default_workspace() -> Path:
-    """获取默认工作目录."""
-    workspace = Path.home() / ".finchbot" / "workspace"
+    """获取默认工作目录.
+
+    优先级：
+    1. 环境变量 FINCHBOT_WORKSPACE（Docker 环境使用）
+    2. 配置文件中的 agents.defaults.workspace（用户自定义路径）
+    3. 默认路径 ~/.finchbot/workspace
+    """
+    import os
+
+    workspace: Path | None = None
+
+    env_workspace = os.environ.get("FINCHBOT_WORKSPACE")
+    if env_workspace:
+        workspace = Path(env_workspace).expanduser().resolve()
+        logger.debug(f"使用环境变量 FINCHBOT_WORKSPACE: {workspace}")
+    else:
+        try:
+            from finchbot.config import load_config
+
+            config = load_config()
+            config_workspace = config.agents.defaults.workspace
+            if config_workspace:
+                workspace = Path(config_workspace).expanduser().resolve()
+                logger.debug(f"使用配置文件中的 workspace: {workspace}")
+        except Exception as e:
+            logger.debug(f"读取配置文件失败，使用默认路径: {e}")
+
+    if not workspace:
+        workspace = Path.home() / ".finchbot" / "workspace"
+        logger.debug(f"使用默认路径: {workspace}")
+
     workspace.mkdir(parents=True, exist_ok=True)
     _create_workspace_templates(workspace)
     return workspace
@@ -238,7 +267,6 @@ def agent() -> CompiledStateGraph:
     Returns:
         编译好的 LangGraph 图。
     """
-    import os
 
     from langchain_openai import ChatOpenAI
     from pydantic import SecretStr

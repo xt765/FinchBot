@@ -91,26 +91,22 @@ graph BT
 
 FinchBot 统一消息路由架构，一次开发，多端触达：
 
-![Web](https://img.shields.io/badge/Web-WebSocket-blue?logo=googlechrome&logoColor=white) ![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![钉钉](https://img.shields.io/badge/钉钉-Webhook-0089FF?logo=dingtalk&logoColor=white) ![飞书](https://img.shields.io/badge/飞书-Bot_API-00D6D9?logo=lark&logoColor=white) ![微信](https://img.shields.io/badge/微信-企业微信-07C160?logo=wechat&logoColor=white) ![邮件](https://img.shields.io/badge/邮件-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
+![Discord](https://img.shields.io/badge/Discord-Bot_API-5865F2?logo=discord&logoColor=white) ![钉钉](https://img.shields.io/badge/钉钉-Webhook-0089FF?logo=dingtalk&logoColor=white) ![飞书](https://img.shields.io/badge/飞书-Bot_API-00D6D9?logo=lark&logoColor=white) ![微信](https://img.shields.io/badge/微信-企业微信-07C160?logo=wechat&logoColor=white) ![邮件](https://img.shields.io/badge/邮件-SMTP/IMAP-EA4335?logo=gmail&logoColor=white)
 
-### Web 界面 (Beta)
+### MCP (Model Context Protocol) 支持
 
-FinchBot 提供基于 React + Vite + FastAPI 构建的现代化 Web 界面：
+FinchBot 支持 MCP 协议，可以轻松集成外部工具和服务：
 
 ```bash
-# 启动后端服务
-uv run finchbot serve
-
-# 在另一个终端启动前端
-cd web
-npm install
-npm run dev
+# 配置 MCP 服务器
+finchbot config
+# 选择 "MCP Configuration" 选项
 ```
 
-Web 界面支持：
-- WebSocket 实时聊天
-- 多会话管理 (即将推出)
-- 富文本渲染
+支持的 MCP 功能：
+- 动态工具发现和注册
+- 标准化的工具调用接口
+- 支持多种 MCP 服务器
 
 ### 命令行界面
 
@@ -143,28 +139,28 @@ FinchBot 采用 **LangChain v1.2** + **LangGraph v1.0** 构建，是一个具备
 
 ```mermaid
 graph TB
+    classDef uiLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef coreLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef infraLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
     subgraph UI [用户交互层]
-        CLI[CLI 界面]
-        Web[Web 界面]
-        API[REST API]
-        Channels[多平台通道<br/>Discord/钉钉/飞书]
+        CLI[CLI 界面]:::uiLayer
+        Channels[多平台通道<br/>Discord/钉钉/飞书/微信/邮件]:::uiLayer
     end
 
-    subgraph Core [Agent 核心]
-        Agent[LangGraph Agent<br/>决策引擎]
-        Context[ContextBuilder<br/>上下文构建]
-        Tools[ToolRegistry<br/>11个内置工具]
-        Memory[MemoryManager<br/>双层记忆]
+    subgraph Core [Agent 核心层]
+        Agent[LangGraph Agent<br/>决策引擎]:::coreLayer
+        Context[ContextBuilder<br/>上下文构建]:::coreLayer
+        Tools[ToolRegistry<br/>12 内置工具 + MCP]:::coreLayer
+        Memory[MemoryManager<br/>双层记忆]:::coreLayer
     end
 
     subgraph Infra [基础设施层]
-        Storage[双层存储<br/>SQLite + VectorStore]
-        LLM[LLM 提供商<br/>OpenAI/Anthropic/DeepSeek]
+        Storage[双层存储<br/>SQLite + VectorStore]:::infraLayer
+        LLM[LLM 提供商<br/>OpenAI/Anthropic/DeepSeek]:::infraLayer
     end
 
     CLI --> Agent
-    Web --> Agent
-    API --> Agent
     Channels --> Agent
 
     Agent --> Context
@@ -227,7 +223,13 @@ finchbot/
 │   ├── base.py        # BaseChannel 抽象基类
 │   ├── bus.py         # MessageBus 异步路由器
 │   ├── manager.py     # ChannelManager 协调器
-│   └── schema.py      # InboundMessage/OutboundMessage 模型
+│   ├── schema.py      # 消息模型
+│   └── implementations/  # 通道实现
+│       ├── discord.py
+│       ├── feishu.py
+│       ├── dingtalk.py
+│       ├── wechat.py
+│       └── email.py
 ├── cli/                # 命令行界面
 │   ├── chat_session.py
 │   ├── config_manager.py
@@ -235,7 +237,8 @@ finchbot/
 │   └── ui.py
 ├── config/             # 配置管理
 │   ├── loader.py
-│   └── schema.py
+│   ├── schema.py      # 包含 MCPConfig, ChannelsConfig
+│   └── ...
 ├── constants.py        # 统一常量定义
 ├── i18n/               # 国际化
 │   ├── loader.py      # 语言加载器
@@ -243,20 +246,10 @@ finchbot/
 ├── memory/             # 记忆系统
 │   ├── manager.py
 │   ├── types.py
-│   ├── services/       # 服务层
-│   │   ├── classification.py
-│   │   ├── embedding.py
-│   │   ├── importance.py
-│   │   └── retrieval.py
-│   ├── storage/        # 存储层
-│   │   ├── sqlite.py
-│   │   └── vector.py
-│   └── vector_sync.py
+│   ├── services/
+│   └── storage/
 ├── providers/          # LLM 提供商
 │   └── factory.py
-├── server/             # Web 服务器
-│   ├── main.py        # FastAPI 应用
-│   └── loop.py        # AgentLoop WebSocket 处理
 ├── sessions/           # 会话管理
 │   ├── metadata.py
 │   ├── selector.py
@@ -267,8 +260,9 @@ finchbot/
 │   └── weather/
 ├── tools/              # 工具系统
 │   ├── base.py
-│   ├── factory.py     # ToolFactory 工具创建
+│   ├── factory.py
 │   ├── registry.py
+│   ├── mcp.py         # MCP 工具支持
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -276,7 +270,7 @@ finchbot/
 │   ├── session_title.py
 │   └── search/
 └── utils/              # 工具函数
-    ├── cache.py       # 通用缓存基类
+    ├── cache.py
     ├── logger.py
     └── model_downloader.py
 ```
@@ -390,7 +384,7 @@ flowchart TD
 
 ### 3. 工具系统：代码级能力扩展
 
-工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 11 个内置工具，并支持轻松扩展。
+工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 12 个内置工具，并支持轻松扩展。
 
 #### 工具系统架构
 
@@ -550,7 +544,6 @@ flowchart LR
     Bus[MessageBus<br/>入站/出站队列]:::bus
     CM[ChannelManager<br/>通道协调]:::manager
 
-    Web[Web<br/>WebSocket]:::channel
     Discord[Discord<br/>Bot API]:::channel
     DingTalk[钉钉<br/>Webhook]:::channel
     Feishu[飞书<br/>Bot API]:::channel
@@ -558,7 +551,7 @@ flowchart LR
     Email[邮件<br/>SMTP/IMAP]:::channel
 
     Bus <--> CM
-    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
+    CM <--> Discord & DingTalk & Feishu & WeChat & Email
 ```
 
 #### 通道架构

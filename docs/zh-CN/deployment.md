@@ -58,12 +58,11 @@ cd finchbot
 cp .env.example .env
 # 编辑 .env 文件，添加您的 API Key
 
-# 3. 构建并启动
+# 3. 构建并启动（交互模式）
 docker-compose up -d
 
-# 4. 访问服务
-# Web 界面: http://localhost:8000
-# 健康检查: http://localhost:8000/health
+# 4. 进入容器交互
+docker attach finchbot
 ```
 
 ### Dockerfile
@@ -77,8 +76,9 @@ WORKDIR /app
 
 # 安装系统依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
+    curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /root/.finchbot/workspace
 
 # 安装 Python 包管理器
 RUN pip install --no-cache-dir uv
@@ -90,19 +90,17 @@ COPY src/ ./src/
 # 创建虚拟环境并安装依赖
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+ENV VIRTUAL_ENV="/opt/venv"
 ENV PYTHONPATH="/app/src"
 RUN uv pip install --no-cache -e .
 
-# 构建前端
-COPY web/ ./web/
-RUN cd web && npm ci && npm run build
-
 # 配置环境
-ENV STATIC_DIR=/app/web/dist
-EXPOSE 8000
+ENV FINCHBOT_WORKSPACE=/root/.finchbot/workspace
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# 启动服务
-CMD ["uvicorn", "finchbot.server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 启动 CLI
+CMD ["finchbot", "chat"]
 ```
 
 ### Docker Compose
@@ -116,21 +114,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: finchbot
-    ports:
-      - "8000:8000"
+    stdin_open: true
+    tty: true
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - FINCHBOT_LANGUAGE=${FINCHBOT_LANGUAGE:-en-US}
+      - FINCHBOT_LANGUAGE=${FINCHBOT_LANGUAGE:-zh-CN}
     volumes:
       - finchbot_workspace:/root/.finchbot/workspace
       - finchbot_models:/root/.cache/huggingface
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
   finchbot_workspace:
@@ -140,8 +133,14 @@ volumes:
 ### 常用命令
 
 ```bash
-# 启动服务
+# 启动服务（后台运行）
 docker-compose up -d
+
+# 进入容器交互
+docker attach finchbot
+
+# 退出交互（不停止容器）
+# 按 Ctrl+P 然后 Ctrl+Q
 
 # 查看日志
 docker logs -f finchbot
@@ -167,6 +166,7 @@ docker exec -it finchbot /bin/bash
 | `TAVILY_API_KEY` | Tavily 搜索 API Key | 否 |
 | `FINCHBOT_LANGUAGE` | 界面语言（zh-CN/en-US） | 否 |
 | `FINCHBOT_DEFAULT_MODEL` | 默认模型名称 | 否 |
+| `FINCHBOT_WORKSPACE` | 工作目录路径 | 否 |
 
 ### 持久化存储
 

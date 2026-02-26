@@ -84,3 +84,6 @@ scripts/
 
 # 测试
 workspace_test/
+
+# 工作区目录
+finchbot_workspace/

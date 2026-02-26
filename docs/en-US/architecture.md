@@ -18,35 +18,35 @@ FinchBot is built on **LangChain v1.2** + **LangGraph v1.0**, featuring persiste
 
 1. **Agent Core (Brain)**: Responsible for decision-making, planning, and tool scheduling, supporting async streaming output.
 2. **Memory System**: Responsible for long-term information storage and retrieval, utilizing a hybrid architecture of SQLite + FastEmbed + ChromaDB.
-3. **Tool Ecosystem**: Responsible for interacting with the external world, supporting lazy loading and thread-pool concurrent initialization.
-4. **Channel System**: Responsible for multi-platform message routing, supporting Web, Discord, DingTalk, Feishu, etc.
+3. **Tool Ecosystem**: Responsible for interacting with the external world, supporting lazy loading and thread-pool concurrent initialization, with MCP protocol support.
+4. **Channel System**: Responsible for multi-platform message routing, supporting Discord, DingTalk, Feishu, WeChat, Email, etc.
 
 ### 1.1 Overall Architecture Diagram
 
 ```mermaid
 graph TB
+    classDef uiLayer fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef coreLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef infraLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
     subgraph UI [User Interaction Layer]
-        CLI[CLI Interface]
-        Web[Web Interface]
-        API[REST API]
-        Channels[Multi-platform Channels<br/>Discord/DingTalk/Feishu]
+        CLI[CLI Interface]:::uiLayer
+        Channels[Multi-platform Channels<br/>Discord/DingTalk/Feishu/WeChat/Email]:::uiLayer
     end
 
     subgraph Core [Agent Core]
-        Agent[LangGraph Agent<br/>Decision Engine]
-        Context[ContextBuilder<br/>Context Building]
-        Tools[ToolRegistry<br/>11 Built-in Tools]
-        Memory[MemoryManager<br/>Dual-layer Memory]
+        Agent[LangGraph Agent<br/>Decision Engine]:::coreLayer
+        Context[ContextBuilder<br/>Context Building]:::coreLayer
+        Tools[ToolRegistry<br/>12 Built-in Tools + MCP]:::coreLayer
+        Memory[MemoryManager<br/>Dual-layer Memory]:::coreLayer
     end
 
     subgraph Infra [Infrastructure Layer]
-        Storage[Dual-layer Storage<br/>SQLite + VectorStore]
-        LLM[LLM Providers<br/>OpenAI/Anthropic/DeepSeek]
+        Storage[Dual-layer Storage<br/>SQLite + VectorStore]:::infraLayer
+        LLM[LLM Providers<br/>OpenAI/Anthropic/DeepSeek]:::infraLayer
     end
 
     CLI --> Agent
-    Web --> Agent
-    API --> Agent
     Channels --> Agent
 
     Agent --> Context
@@ -61,70 +61,66 @@ graph TB
 
 ```
 finchbot/
- agent/              # Agent Core
-    core.py        # Agent creation and execution (Async Optimized)
-    factory.py     # AgentFactory (Concurrent Thread Pool)
-    context.py     # ContextBuilder for prompt assembly
-    skills.py      # SkillsLoader for Markdown skills
- channels/           # Multi-Platform Messaging
-    base.py        # BaseChannel abstract class
-    bus.py         # MessageBus async router
-    manager.py     # ChannelManager coordinator
-    schema.py      # InboundMessage/OutboundMessage models
- cli/                # CLI Interface
-    chat_session.py # Async Session Management
-    config_manager.py
-    providers.py
-    ui.py
- server/             # API Server
-    main.py        # FastAPI Application
-    loop.py        # AgentLoop Event Loop
- web/                # Web Frontend (React + Vite)
-    src/
-    package.json
- config/             # Configuration Management
-    loader.py
-    schema.py
- constants.py        # Unified constants definition
- i18n/               # Internationalization
-    loader.py      # Language loader
-    locales/
- memory/             # Memory System
-    manager.py
-    types.py
-    services/       # Service Layer
-       classification.py
-       embedding.py
-       importance.py
-       retrieval.py
-    storage/        # Storage Layer
-       sqlite.py
-       vector.py
-    vector_sync.py
- providers/          # LLM Providers
-    factory.py
- sessions/           # Session Management
-    metadata.py
-    selector.py
-    title_generator.py
- skills/             # Skill System
-    skill-creator/
-    summarize/
-    weather/
- tools/              # Tool System
-    base.py
-    registry.py
-    factory.py     # ToolFactory
-    filesystem.py
-    memory.py
-    shell.py
-    web.py
-    session_title.py
-    search/
- utils/              # Utility Functions
-     cache.py       # Generic cache base class
-     logger.py
-     model_downloader.py
+├── agent/              # Agent Core
+│   ├── core.py        # Agent creation and execution (Async Optimized)
+│   ├── factory.py     # AgentFactory (Concurrent Thread Pool)
+│   ├── context.py     # ContextBuilder for prompt assembly
+│   └── skills.py      # SkillsLoader for Markdown skills
+├── channels/           # Multi-Platform Messaging
+│   ├── base.py        # BaseChannel abstract class
+│   ├── bus.py         # MessageBus async router
+│   ├── manager.py     # ChannelManager coordinator
+│   ├── schema.py      # Message models
+│   └── implementations/  # Channel implementations
+│       ├── discord.py
+│       ├── feishu.py
+│       ├── dingtalk.py
+│       ├── wechat.py
+│       └── email.py
+├── cli/                # CLI Interface
+│   ├── chat_session.py # Async Session Management
+│   ├── config_manager.py
+│   ├── providers.py
+│   └── ui.py
+├── config/             # Configuration Management
+│   ├── loader.py
+│   ├── schema.py      # Includes MCPConfig, ChannelsConfig
+│   └── utils.py
+├── constants.py        # Unified constants definition
+├── i18n/               # Internationalization
+│   ├── loader.py      # Language loader
+│   └── locales/
+├── memory/             # Memory System
+│   ├── manager.py
+│   ├── types.py
+│   ├── services/       # Service Layer
+│   ├── storage/        # Storage Layer
+│   └── vector_sync.py
+├── providers/          # LLM Providers
+│   └── factory.py
+├── sessions/           # Session Management
+│   ├── metadata.py
+│   ├── selector.py
+│   └── title_generator.py
+├── skills/             # Skill System
+│   ├── skill-creator/
+│   ├── summarize/
+│   └── weather/
+├── tools/              # Tool System
+│   ├── base.py
+│   ├── registry.py
+│   ├── factory.py     # ToolFactory
+│   ├── mcp.py         # MCP Tool Support
+│   ├── filesystem.py
+│   ├── memory.py
+│   ├── shell.py
+│   ├── web.py
+│   ├── session_title.py
+│   └── search/
+└── utils/              # Utility Functions
+    ├── cache.py
+    ├── logger.py
+    └── model_downloader.py
 ```
 
 ---
@@ -164,34 +160,6 @@ sequenceDiagram
     Pool->>Loop: Return Agent & Tools
     
     Loop->>CLI: Init Complete, Enter Interaction Loop
-```
-
-### 1.4 Web Interface Interaction Flow
-
-The Web interface communicates with the backend API Server via WebSocket to enable real-time chat and streaming output.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant U as User
-    participant W as Frontend (React)
-    participant API as API Server (FastAPI)
-    participant Loop as Agent Loop
-    participant Agent as LangGraph Agent
-
-    U->>W: Send Message
-    W->>API: WebSocket (send)
-    API->>Loop: MessageBus (publish)
-    
-    loop Event Loop
-        Loop->>Loop: Consume Message
-        Loop->>Agent: Invoke Agent (stream)
-        Agent-->>Loop: Stream Token/State
-        Loop->>API: MessageBus (publish response)
-    end
-    
-    API-->>W: WebSocket (receive)
-    W-->>U: Render Markdown
 ```
 
 ---
@@ -394,6 +362,7 @@ class QueryType(StrEnum):
 * **ToolRegistry**: Singleton registry managing all available tools.
 * **Lazy Loading**: Default tools (File, Search, etc.) are created by the Factory and automatically registered when the Agent starts.
 * **OpenAI Compatible**: Supports exporting tool definitions in OpenAI Function Calling format.
+* **MCP Support**: Supports MCP protocol via `mcp.py` for dynamic loading of external tools.
 
 #### Tool System Architecture
 
@@ -401,31 +370,31 @@ class QueryType(StrEnum):
 flowchart TB
     classDef registry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef builtin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef custom fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef mcp fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef agent fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
     TR[ToolRegistry<br/>Global Registry]:::registry
     Lock[Single-Lock Pattern<br/>Thread-Safe Singleton]:::registry
 
-    File[File Operations<br/>read_file / write_file<br/>edit_file / list_dir]:::builtin
-    Web[Network<br/>web_search / web_extract]:::builtin
-    Memory[Memory<br/>remember / recall / forget]:::builtin
-    System[System<br/>exec / session_title]:::builtin
+    subgraph BuiltIn [Built-in Tools - 12]
+        File[File Operations<br/>read/write/edit/list]:::builtin
+        Web[Network<br/>search/extract]:::builtin
+        Memory[Memory<br/>remember/recall/forget]:::builtin
+        System[System<br/>exec/session_title]:::builtin
+    end
 
-    Inherit[Inherit FinchTool<br/>Implement _run]:::custom
-    Register[Register to Registry]:::custom
+    subgraph MCP [MCP Tools - Dynamic Loading]
+        MCPConfig[MCPConfig<br/>Server Config]:::mcp
+        MCPLoader[MCPLoader<br/>Tool Discovery]:::mcp
+        MCPTools[MCP Tools<br/>External Tools]:::mcp
+    end
 
     Agent[Agent Call]:::agent
 
     TR --> Lock
-    Lock --> File & Web & Memory & System
-    Lock --> Inherit --> Register
-
-    File --> Agent
-    Web --> Agent
-    Memory --> Agent
-    System --> Agent
-    Register --> Agent
+    Lock --> BuiltIn
+    MCPConfig --> MCPLoader --> MCPTools --> TR
+    TR --> Agent
 ```
 
 #### Tool Base Class
@@ -526,7 +495,6 @@ flowchart LR
     Bus[MessageBus<br/>Inbound/Outbound Queues]:::bus
     CM[ChannelManager<br/>Channel Coordination]:::manager
 
-    Web[Web<br/>WebSocket]:::channel
     Discord[Discord<br/>Bot API]:::channel
     DingTalk[DingTalk<br/>Webhook]:::channel
     Feishu[Feishu<br/>Bot API]:::channel
@@ -534,7 +502,7 @@ flowchart LR
     Email[Email<br/>SMTP/IMAP]:::channel
 
     Bus <--> CM
-    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
+    CM <--> Discord & DingTalk & Feishu & WeChat & Email
 ```
 
 #### Core Components
@@ -661,25 +629,59 @@ Uses Pydantic v2 + Pydantic Settings for type-safe configuration management.
 
 ```
 Config (Root)
- language
- default_model
- agents
-    defaults (Agent defaults)
- providers
-    openai
-    anthropic
-    deepseek
-    moonshot
-    dashscope
-    groq
-    gemini
-    openrouter
-    custom
- tools
-     web.search (Search config)
-     exec (Shell execution config)
-     restrict_to_workspace
+├── language
+├── default_model
+├── agents
+│   └── defaults (Agent defaults)
+├── providers
+│   ├── openai
+│   ├── anthropic
+│   ├── deepseek
+│   ├── moonshot
+│   ├── dashscope
+│   ├── groq
+│   ├── gemini
+│   ├── openrouter
+│   └── custom
+├── tools
+│   ├── web.search (Search config)
+│   ├── exec (Shell execution config)
+│   └── restrict_to_workspace
+├── mcp                    # MCP Configuration
+│   └── servers
+│       └── {server_name}
+│           ├── command
+│           ├── args
+│           └── env
+└── channels               # Channel Configuration
+    ├── discord
+    ├── feishu
+    ├── dingtalk
+    ├── wechat
+    └── email
 ```
+
+#### MCP Configuration Example
+
+```python
+class MCPServerConfig(BaseModel):
+    command: str           # Startup command
+    args: list[str]        # Command arguments
+    env: dict[str, str]    # Environment variables
+
+class MCPConfig(BaseModel):
+    servers: dict[str, MCPServerConfig]
+```
+
+#### Channel Configuration Example
+
+| Channel | Required Config | Description |
+|---------|-----------------|-------------|
+| Discord | `token` | Bot Token |
+| Feishu | `app_id`, `app_secret` | App credentials |
+| DingTalk | `client_id`, `client_secret` | Client credentials |
+| WeChat | `corp_id`, `agent_id`, `secret` | Enterprise app config |
+| Email | `smtp_host`, `smtp_user`, `smtp_password` | SMTP config |
 
 ---
 
@@ -856,4 +858,4 @@ FinchBot's architecture design focuses on:
 - **Reliability**: Degradation strategies, retry mechanisms, thread safety
 - **Maintainability**: Type safety, comprehensive logging, modular design
 - **Privacy**: Local processing of sensitive data
-- **Multi-Platform Support**: Channel system supports Web, Discord, DingTalk, Feishu, WeChat, Email
+- **Multi-Platform Support**: Channel system supports Discord, DingTalk, Feishu, WeChat, Email
