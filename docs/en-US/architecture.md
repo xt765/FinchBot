@@ -412,7 +412,7 @@ flowchart TB
     Memory[Memory<br/>remember / recall / forget]:::builtin
     System[System<br/>exec / session_title]:::builtin
 
-    Inherit[Inherit FinchTool<br/>Implement _run()]:::custom
+    Inherit[Inherit FinchTool<br/>Implement _run]:::custom
     Register[Register to Registry]:::custom
 
     Agent[Agent Call]:::agent

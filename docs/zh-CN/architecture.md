@@ -424,7 +424,7 @@ flowchart TB
     Memory[记忆<br/>remember / recall / forget]:::builtin
     System[系统<br/>exec / session_title]:::builtin
 
-    Inherit[继承 FinchTool<br/>实现 _run()]:::custom
+    Inherit[继承 FinchTool<br/>实现 _run]:::custom
     Register[注册到 Registry]:::custom
 
     Agent[Agent 调用]:::agent
