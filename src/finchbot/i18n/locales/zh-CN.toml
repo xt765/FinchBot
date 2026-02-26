@@ -747,3 +747,46 @@ configure_channel = "配置消息渠道"
 channel_steps = """1. 访问 https://langbot.app
 2. 配置所需平台（QQ、微信、飞书等）
 3. 在配置中启用 `langbot_enabled: true`"""
+
+# ========================================
+# 配置环境变量翻译
+# ========================================
+
+[config.env]
+title = "环境变量配置"
+mcp_env_hint = "MCP 敏感信息可通过环境变量配置"
+channel_env_hint = "Channel 敏感信息可通过环境变量配置"
+priority_note = "环境变量优先级高于配置文件"
+
+[config.env.mcp]
+github_token = "GitHub MCP Token"
+brave_api_key = "Brave Search API Key"
+slack_token = "Slack Bot Token"
+google_maps_key = "Google Maps API Key"
+postgres_conn = "PostgreSQL 连接字符串"
+sqlite_path = "SQLite 数据库路径"
+
+[config.env.channel]
+discord_token = "Discord Bot Token"
+feishu_app_id = "飞书 App ID"
+feishu_app_secret = "飞书 App Secret"
+dingtalk_client_id = "钉钉 Client ID"
+dingtalk_client_secret = "钉钉 Client Secret"
+wechat_corp_id = "企业微信 Corp ID"
+wechat_agent_id = "企业微信 Agent ID"
+wechat_secret = "企业微信 Secret"
+email_smtp_user = "SMTP 用户名"
+email_smtp_password = "SMTP 密码"
+
+# ========================================
+# 配置测试翻译
+# ========================================
+
+[config.test]
+mcp_title = "测试 MCP 服务器连接"
+mcp_success = "连接成功，发现 {count} 个工具"
+mcp_failed = "连接失败: {error}"
+channel_title = "测试 Channel 配置"
+channel_success = "配置验证成功"
+channel_failed = "配置验证失败: {error}"
+testing = "正在测试..."

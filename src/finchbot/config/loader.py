@@ -1,10 +1,24 @@
-"""FinchBot 配置加载工具."""
+"""FinchBot 配置加载工具.
+
+支持多种配置来源：
+1. 配置文件 (~/.finchbot/config.json)
+2. 环境变量 (FINCHBOT_*)
+3. 敏感信息环境变量 (MCP/Channel)
+
+优先级：环境变量 > 配置文件
+"""
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
-from finchbot.config.schema import Config, ProviderConfig
+from finchbot.config.schema import (
+    ChannelsConfig,
+    Config,
+    MCPServerConfig,
+    ProviderConfig,
+)
 
 
 def get_config_path() -> Path:
@@ -74,6 +88,200 @@ def _load_providers_from_env() -> dict[str, ProviderConfig]:
     return providers
 
 
+def _load_mcp_from_env() -> dict[str, MCPServerConfig]:
+    """从环境变量加载 MCP 服务器配置.
+
+    支持两种格式：
+    1. 完整格式: FINCHBOT_MCP__{SERVER_NAME}__{FIELD}
+    2. 敏感信息格式: FINCHBOT_MCP_{SUFFIX} (使用预定义映射)
+
+    Returns:
+        MCP 服务器名称到配置的映射。
+    """
+    from finchbot.config.env_mappings import (
+        MCP_ENV_PREFIX,
+        MCP_SENSITIVE_ENV_VARS,
+        get_mcp_env_var,
+    )
+
+    servers: dict[str, MCPServerConfig] = {}
+
+    # 1. 加载完整格式环境变量
+    for key, value in os.environ.items():
+        if not key.startswith(MCP_ENV_PREFIX):
+            continue
+
+        parts = key[len(MCP_ENV_PREFIX) :].split("__")
+        if len(parts) < 2:
+            continue
+
+        server_name = parts[0].lower()
+        field = parts[1].upper()  # 保持大小写敏感
+
+        if server_name not in servers:
+            servers[server_name] = MCPServerConfig()
+
+        if field == "COMMAND":
+            servers[server_name].command = value
+        elif field == "ARGS":
+            try:
+                servers[server_name].args = json.loads(value)
+            except json.JSONDecodeError:
+                servers[server_name].args = [value]
+        elif field == "URL":
+            servers[server_name].url = value
+        elif field == "DISABLED":
+            servers[server_name].disabled = value.lower() == "true"
+        elif field == "ENV" and len(parts) >= 3:
+            # 处理 ENV__KEY 格式
+            env_key = parts[2]
+            if servers[server_name].env is None:
+                servers[server_name].env = {}
+            servers[server_name].env[env_key] = value
+
+    # 2. 加载敏感信息格式环境变量
+    for server_name, mapping in MCP_SENSITIVE_ENV_VARS.items():
+        for suffix, config_key in mapping.items():
+            value = get_mcp_env_var(suffix)
+            if value:
+                if server_name not in servers:
+                    servers[server_name] = MCPServerConfig()
+                if servers[server_name].env is None:
+                    servers[server_name].env = {}
+                servers[server_name].env[config_key] = value
+
+    return servers
+
+
+def _load_channels_from_env() -> dict[str, dict[str, Any]]:
+    """从环境变量加载 Channel 配置.
+
+    支持两种格式：
+    1. 完整格式: FINCHBOT_CHANNELS__{CHANNEL_NAME}__{FIELD}
+    2. 敏感信息格式: FINCHBOT_{CHANNEL}_{FIELD} (使用预定义映射)
+
+    Returns:
+        Channel 名称到配置字段的映射。
+    """
+    from finchbot.config.env_mappings import (
+        CHANNELS_ENV_PREFIX,
+        CHANNEL_SENSITIVE_ENV_VARS,
+        get_channel_env_var,
+    )
+
+    channels: dict[str, dict[str, Any]] = {}
+
+    # 1. 加载完整格式环境变量
+    for key, value in os.environ.items():
+        if not key.startswith(CHANNELS_ENV_PREFIX):
+            continue
+
+        parts = key[len(CHANNELS_ENV_PREFIX) :].split("__")
+        if len(parts) < 2:
+            continue
+
+        channel_name = parts[0].lower()
+        field = parts[1].lower()
+
+        if channel_name not in channels:
+            channels[channel_name] = {}
+
+        if field == "enabled":
+            channels[channel_name]["enabled"] = value.lower() == "true"
+        else:
+            channels[channel_name][field] = value
+
+    # 2. 加载敏感信息格式环境变量
+    for channel_name, mapping in CHANNEL_SENSITIVE_ENV_VARS.items():
+        for field, env_var in mapping.items():
+            value = get_channel_env_var(env_var)
+            if value:
+                if channel_name not in channels:
+                    channels[channel_name] = {}
+                channels[channel_name][field] = value
+
+    return channels
+
+
+def _apply_mcp_env_vars(config: Config) -> Config:
+    """应用 MCP 环境变量到配置.
+
+    环境变量优先级高于配置文件。
+
+    Args:
+        config: 原始配置对象。
+
+    Returns:
+        应用环境变量后的配置对象。
+    """
+    from finchbot.config.env_mappings import MCP_SENSITIVE_ENV_VARS, get_mcp_env_var
+
+    # 应用敏感信息环境变量到已存在的 MCP 服务器配置
+    for server_name, mapping in MCP_SENSITIVE_ENV_VARS.items():
+        if server_name in config.mcp.servers:
+            server = config.mcp.servers[server_name]
+            for suffix, config_key in mapping.items():
+                value = get_mcp_env_var(suffix)
+                if value:
+                    if server.env is None:
+                        server.env = {}
+                    server.env[config_key] = value
+
+    # 合并完整格式环境变量配置
+    env_servers = _load_mcp_from_env()
+    for server_name, server_config in env_servers.items():
+        if server_name in config.mcp.servers:
+            # 合并配置，环境变量优先
+            existing = config.mcp.servers[server_name]
+            if server_config.command:
+                existing.command = server_config.command
+            if server_config.args:
+                existing.args = server_config.args
+            if server_config.url:
+                existing.url = server_config.url
+            if server_config.env:
+                if existing.env is None:
+                    existing.env = {}
+                existing.env.update(server_config.env)
+        else:
+            config.mcp.servers[server_name] = server_config
+
+    return config
+
+
+def _apply_channels_env_vars(config: Config) -> Config:
+    """应用 Channel 环境变量到配置.
+
+    环境变量优先级高于配置文件。
+
+    Args:
+        config: 原始配置对象。
+
+    Returns:
+        应用环境变量后的配置对象。
+    """
+    from finchbot.config.env_mappings import CHANNEL_SENSITIVE_ENV_VARS, get_channel_env_var
+
+    # 应用敏感信息环境变量
+    for channel_name, mapping in CHANNEL_SENSITIVE_ENV_VARS.items():
+        channel = getattr(config.channels, channel_name, None)
+        if channel:
+            for field, env_var in mapping.items():
+                value = get_channel_env_var(env_var)
+                if value:
+                    setattr(channel, field, value)
+
+    # 合并完整格式环境变量配置
+    env_channels = _load_channels_from_env()
+    for channel_name, channel_fields in env_channels.items():
+        channel = getattr(config.channels, channel_name, None)
+        if channel:
+            for field, value in channel_fields.items():
+                setattr(channel, field, value)
+
+    return config
+
+
 def load_config(config_path: Path | None = None) -> Config:
     """从文件加载配置或创建默认配置.
 
@@ -126,6 +334,12 @@ def load_config(config_path: Path | None = None) -> Config:
         else:
             # 预设 provider
             setattr(config.providers, provider_name, provider_config)
+
+    # 从环境变量加载 MCP 配置并合并（环境变量优先级高于配置文件）
+    config = _apply_mcp_env_vars(config)
+
+    # 从环境变量加载 Channel 配置并合并（环境变量优先级高于配置文件）
+    config = _apply_channels_env_vars(config)
 
     # 如果默认模型未被用户设置过，尝试自动检测
     if not config.default_model_set_by_user:

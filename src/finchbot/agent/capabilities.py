@@ -155,6 +155,17 @@ class CapabilitiesBuilder:
         lines.append(t("capabilities.extension.mcp_steps"))
         lines.append("")
 
+        # 环境变量配置（推荐）
+        lines.append(f"**{t('config.env.title')}（推荐）**\n")
+        lines.append(t("config.env.mcp_env_hint"))
+        lines.append("\n```bash")
+        lines.append("# GitHub MCP")
+        lines.append("export FINCHBOT_MCP_GITHUB_TOKEN=ghp_...")
+        lines.append("")
+        lines.append("# Brave Search MCP")
+        lines.append("export FINCHBOT_MCP_BRAVE_API_KEY=...")
+        lines.append("```\n")
+
         # 新增技能
         lines.append(f"### {t('capabilities.extension.add_skill')}\n")
         lines.append(t("capabilities.extension.skill_steps"))
@@ -163,6 +174,18 @@ class CapabilitiesBuilder:
         # 配置消息渠道
         lines.append(f"### {t('capabilities.extension.configure_channel')}\n")
         lines.append(t("capabilities.extension.channel_steps"))
+        lines.append("")
+
+        # Channel 环境变量配置
+        lines.append(f"**{t('config.env.title')}（推荐）**\n")
+        lines.append(t("config.env.channel_env_hint"))
+        lines.append("\n```bash")
+        lines.append("# Discord")
+        lines.append("export FINCHBOT_DISCORD_TOKEN=...")
+        lines.append("")
+        lines.append("# 飞书")
+        lines.append("export FINCHBOT_FEISHU_APP_SECRET=...")
+        lines.append("```")
 
         return "\n".join(lines)
 

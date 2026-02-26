@@ -637,4 +637,109 @@ cleanup_title = "清理舊的每日筆記檔案"
 cleanup_success = "已清理 {count} 個舊檔案"
 output_dir = "輸出目錄"
 dry_run_hint = "預覽模式 - 不會實際刪除檔案"
+
+# ========================================
+# 能力資訊翻譯 (Capabilities)
+# ========================================
+
+[capabilities.mcp]
+title = "MCP (Model Context Protocol) 配置"
+configured_servers = "你已配置以下 MCP 伺服器，它們提供了額外的工具能力："
+available_tools = "可用 MCP 工具"
+tools_intro = "以下工具來自 MCP 伺服器，擴展了你的能力："
+how_to_add = "如何新增 MCP 伺服器"
+add_steps = """使用者可以透過以下方式新增 MCP 伺服器：
+1. 執行 `finchbot config` 命令
+2. 選擇 'MCP 伺服器' 選項
+3. 選擇預設範本（如 Filesystem、GitHub、Brave Search）或自訂配置"""
+no_description = "無描述"
+
+[capabilities.channel]
+title = "訊息渠道 (Channel)"
+langbot_enabled = "目前已啟用 LangBot 平台整合。"
+langbot_url = "配置地址：https://langbot.app"
+langbot_migration = "訊息渠道功能已遷移到 LangBot 平台。"
+langbot_steps = """如需多平台訊息支援，請：
+1. 訪問 https://langbot.app
+2. 配置所需平台
+3. 在配置中啟用 `langbot_enabled: true`"""
+configured_platforms = "已配置的平台"
+supported_platforms = "支援的平台"
+platforms_list = """- QQ
+- 微信 (WeChat)
+- 飛書 (Feishu/Lark)
+- 釘釘 (DingTalk)
+- Discord
+- Telegram
+- Slack
+- 企業微信 (WeChat Work)
+- 郵件 (Email)"""
+
+[capabilities.status]
+enabled = "已啟用"
+disabled = "已停用"
+
+[capabilities.platform]
+discord = "Discord"
+feishu = "飛書"
+dingtalk = "釘釘"
+wechat = "企業微信"
+email = "郵件"
+
+[capabilities.extension]
+title = "如何擴展我的能力"
+add_mcp = "新增 MCP 伺服器"
+mcp_steps = """1. 執行 `finchbot config`
+2. 選擇 "MCP 伺服器"
+3. 選擇預設範本或自訂配置"""
+add_skill = "新增技能"
+skill_steps = """1. 在工作目錄的 `skills/` 資料夾中建立新目錄
+2. 建立 `SKILL.md` 檔案描述技能"""
+configure_channel = "配置訊息渠道"
+channel_steps = """1. 訪問 https://langbot.app
+2. 配置所需平台（QQ、微信、飛書等）
+3. 在配置中啟用 `langbot_enabled: true`"""
+
+# ========================================
+# 配置環境變數翻譯
+# ========================================
+
+[config.env]
+title = "環境變數配置"
+mcp_env_hint = "MCP 敏感資訊可透過環境變數配置"
+channel_env_hint = "Channel 敏感資訊可透過環境變數配置"
+priority_note = "環境變數優先級高於配置檔案"
+
+[config.env.mcp]
+github_token = "GitHub MCP Token"
+brave_api_key = "Brave Search API Key"
+slack_token = "Slack Bot Token"
+google_maps_key = "Google Maps API Key"
+postgres_conn = "PostgreSQL 連線字串"
+sqlite_path = "SQLite 資料庫路徑"
+
+[config.env.channel]
+discord_token = "Discord Bot Token"
+feishu_app_id = "飛書 App ID"
+feishu_app_secret = "飛書 App Secret"
+dingtalk_client_id = "釘釘 Client ID"
+dingtalk_client_secret = "釘釘 Client Secret"
+wechat_corp_id = "企業微信 Corp ID"
+wechat_agent_id = "企業微信 Agent ID"
+wechat_secret = "企業微信 Secret"
+email_smtp_user = "SMTP 使用者名稱"
+email_smtp_password = "SMTP 密碼"
+
+# ========================================
+# 配置測試翻譯
+# ========================================
+
+[config.test]
+mcp_title = "測試 MCP 伺服器連線"
+mcp_success = "連線成功，發現 {count} 個工具"
+mcp_failed = "連線失敗: {error}"
+channel_title = "測試 Channel 配置"
+channel_success = "配置驗證成功"
+channel_failed = "配置驗證失敗: {error}"
+testing = "正在測試..."
 dry_run_would_delete = "將刪除 {count} 個檔案"

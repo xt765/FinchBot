@@ -782,6 +782,49 @@ channel_steps = """1. Visit https://langbot.app
 2. Configure desired platforms (QQ, WeChat, Feishu, etc.)
 3. Enable `langbot_enabled: true` in configuration"""
 
+# ========================================
+# Configuration Environment Variables
+# ========================================
+
+[config.env]
+title = "Environment Variable Configuration"
+mcp_env_hint = "MCP sensitive info can be configured via environment variables"
+channel_env_hint = "Channel sensitive info can be configured via environment variables"
+priority_note = "Environment variables take precedence over config file"
+
+[config.env.mcp]
+github_token = "GitHub MCP Token"
+brave_api_key = "Brave Search API Key"
+slack_token = "Slack Bot Token"
+google_maps_key = "Google Maps API Key"
+postgres_conn = "PostgreSQL Connection String"
+sqlite_path = "SQLite Database Path"
+
+[config.env.channel]
+discord_token = "Discord Bot Token"
+feishu_app_id = "Feishu App ID"
+feishu_app_secret = "Feishu App Secret"
+dingtalk_client_id = "DingTalk Client ID"
+dingtalk_client_secret = "DingTalk Client Secret"
+wechat_corp_id = "WeChat Work Corp ID"
+wechat_agent_id = "WeChat Work Agent ID"
+wechat_secret = "WeChat Work Secret"
+email_smtp_user = "SMTP Username"
+email_smtp_password = "SMTP Password"
+
+# ========================================
+# Configuration Testing
+# ========================================
+
+[config.test]
+mcp_title = "Test MCP Server Connection"
+mcp_success = "Connection successful, found {count} tools"
+mcp_failed = "Connection failed: {error}"
+channel_title = "Test Channel Configuration"
+channel_success = "Configuration validated successfully"
+channel_failed = "Configuration validation failed: {error}"
+testing = "Testing..."
+
 memory_md = """# Memory System Guide
 
 ## Overview
