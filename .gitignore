@@ -61,6 +61,12 @@ coverage.xml
 # pytest
 .pytest_cache/
 
+# ruff
+.ruff_cache/
+
+# mypy
+.mypy_cache/
+
 # basedpyright
 .basedpyright/
 
