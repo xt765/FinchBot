@@ -119,7 +119,19 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - MOONSHOT_API_KEY=${MOONSHOT_API_KEY}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_API_BASE=${AZURE_OPENAI_API_BASE}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME}
+      - OLLAMA_API_BASE=${OLLAMA_API_BASE}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - BRAVE_API_KEY=${BRAVE_API_KEY}
       - FINCHBOT_LANGUAGE=${FINCHBOT_LANGUAGE:-zh-CN}
+      - FINCHBOT_DEFAULT_MODEL=${FINCHBOT_DEFAULT_MODEL:-gpt-4o}
     volumes:
       - finchbot_workspace:/root/.finchbot/workspace
       - finchbot_models:/root/.cache/huggingface
@@ -127,7 +139,9 @@ services:
 
 volumes:
   finchbot_workspace:
+    driver: local
   finchbot_models:
+    driver: local
 ```
 
 ### 常用命令
@@ -163,7 +177,15 @@ docker exec -it finchbot /bin/bash
 | `ANTHROPIC_API_KEY` | Anthropic API Key | 二选一 |
 | `GOOGLE_API_KEY` | Google Gemini API Key | 否 |
 | `DEEPSEEK_API_KEY` | DeepSeek API Key | 否 |
+| `MOONSHOT_API_KEY` | Moonshot (Kimi) API Key | 否 |
+| `DASHSCOPE_API_KEY` | DashScope (通义千问) API Key | 否 |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API Key | 否 |
+| `AZURE_OPENAI_API_BASE` | Azure OpenAI API Base URL | 否 |
+| `AZURE_OPENAI_API_VERSION` | Azure OpenAI API Version | 否 |
+| `AZURE_OPENAI_DEPLOYMENT_NAME` | Azure OpenAI Deployment Name | 否 |
+| `OLLAMA_API_BASE` | Ollama API Base URL | 否 |
 | `TAVILY_API_KEY` | Tavily 搜索 API Key | 否 |
+| `BRAVE_API_KEY` | Brave 搜索 API Key | 否 |
 | `FINCHBOT_LANGUAGE` | 界面语言（zh-CN/en-US） | 否 |
 | `FINCHBOT_DEFAULT_MODEL` | 默认模型名称 | 否 |
 | `FINCHBOT_WORKSPACE` | 工作目录路径 | 否 |
@@ -193,10 +215,18 @@ flowchart TB
         U[用户]:::userLayer
     end
 
+    subgraph Channels [通道层]
+        Discord[Discord]:::appLayer
+        Feishu[飞书]:::appLayer
+        DingTalk[钉钉]:::appLayer
+        WeChat[微信]:::appLayer
+        Email[邮件]:::appLayer
+    end
+
     subgraph App [应用层]
-        LB[负载均衡器]:::appLayer
-        API[API 服务器<br/>FastAPI]:::appLayer
+        Bus[MessageBus<br/>消息路由]:::appLayer
         Agent[Agent<br/>LangGraph]:::appLayer
+        MCP[MCP 客户端<br/>外部工具]:::appLayer
     end
 
     subgraph Data [数据层]
@@ -205,9 +235,10 @@ flowchart TB
         Redis[(Redis<br/>缓存)]:::dataLayer
     end
 
-    U --> LB
-    LB --> API
-    API --> Agent
+    U --> Discord & Feishu & DingTalk & WeChat & Email
+    Discord & Feishu & DingTalk & WeChat & Email --> Bus
+    Bus --> Agent
+    Agent --> MCP
     Agent --> PG & Vector & Redis
 ```
 

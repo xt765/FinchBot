@@ -119,7 +119,19 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - MOONSHOT_API_KEY=${MOONSHOT_API_KEY}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_API_BASE=${AZURE_OPENAI_API_BASE}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME}
+      - OLLAMA_API_BASE=${OLLAMA_API_BASE}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - BRAVE_API_KEY=${BRAVE_API_KEY}
       - FINCHBOT_LANGUAGE=${FINCHBOT_LANGUAGE:-en-US}
+      - FINCHBOT_DEFAULT_MODEL=${FINCHBOT_DEFAULT_MODEL:-gpt-4o}
     volumes:
       - finchbot_workspace:/root/.finchbot/workspace
       - finchbot_models:/root/.cache/huggingface
@@ -127,7 +139,9 @@ services:
 
 volumes:
   finchbot_workspace:
+    driver: local
   finchbot_models:
+    driver: local
 ```
 
 ### Common Commands
@@ -163,7 +177,15 @@ docker exec -it finchbot /bin/bash
 | `ANTHROPIC_API_KEY` | Anthropic API key | One of two |
 | `GOOGLE_API_KEY` | Google Gemini API key | No |
 | `DEEPSEEK_API_KEY` | DeepSeek API key | No |
+| `MOONSHOT_API_KEY` | Moonshot (Kimi) API key | No |
+| `DASHSCOPE_API_KEY` | DashScope (Qwen) API key | No |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | No |
+| `AZURE_OPENAI_API_BASE` | Azure OpenAI API base URL | No |
+| `AZURE_OPENAI_API_VERSION` | Azure OpenAI API version | No |
+| `AZURE_OPENAI_DEPLOYMENT_NAME` | Azure OpenAI deployment name | No |
+| `OLLAMA_API_BASE` | Ollama API base URL | No |
 | `TAVILY_API_KEY` | Tavily search API key | No |
+| `BRAVE_API_KEY` | Brave search API key | No |
 | `FINCHBOT_LANGUAGE` | UI language (zh-CN/en-US) | No |
 | `FINCHBOT_DEFAULT_MODEL` | Default model name | No |
 | `FINCHBOT_WORKSPACE` | Workspace path | No |
@@ -193,10 +215,18 @@ flowchart TB
         U[User]:::userLayer
     end
 
+    subgraph Channels [Channel Layer]
+        Discord[Discord]:::appLayer
+        Feishu[Feishu]:::appLayer
+        DingTalk[DingTalk]:::appLayer
+        WeChat[WeChat]:::appLayer
+        Email[Email]:::appLayer
+    end
+
     subgraph App [Application Layer]
-        LB[Load Balancer]:::appLayer
-        API[API Server<br/>FastAPI]:::appLayer
+        Bus[MessageBus<br/>Message Router]:::appLayer
         Agent[Agent<br/>LangGraph]:::appLayer
+        MCP[MCP Client<br/>External Tools]:::appLayer
     end
 
     subgraph Data [Data Layer]
@@ -205,9 +235,10 @@ flowchart TB
         Redis[(Redis<br/>Cache)]:::dataLayer
     end
 
-    U --> LB
-    LB --> API
-    API --> Agent
+    U --> Discord & Feishu & DingTalk & WeChat & Email
+    Discord & Feishu & DingTalk & WeChat & Email --> Bus
+    Bus --> Agent
+    Agent --> MCP
     Agent --> PG & Vector & Redis
 ```
 

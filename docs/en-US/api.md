@@ -12,6 +12,7 @@ This document provides detailed API reference for FinchBot's core classes and me
 6. [Config Module](#6-config-module-finchbotconfig)
 7. [I18n Module](#7-i18n-module-finchboti18n)
 8. [Providers Module](#8-providers-module-finchbotproviders)
+9. [MCP Module](#9-mcp-module-finchbotmcp)
 
 ---
 
@@ -655,4 +656,106 @@ model = create_chat_model(
     model="gpt-5",
     config=config,
 )
+```
+
+---
+
+## 9. MCP Module (`finchbot.mcp`)
+
+### 9.1 `MCPClient`
+
+MCP (Model Context Protocol) client for connecting to external MCP servers and loading tools.
+
+```python
+class MCPClient:
+    def __init__(self, config: MCPConfig): ...
+    
+    async def connect(self) -> None: ...
+    async def disconnect(self) -> None: ...
+    async def list_tools(self) -> list[MCPTool]: ...
+    async def call_tool(self, name: str, arguments: dict) -> Any: ...
+```
+
+**Methods**:
+- `connect()`: Establish connection to MCP server
+- `disconnect()`: Disconnect and cleanup resources
+- `list_tools()`: Get all tools provided by MCP server
+- `call_tool()`: Call specified MCP tool
+
+---
+
+### 9.2 `MCPToolLoader`
+
+MCP tool loader that converts MCP tools to LangChain tool format.
+
+```python
+class MCPToolLoader:
+    def __init__(self, config: Config): ...
+    
+    async def load_tools(self) -> list[BaseTool]: ...
+    def get_tool_names(self) -> list[str]: ...
+```
+
+**Methods**:
+- `load_tools()`: Load tools from all configured MCP servers
+- `get_tool_names()`: Get list of loaded tool names
+
+---
+
+### 9.3 MCP Configuration Structure
+
+```python
+class MCPServerConfig(BaseModel):
+    """Single MCP server configuration"""
+    command: str
+    args: list[str] = []
+    env: dict[str, str] = {}
+    disabled: bool = False
+
+class MCPConfig(BaseModel):
+    """MCP total configuration"""
+    servers: dict[str, MCPServerConfig] = {}
+```
+
+---
+
+### 9.4 Usage Example
+
+```python
+from finchbot.mcp import MCPClient, MCPToolLoader
+from finchbot.config import load_config
+
+config = load_config()
+
+# Load MCP tools
+loader = MCPToolLoader(config)
+mcp_tools = await loader.load_tools()
+
+# All tools (built-in + MCP)
+all_tools = default_tools + mcp_tools
+```
+
+---
+
+### 9.5 Configuration Example
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "command": "mcp-server-filesystem",
+        "args": ["/path/to/workspace"],
+        "env": {}
+      },
+      "github": {
+        "command": "mcp-server-github",
+        "args": [],
+        "env": {
+          "GITHUB_TOKEN": "your-token"
+        }
+      }
+    }
+  }
+}
 ```

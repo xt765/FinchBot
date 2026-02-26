@@ -360,3 +360,150 @@ uv run finchbot chat
 | Memory database | `~/.finchbot/workspace/memories.db` | SQLite storage |
 | Vector database | `~/.finchbot/workspace/chroma/` | ChromaDB |
 | Conversation state | `~/.finchbot/workspace/checkpoints.db` | LangGraph persistence |
+
+---
+
+## 6. MCP Configuration
+
+MCP (Model Context Protocol) allows integration of external tool servers to dynamically extend Agent capabilities.
+
+### `mcp` Configuration
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `servers` | dict | `{}` | MCP server configuration dictionary |
+
+### MCPServerConfig Fields
+
+| Field | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `command` | string | ✓ | Command to start the MCP server |
+| `args` | list[str] | | Command line arguments |
+| `env` | dict | | Environment variables |
+
+### MCP Configuration Example
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "command": "mcp-filesystem",
+        "args": ["/path/to/allowed/dir"],
+        "env": {}
+      },
+      "github": {
+        "command": "mcp-github",
+        "args": [],
+        "env": {
+          "GITHUB_TOKEN": "ghp_..."
+        }
+      }
+    }
+  }
+}
+```
+
+### Configure MCP via CLI
+
+```bash
+finchbot config
+# Select "MCP Configuration" option
+```
+
+---
+
+## 7. Channel Configuration
+
+Multi-platform messaging channel configuration, supporting Discord, Feishu, DingTalk, WeChat, Email, etc.
+
+### `channels` Configuration
+
+#### Discord Configuration
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | Whether to enable |
+| `token` | string | `""` | Bot Token |
+
+#### Feishu Configuration
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | Whether to enable |
+| `app_id` | string | `""` | App ID |
+| `app_secret` | string | `""` | App Secret |
+
+#### DingTalk Configuration
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | Whether to enable |
+| `client_id` | string | `""` | Client ID |
+| `client_secret` | string | `""` | Client Secret |
+
+#### WeChat Configuration
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | Whether to enable |
+| `corp_id` | string | `""` | Corporation ID |
+| `agent_id` | string | `""` | Agent ID |
+| `secret` | string | `""` | Agent Secret |
+
+#### Email Configuration
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | Whether to enable |
+| `smtp_host` | string | `""` | SMTP server address |
+| `smtp_port` | int | `587` | SMTP port |
+| `smtp_user` | string | `""` | SMTP username |
+| `smtp_password` | string | `""` | SMTP password |
+| `from_address` | string | `""` | Sender address |
+| `use_tls` | bool | `true` | Whether to use TLS |
+
+### Full Channel Configuration Example
+
+```json
+{
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "your-bot-token"
+    },
+    "feishu": {
+      "enabled": true,
+      "app_id": "cli_xxx",
+      "app_secret": "xxx"
+    },
+    "dingtalk": {
+      "enabled": false,
+      "client_id": "",
+      "client_secret": ""
+    },
+    "wechat": {
+      "enabled": false,
+      "corp_id": "",
+      "agent_id": "",
+      "secret": ""
+    },
+    "email": {
+      "enabled": false,
+      "smtp_host": "smtp.example.com",
+      "smtp_port": 587,
+      "smtp_user": "user@example.com",
+      "smtp_password": "password",
+      "from_address": "user@example.com",
+      "use_tls": true
+    }
+  }
+}
+```
+
+### Configure Channel via CLI
+
+```bash
+finchbot config
+# Select "Channel Configuration" option
+```

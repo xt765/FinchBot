@@ -210,9 +210,9 @@ finchbot/
          locales/
      providers/         # LLM 提供商
          factory.py
-     server/            # Web 服务器
-         main.py       # FastAPI
-         loop.py       # AgentLoop
+     mcp/               # MCP 协议支持
+         client.py     # MCP 客户端
+         loader.py     # 工具加载器
      sessions/          # 会话管理
      utils/             # 工具函数
          cache.py      # 通用缓存基类
@@ -222,9 +222,6 @@ finchbot/
  docs/                  # 文档
      zh-CN/            # 中文文档
      en-US/            # 英文文档
- web/                   # Web 前端
-     src/
-     package.json
  .models/               # 本地模型缓存（自动生成）
  pyproject.toml         # 项目配置
  uv.lock               # 依赖锁定

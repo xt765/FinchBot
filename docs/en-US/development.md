@@ -212,9 +212,9 @@ finchbot/
        locales/
     providers/         # LLM providers
        factory.py
-    server/            # Web server
-       main.py       # FastAPI
-       loop.py       # AgentLoop
+    mcp/               # MCP protocol support
+       client.py     # MCP client
+       loader.py     # Tool loader
     sessions/          # Session management
     utils/             # Utility functions
         cache.py      # Generic cache base class
@@ -224,9 +224,6 @@ finchbot/
  docs/                  # Documentation
     zh-CN/            # Chinese docs
     en-US/            # English docs
- web/                   # Web frontend
-    src/
-    package.json
  .models/               # Local model cache (auto-generated)
  pyproject.toml         # Project configuration
  uv.lock               # Dependency lock

@@ -63,59 +63,6 @@ finchbot chat --session "project-alpha"
 finchbot chat --model "gpt-5"
 ```
 
-### 1.2 Web 界面（Beta）
-
-FinchBot 现已支持现代化的 Web 界面。
-
-```mermaid
-flowchart TB
-    classDef backend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
-    classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef user fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-
-    subgraph Backend [后端服务]
-        API[FastAPI<br/>:8000]:::backend
-        WS[WebSocket<br/>实时通信]:::backend
-    end
-
-    subgraph Frontend [前端界面]
-        React[React + Vite<br/>:5173]:::frontend
-        MD[Markdown 渲染]:::frontend
-    end
-
-    U[用户]:::user --> React
-    React <--> WS
-    WS <--> API
-
-    API --> React
-    React --> MD
-    MD --> U
-```
-
-#### 启动后端服务
-
-```bash
-uv run finchbot serve
-```
-
-服务将在 `http://127.0.0.1:8000` 启动。
-
-#### 启动前端界面
-
-```bash
-cd web
-npm install
-npm run dev
-```
-
-在浏览器中打开 `http://localhost:5173` 即可开始聊天。
-
-Web 界面特性：
-- 实时流式输出
-- Markdown 富文本渲染
-- 代码高亮
-- 自动加载历史
-
 ---
 
 ## 2. 斜杠命令
@@ -297,14 +244,14 @@ finchbot models download
 
 ## 6. 内置工具使用
 
-FinchBot 包含 11 个内置工具，分为四大类：
+FinchBot 包含 12 个内置工具，分为四大类：
 
 ```mermaid
 flowchart TB
     classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    subgraph Tools [11 个内置工具]
+    subgraph Tools [12 个内置工具]
         File[文件操作]:::category
         Web[网络]:::category
         Memory[记忆]:::category

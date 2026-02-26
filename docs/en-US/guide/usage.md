@@ -63,59 +63,6 @@ finchbot chat --session "project-alpha"
 finchbot chat --model "gpt-5"
 ```
 
-### 1.2 Web Interface (Beta)
-
-FinchBot now supports a modern Web interface.
-
-```mermaid
-flowchart TB
-    classDef backend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
-    classDef frontend fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef user fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-
-    subgraph Backend [Backend Service]
-        API[FastAPI<br/>:8000]:::backend
-        WS[WebSocket<br/>Real-time]:::backend
-    end
-
-    subgraph Frontend [Frontend Interface]
-        React[React + Vite<br/>:5173]:::frontend
-        MD[Markdown Rendering]:::frontend
-    end
-
-    U[User]:::user --> React
-    React <--> WS
-    WS <--> API
-
-    API --> React
-    React --> MD
-    MD --> U
-```
-
-#### Start Backend Server
-
-```bash
-uv run finchbot serve
-```
-
-Server will start at `http://127.0.0.1:8000`.
-
-#### Start Frontend Interface
-
-```bash
-cd web
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173` in your browser to start chatting.
-
-Web Interface Features:
-- Real-time streaming output
-- Markdown rich text rendering
-- Code highlighting
-- Auto-loading history
-
 ---
 
 ## 2. Slash Commands
@@ -297,14 +244,14 @@ The system will automatically detect your network environment and choose the bes
 
 ## 6. Built-in Tools Usage
 
-FinchBot includes 11 built-in tools across four categories:
+FinchBot includes 12 built-in tools across four categories:
 
 ```mermaid
 flowchart TB
     classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    subgraph Tools [11 Built-in Tools]
+    subgraph Tools [12 Built-in Tools]
         File[File Operations]:::category
         Web[Network]:::category
         Memory[Memory]:::category

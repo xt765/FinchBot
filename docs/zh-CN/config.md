@@ -360,3 +360,150 @@ uv run finchbot chat
 | 记忆数据库 | `~/.finchbot/workspace/memories.db` | SQLite 存储 |
 | 向量数据库 | `~/.finchbot/workspace/chroma/` | ChromaDB |
 | 对话状态 | `~/.finchbot/workspace/checkpoints.db` | LangGraph 持久化 |
+
+---
+
+## 6. MCP 配置
+
+MCP (Model Context Protocol) 允许集成外部工具服务器，动态扩展 Agent 能力。
+
+### `mcp` 配置
+
+| 字段 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `servers` | dict | `{}` | MCP 服务器配置字典 |
+
+### MCPServerConfig 字段
+
+| 字段 | 类型 | 必需 | 说明 |
+| :--- | :--- | :---: | :--- |
+| `command` | string | ✓ | 启动 MCP 服务器的命令 |
+| `args` | list[str] | | 命令行参数 |
+| `env` | dict | | 环境变量 |
+
+### MCP 配置示例
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "command": "mcp-filesystem",
+        "args": ["/path/to/allowed/dir"],
+        "env": {}
+      },
+      "github": {
+        "command": "mcp-github",
+        "args": [],
+        "env": {
+          "GITHUB_TOKEN": "ghp_..."
+        }
+      }
+    }
+  }
+}
+```
+
+### 通过 CLI 配置 MCP
+
+```bash
+finchbot config
+# 选择 "MCP Configuration" 选项
+```
+
+---
+
+## 7. Channel 配置
+
+多平台消息渠道配置，支持 Discord、飞书、钉钉、企业微信、邮件等。
+
+### `channels` 配置
+
+#### Discord 配置
+
+| 字段 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | 是否启用 |
+| `token` | string | `""` | Bot Token |
+
+#### 飞书配置
+
+| 字段 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | 是否启用 |
+| `app_id` | string | `""` | 应用 ID |
+| `app_secret` | string | `""` | 应用密钥 |
+
+#### 钉钉配置
+
+| 字段 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | 是否启用 |
+| `client_id` | string | `""` | 客户端 ID |
+| `client_secret` | string | `""` | 客户端密钥 |
+
+#### 企业微信配置
+
+| 字段 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | 是否启用 |
+| `corp_id` | string | `""` | 企业 ID |
+| `agent_id` | string | `""` | 应用 ID |
+| `secret` | string | `""` | 应用密钥 |
+
+#### 邮件配置
+
+| 字段 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `enabled` | bool | `false` | 是否启用 |
+| `smtp_host` | string | `""` | SMTP 服务器地址 |
+| `smtp_port` | int | `587` | SMTP 端口 |
+| `smtp_user` | string | `""` | SMTP 用户名 |
+| `smtp_password` | string | `""` | SMTP 密码 |
+| `from_address` | string | `""` | 发件人地址 |
+| `use_tls` | bool | `true` | 是否使用 TLS |
+
+### Channel 完整配置示例
+
+```json
+{
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "your-bot-token"
+    },
+    "feishu": {
+      "enabled": true,
+      "app_id": "cli_xxx",
+      "app_secret": "xxx"
+    },
+    "dingtalk": {
+      "enabled": false,
+      "client_id": "",
+      "client_secret": ""
+    },
+    "wechat": {
+      "enabled": false,
+      "corp_id": "",
+      "agent_id": "",
+      "secret": ""
+    },
+    "email": {
+      "enabled": false,
+      "smtp_host": "smtp.example.com",
+      "smtp_port": 587,
+      "smtp_user": "user@example.com",
+      "smtp_password": "password",
+      "from_address": "user@example.com",
+      "use_tls": true
+    }
+  }
+}
+```
+
+### 通过 CLI 配置 Channel
+
+```bash
+finchbot config
+# 选择 "Channel Configuration" 选项
+```

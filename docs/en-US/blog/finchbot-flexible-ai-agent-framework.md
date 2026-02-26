@@ -389,7 +389,7 @@ flowchart TD
 
 ### 3.3 Tool System: Code-Level Capability Extension
 
-Tools are the bridge between Agent and the external world. FinchBot provides 11 built-in tools with easy extensibility.
+Tools are the bridge between Agent and the external world. FinchBot provides 12 built-in tools with easy extensibility.
 
 #### Tool System Architecture
 
@@ -397,31 +397,31 @@ Tools are the bridge between Agent and the external world. FinchBot provides 11 
 flowchart TB
     classDef registry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef builtin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-    classDef custom fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
-    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef mcp fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef agent fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
     TR[ToolRegistry<br/>Global Registry]:::registry
     Lock[Single Lock<br/>Thread-Safe Singleton]:::registry
 
-    File[File Operations<br/>read_file / write_file<br/>edit_file / list_dir]:::builtin
-    Web[Network<br/>web_search / web_extract]:::builtin
-    Memory[Memory<br/>remember / recall / forget]:::builtin
-    System[System<br/>exec / session_title]:::builtin
+    subgraph BuiltIn [Built-in Tools - 12]
+        File[File Operations<br/>read/write/edit/list]:::builtin
+        Web[Network<br/>search/extract]:::builtin
+        Memory[Memory<br/>remember/recall/forget]:::builtin
+        System[System<br/>exec/session_title]:::builtin
+    end
 
-    Inherit[Inherit FinchTool<br/>Implement _run]:::custom
-    Register[Register to Registry]:::custom
+    subgraph MCP [MCP Tools - Dynamic Loading]
+        MCPConfig[MCPConfig<br/>Server Config]:::mcp
+        MCPLoader[MCPLoader<br/>Tool Discovery]:::mcp
+        MCPTools[MCP Tools<br/>External Tools]:::mcp
+    end
 
     Agent[Agent Call]:::agent
 
     TR --> Lock
-    Lock --> File & Web & Memory & System
-    Lock --> Inherit --> Register
-
-    File --> Agent
-    Web --> Agent
-    Memory --> Agent
-    System --> Agent
-    Register --> Agent
+    Lock --> BuiltIn
+    MCPConfig --> MCPLoader --> MCPTools --> TR
+    TR --> Agent
 ```
 
 #### Built-in Tools Overview
@@ -547,7 +547,6 @@ flowchart LR
     Bus[MessageBus<br/>Inbound/Outbound Queue]:::bus
     CM[ChannelManager<br/>Channel Coordination]:::manager
 
-    Web[Web<br/>WebSocket]:::channel
     Discord[Discord<br/>Bot API]:::channel
     DingTalk[DingTalk<br/>Webhook]:::channel
     Feishu[Feishu<br/>Bot API]:::channel
@@ -555,7 +554,7 @@ flowchart LR
     Email[Email<br/>SMTP/IMAP]:::channel
 
     Bus <--> CM
-    CM <--> Web & Discord & DingTalk & Feishu & WeChat & Email
+    CM <--> Discord & DingTalk & Feishu & WeChat & Email
 ```
 
 ### 3.6 LangChain 1.2 Architecture Practice
@@ -668,8 +667,8 @@ cp .env.example .env
 # Build and run
 docker-compose up -d
 
-# Access Web interface
-# http://localhost:8000
+# Use CLI
+docker exec -it finchbot finchbot chat
 ```
 
 |      Feature       | Description                              |
@@ -696,8 +695,6 @@ docker-compose up -d
 |    Rich Text    | Rich                   |  14.3+     |
 |     Logging     | Loguru                 |  0.7.3+    |
 |  Config Manage  | Pydantic Settings     | 2.12.0+    |
-|  Web Backend   | FastAPI                | 0.115.0+   |
-|  Web Frontend  | React + Vite           |  Latest    |
 
 ---
 
@@ -711,7 +708,7 @@ docker-compose up -d
 |  **Flexible Extension** | Inherit FinchTool or create SKILL.md to extend, no core code changes      |
 |  **Model Agnostic**   | Supports OpenAI, Anthropic, Gemini, DeepSeek, Moonshot, Groq, etc.        |
 |   **Thread Safe**     | Tool registry uses single lock mode, thread-safe                           |
-| **Multi-Platform**    | Channel system supports Web, Discord, DingTalk, Feishu, WeChat, Email    |
+| **Multi-Platform**    | Channel system supports Discord, DingTalk, Feishu, WeChat, Email    |
 
 ---
 

@@ -12,6 +12,7 @@
 6. [配置模块](#6-配置模块finchbotconfig)
 7. [国际化模块](#7-国际化模块finchboti18n)
 8. [提供商模块](#8-提供商模块finchbotproviders)
+9. [MCP 模块](#9-mcp-模块finchbotmcp)
 
 ---
 
@@ -655,4 +656,106 @@ model = create_chat_model(
     model="gpt-5",
     config=config,
 )
+```
+
+---
+
+## 9. MCP 模块 (`finchbot.mcp`)
+
+### 9.1 `MCPClient`
+
+MCP（Model Context Protocol）客户端，用于连接外部 MCP 服务器并加载工具。
+
+```python
+class MCPClient:
+    def __init__(self, config: MCPConfig): ...
+    
+    async def connect(self) -> None: ...
+    async def disconnect(self) -> None: ...
+    async def list_tools(self) -> list[MCPTool]: ...
+    async def call_tool(self, name: str, arguments: dict) -> Any: ...
+```
+
+**方法**：
+- `connect()`：建立与 MCP 服务器的连接
+- `disconnect()`：断开连接并清理资源
+- `list_tools()`：获取 MCP 服务器提供的所有工具
+- `call_tool()`：调用指定的 MCP 工具
+
+---
+
+### 9.2 `MCPToolLoader`
+
+MCP 工具加载器，将 MCP 工具转换为 LangChain 工具格式。
+
+```python
+class MCPToolLoader:
+    def __init__(self, config: Config): ...
+    
+    async def load_tools(self) -> list[BaseTool]: ...
+    def get_tool_names(self) -> list[str]: ...
+```
+
+**方法**：
+- `load_tools()`：加载所有配置的 MCP 服务器工具
+- `get_tool_names()`：获取已加载的工具名称列表
+
+---
+
+### 9.3 MCP 配置结构
+
+```python
+class MCPServerConfig(BaseModel):
+    """单个 MCP 服务器配置"""
+    command: str
+    args: list[str] = []
+    env: dict[str, str] = {}
+    disabled: bool = False
+
+class MCPConfig(BaseModel):
+    """MCP 总配置"""
+    servers: dict[str, MCPServerConfig] = {}
+```
+
+---
+
+### 9.4 使用示例
+
+```python
+from finchbot.mcp import MCPClient, MCPToolLoader
+from finchbot.config import load_config
+
+config = load_config()
+
+# 加载 MCP 工具
+loader = MCPToolLoader(config)
+mcp_tools = await loader.load_tools()
+
+# 所有工具（内置 + MCP）
+all_tools = default_tools + mcp_tools
+```
+
+---
+
+### 9.5 配置示例
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "command": "mcp-server-filesystem",
+        "args": ["/path/to/workspace"],
+        "env": {}
+      },
+      "github": {
+        "command": "mcp-server-github",
+        "args": [],
+        "env": {
+          "GITHUB_TOKEN": "your-token"
+        }
+      }
+    }
+  }
+}
 ```
