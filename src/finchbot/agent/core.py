@@ -85,15 +85,40 @@ def _create_default_tools(workspace: Path) -> list[BaseTool]:
 def _create_workspace_templates(workspace: Path) -> None:
     """创建默认工作区模板文件.
 
+    使用新的目录结构：
+    - bootstrap/ 目录存放 Bootstrap 文件
+    - config/ 目录存放配置文件
+    - generated/ 目录存放自动生成的文件
+
     Args:
         workspace: 工作目录路径。
     """
     from finchbot.config import load_config
     from finchbot.i18n.loader import I18n
+    from finchbot.workspace import (
+        BOOTSTRAP_DIR,
+        CONFIG_DIR,
+        GENERATED_DIR,
+        SKILLS_DIR,
+        MEMORY_DIR,
+        SESSIONS_DIR,
+        BOOTSTRAP_FILES,
+        DEFAULT_GITIGNORE,
+        GITIGNORE_FILE,
+    )
 
     config = load_config()
     i18n = I18n(config.language)
 
+    # 创建目录结构
+    (workspace / CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+    (workspace / BOOTSTRAP_DIR).mkdir(parents=True, exist_ok=True)
+    (workspace / GENERATED_DIR).mkdir(parents=True, exist_ok=True)
+    (workspace / SKILLS_DIR).mkdir(parents=True, exist_ok=True)
+    (workspace / MEMORY_DIR).mkdir(parents=True, exist_ok=True)
+    (workspace / SESSIONS_DIR).mkdir(parents=True, exist_ok=True)
+
+    # Bootstrap 文件模板
     templates = {
         "SYSTEM.md": i18n.get("bootstrap.templates.system_md"),
         "MEMORY_GUIDE.md": i18n.get("bootstrap.templates.memory_guide_md"),
@@ -101,13 +126,22 @@ def _create_workspace_templates(workspace: Path) -> None:
         "AGENT_CONFIG.md": i18n.get("bootstrap.templates.agents_md"),
     }
 
+    # 写入 Bootstrap 文件到 bootstrap/ 目录
+    bootstrap_dir = workspace / BOOTSTRAP_DIR
     for filename, content in templates.items():
-        file_path = workspace / filename
+        file_path = bootstrap_dir / filename
         if not file_path.exists():
             file_path.write_text(content, encoding="utf-8")
 
-    skills_dir = workspace / "skills"
-    skills_dir.mkdir(exist_ok=True)
+    # 创建默认 MCP 配置
+    mcp_path = workspace / CONFIG_DIR / "mcp.json"
+    if not mcp_path.exists():
+        mcp_path.write_text('{"servers": {}}', encoding="utf-8")
+
+    # 创建 .gitignore
+    gitignore_path = workspace / GITIGNORE_FILE
+    if not gitignore_path.exists():
+        gitignore_path.write_text(DEFAULT_GITIGNORE, encoding="utf-8")
 
 
 def build_system_prompt(
@@ -120,6 +154,7 @@ def build_system_prompt(
 
     支持 Bootstrap 文件和技能系统，集成 ToolRegistry 动态工具发现。
     注入 MCP 和 Channel 能力信息，让智能体"知道"自己的能力。
+    从工作区加载 MCP 配置，并生成 CAPABILITIES.md 文件。
 
     Args:
         workspace: 工作目录路径。
@@ -130,7 +165,8 @@ def build_system_prompt(
     Returns:
         系统提示字符串。
     """
-    from finchbot.agent.capabilities import build_capabilities_prompt
+    from finchbot.agent.capabilities import build_capabilities_prompt, write_capabilities_md
+    from finchbot.config.loader import load_mcp_config
     from finchbot.tools.tools_generator import ToolsGenerator
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M (%A)")
@@ -163,15 +199,27 @@ def build_system_prompt(
 
     prompt_parts.append(tools_content)
 
-    # 注入能力信息（MCP、Channel、扩展指南）
+    # 加载配置
     if config is None:
         from finchbot.config import load_config
         config = load_config()
 
+    # 从工作区加载 MCP 配置（覆盖全局配置）
+    mcp_servers = load_mcp_config(workspace)
+    if mcp_servers:
+        config.mcp.servers = mcp_servers
+        logger.debug(f"从工作区加载 MCP 配置: {len(mcp_servers)} 个服务器")
+
+    # 构建能力信息
     capabilities_prompt = build_capabilities_prompt(config, tools)
     if capabilities_prompt:
         prompt_parts.append(capabilities_prompt)
         logger.debug("已注入 MCP 和 Channel 能力信息到系统提示词")
+
+        # 生成 CAPABILITIES.md 文件
+        capabilities_file = write_capabilities_md(workspace, config, tools)
+        if capabilities_file:
+            logger.debug(f"能力信息已生成: {capabilities_file}")
 
     return "\n\n".join(prompt_parts)
 
@@ -223,7 +271,7 @@ async def get_sqlite_checkpointer(workspace: Path) -> AsyncIterator[AsyncSqliteS
     Yields:
         AsyncSqliteSaver 实例。
     """
-    db_path = workspace / "checkpoints.db"
+    db_path = workspace / SESSIONS_DIR / "checkpoints.db"
     async with AsyncSqliteSaver.from_conn_string(str(db_path)) as checkpointer:
         yield checkpointer
 
@@ -262,7 +310,7 @@ async def create_finch_agent(
     workspace.mkdir(parents=True, exist_ok=True)
 
     if use_persistent:
-        db_path = workspace / "checkpoints.db"
+        db_path = workspace / SESSIONS_DIR / "checkpoints.db"
         conn = await aiosqlite.connect(str(db_path), check_same_thread=False)
         checkpointer = AsyncSqliteSaver(conn)
     else:

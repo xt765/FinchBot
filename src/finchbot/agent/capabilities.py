@@ -2,14 +2,17 @@
 
 统一管理智能体的能力信息注入，包括 MCP、Channel、技能等。
 让智能体"知道"自己有哪些能力，以及如何扩展这些能力。
+支持新的目录结构（generated/ 目录）。
 """
 
 from collections.abc import Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from langchain_core.tools import BaseTool
 
 from finchbot.i18n import t
+from finchbot.workspace import get_capabilities_path
 
 if TYPE_CHECKING:
     from finchbot.config.schema import Config
@@ -118,27 +121,16 @@ class CapabilitiesBuilder:
         """
         lines = [f"## {t('capabilities.channel.title')}\n"]
 
-        # LangBot 集成状态
         if self.config.channels.langbot_enabled:
             lines.append(t("capabilities.channel.langbot_enabled"))
-            lines.append(t("capabilities.channel.langbot_url"))
+            lines.append("")
+            lines.append(f"**LangBot URL:** {self.config.channels.langbot_url}")
             lines.append("")
         else:
             lines.append(t("capabilities.channel.langbot_migration"))
             lines.append("")
             lines.append(t("capabilities.channel.langbot_steps"))
             lines.append("")
-
-        # 当前配置的平台
-        enabled_platforms = self._get_enabled_platforms()
-        if enabled_platforms:
-            lines.append(f"### {t('capabilities.channel.configured_platforms')}\n")
-            lines.append(f"{', '.join(enabled_platforms)}")
-            lines.append("")
-
-        # 支持的平台列表
-        lines.append(f"### {t('capabilities.channel.supported_platforms')}\n")
-        lines.append(t("capabilities.channel.platforms_list"))
 
         return "\n".join(lines)
 
@@ -150,12 +142,11 @@ class CapabilitiesBuilder:
         """
         lines = [f"## {t('capabilities.extension.title')}\n"]
 
-        # 新增 MCP 服务器
         lines.append(f"### {t('capabilities.extension.add_mcp')}\n")
         lines.append(t("capabilities.extension.mcp_steps"))
         lines.append("")
+        lines.append(f"**{t('capabilities.extension.mcp_config_location')}**\n")
 
-        # 环境变量配置（推荐）
         lines.append(f"**{t('config.env.title')}（推荐）**\n")
         lines.append(t("config.env.mcp_env_hint"))
         lines.append("\n```bash")
@@ -166,26 +157,16 @@ class CapabilitiesBuilder:
         lines.append("export FINCHBOT_MCP_BRAVE_API_KEY=...")
         lines.append("```\n")
 
-        # 新增技能
         lines.append(f"### {t('capabilities.extension.add_skill')}\n")
         lines.append(t("capabilities.extension.skill_steps"))
         lines.append("")
 
-        # 配置消息渠道
-        lines.append(f"### {t('capabilities.extension.configure_channel')}\n")
-        lines.append(t("capabilities.extension.channel_steps"))
+        lines.append(f"### {t('capabilities.extension.refresh_capabilities')}\n")
+        lines.append(t("capabilities.extension.refresh_hint"))
         lines.append("")
 
-        # Channel 环境变量配置
-        lines.append(f"**{t('config.env.title')}（推荐）**\n")
-        lines.append(t("config.env.channel_env_hint"))
-        lines.append("\n```bash")
-        lines.append("# Discord")
-        lines.append("export FINCHBOT_DISCORD_TOKEN=...")
-        lines.append("")
-        lines.append("# 飞书")
-        lines.append("export FINCHBOT_FEISHU_APP_SECRET=...")
-        lines.append("```")
+        lines.append(f"## {t('workspace.title')}\n")
+        lines.append(t("workspace.description"))
 
         return "\n".join(lines)
 
@@ -268,27 +249,6 @@ class CapabilitiesBuilder:
             desc = desc[:97] + "..."
         return desc
 
-    def _get_enabled_platforms(self) -> list[str]:
-        """获取已启用的平台列表.
-
-        Returns:
-            已启用的平台名称列表.
-        """
-        platforms = []
-
-        if self.config.channels.discord.enabled:
-            platforms.append(t("capabilities.platform.discord"))
-        if self.config.channels.feishu.enabled:
-            platforms.append(t("capabilities.platform.feishu"))
-        if self.config.channels.dingtalk.enabled:
-            platforms.append(t("capabilities.platform.dingtalk"))
-        if self.config.channels.wechat.enabled:
-            platforms.append(t("capabilities.platform.wechat"))
-        if self.config.channels.email.enabled:
-            platforms.append(t("capabilities.platform.email"))
-
-        return platforms
-
     def get_mcp_server_count(self) -> int:
         """获取已配置的 MCP 服务器数量.
 
@@ -304,14 +264,6 @@ class CapabilitiesBuilder:
             工具数量.
         """
         return len(self._get_mcp_tools())
-
-    def get_enabled_platform_count(self) -> int:
-        """获取已启用的平台数量.
-
-        Returns:
-            平台数量.
-        """
-        return len(self._get_enabled_platforms())
 
 
 def build_capabilities_prompt(
@@ -329,3 +281,36 @@ def build_capabilities_prompt(
     """
     builder = CapabilitiesBuilder(config, tools)
     return builder.build_capabilities_prompt()
+
+
+def write_capabilities_md(
+    workspace: Path,
+    config: "Config",
+    tools: Sequence[BaseTool] | None = None,
+) -> Path | None:
+    """生成 CAPABILITIES.md 文件.
+
+    写入到 generated/ 目录。
+
+    Args:
+        workspace: 工作区路径.
+        config: FinchBot 配置对象.
+        tools: 可选的工具列表.
+
+    Returns:
+        写入的文件路径.
+    """
+    builder = CapabilitiesBuilder(config, tools)
+    content = builder.build_capabilities_prompt()
+
+    if not content:
+        return None
+
+    file_path = get_capabilities_path(workspace)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        file_path.write_text(content, encoding="utf-8")
+        return file_path
+    except Exception:
+        return None

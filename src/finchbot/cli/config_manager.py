@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import questionary
 import readchar
@@ -18,6 +19,7 @@ from rich.text import Text
 from finchbot.cli.providers import PRESET_PROVIDERS
 from finchbot.cli.ui import _keyboard_select
 from finchbot.config import get_config_path, load_config, save_config
+from finchbot.config.loader import load_mcp_config, save_mcp_config
 from finchbot.config.schema import (
     Config,
     MCPServerConfig,
@@ -25,6 +27,7 @@ from finchbot.config.schema import (
     WebSearchConfig,
 )
 from finchbot.i18n import set_language, t
+from finchbot.workspace import get_mcp_config_path, init_workspace
 
 console = Console()
 
@@ -75,9 +78,22 @@ class ConfigManager:
     - 格式化重置配置（带确认）
     """
 
-    def __init__(self) -> None:
+    def __init__(self, workspace: Path | None = None) -> None:
         self.config = load_config()
         self.config_path = get_config_path()
+        self.workspace = workspace or Path.cwd()
+        self._init_workspace()
+        self._load_workspace_mcp()
+
+    def _init_workspace(self) -> None:
+        if not self.workspace.exists():
+            self.workspace.mkdir(parents=True, exist_ok=True)
+        init_workspace(self.workspace, create_gitignore=True)
+
+    def _load_workspace_mcp(self) -> None:
+        mcp_servers = load_mcp_config(self.workspace)
+        if mcp_servers:
+            self.config.mcp.servers = mcp_servers
 
     def interactive_manage(self) -> None:
         """启动交互式配置管理."""
@@ -96,7 +112,9 @@ class ConfigManager:
             while True:
                 console.clear()
                 console.print(f"[bold blue]🔧 {t('cli.config.init_title')}[/bold blue]")
-                console.print(f"[dim]{t('cli.config.config_file')} {self.config_path}[/dim]\n")
+                console.print(f"[dim]{t('cli.config.config_file')} {self.config_path}[/dim]")
+                console.print(f"[dim]{t('cli.config.workspace')}: {self.workspace}[/dim]")
+                console.print(f"[dim]{t('cli.config.mcp_config_file')}: {get_mcp_config_path(self.workspace)}[/dim]\n")
 
                 self._render_config_list(config_items, selected_idx)
 
@@ -171,9 +189,9 @@ class ConfigManager:
                 "editable": True,
             },
             {
-                "key": "channels",
-                "name": t("cli.config.message_channels"),
-                "value": self._get_channels_status(),
+                "key": "langbot",
+                "name": "LangBot",
+                "value": t("cli.config.channel_enabled") if self.config.channels.langbot_enabled else t("cli.config.channel_disabled"),
                 "editable": True,
             },
         ]
@@ -195,16 +213,6 @@ class ConfigManager:
                 {
                     "key": f"mcp.{server_name}",
                     "name": f"  └─ MCP: {server_name}",
-                    "value": t("cli.config.channel_enabled"),
-                    "editable": True,
-                }
-            )
-
-        for channel_name in self._get_enabled_channels():
-            items.append(
-                {
-                    "key": f"channel.{channel_name}",
-                    "name": f"  └─ Channel: {channel_name}",
                     "value": t("cli.config.channel_enabled"),
                     "editable": True,
                 }
@@ -244,28 +252,6 @@ class ConfigManager:
         if server_count == 0:
             return t("cli.status.not_configured")
         return t("cli.config.mcp_servers_count").format(count=server_count)
-
-    def _get_channels_status(self) -> str:
-        """获取渠道配置状态."""
-        enabled = self._get_enabled_channels()
-        if not enabled:
-            return t("cli.status.not_configured")
-        return ", ".join(enabled)
-
-    def _get_enabled_channels(self) -> list[str]:
-        """获取已启用的渠道列表."""
-        channels = []
-        if self.config.channels.discord.enabled:
-            channels.append(t("cli.config.channel_discord"))
-        if self.config.channels.feishu.enabled:
-            channels.append(t("cli.config.channel_feishu"))
-        if self.config.channels.dingtalk.enabled:
-            channels.append(t("cli.config.channel_dingtalk"))
-        if self.config.channels.wechat.enabled:
-            channels.append(t("cli.config.channel_wechat"))
-        if self.config.channels.email.enabled:
-            channels.append(t("cli.config.channel_email"))
-        return channels
 
     def _render_config_list(self, items: list[dict], selected_idx: int) -> None:
         """渲染配置项列表."""
@@ -317,22 +303,26 @@ class ConfigManager:
             self._configure_search_engines()
         elif key == "mcp":
             self._configure_mcp()
-        elif key == "channels":
-            self._configure_channels()
+        elif key == "langbot":
+            self._configure_langbot()
         elif key.startswith("custom."):
             provider_name = key.replace("custom.", "")
             self._edit_custom_provider(provider_name)
         elif key.startswith("mcp."):
             server_name = key.replace("mcp.", "")
             self._edit_mcp_server(server_name)
-        elif key.startswith("channel."):
-            channel_name = key.replace("channel.", "")
-            self._configure_single_channel(channel_name)
 
-        save_config(self.config)
+        if key.startswith("mcp.") or key == "mcp":
+            self._save_mcp_config()
+        else:
+            save_config(self.config)
         console.print(f"[green]✓ {t('cli.config.config_updated')}[/green]")
         console.print(f"[dim]{t('config.manager.press_any_key_to_continue')}[/dim]")
         readchar.readkey()
+
+    def _save_mcp_config(self) -> None:
+        """保存 MCP 配置到工作区."""
+        save_mcp_config(self.config.mcp.servers, self.workspace)
 
     def _configure_providers_submenu(self) -> None:
         """配置提供商子菜单（键盘导航）."""
@@ -717,120 +707,26 @@ class ConfigManager:
             del self.config.mcp.servers[server_name]
             console.print(f"[yellow]✓ MCP server '{server_name}' {t('cli.config.cleared')}[/yellow]")
 
-    def _configure_channels(self) -> None:
-        """配置消息渠道（键盘导航菜单）."""
-        while True:
-            discord_status = (
-                t("cli.config.channel_enabled")
-                if self.config.channels.discord.enabled
-                else t("cli.config.channel_disabled")
-            )
-            feishu_status = (
-                t("cli.config.channel_enabled")
-                if self.config.channels.feishu.enabled
-                else t("cli.config.channel_disabled")
-            )
-            dingtalk_status = (
-                t("cli.config.channel_enabled")
-                if self.config.channels.dingtalk.enabled
-                else t("cli.config.channel_disabled")
-            )
-            wechat_status = (
-                t("cli.config.channel_enabled")
-                if self.config.channels.wechat.enabled
-                else t("cli.config.channel_disabled")
-            )
-            email_status = (
-                t("cli.config.channel_enabled")
-                if self.config.channels.email.enabled
-                else t("cli.config.channel_disabled")
-            )
+    def _configure_langbot(self) -> None:
+        """配置 LangBot 集成."""
+        console.print("\n[bold cyan]LangBot 配置[/bold cyan]")
+        console.print("[dim]Channel 功能已迁移到 LangBot 平台[/dim]")
+        console.print("[dim]LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台[/dim]")
+        console.print(f"[dim]官网: https://langbot.app[/dim]\n")
 
-            items = [
-                {
-                    "name": f"{t('cli.config.channel_discord')}        [{discord_status}]",
-                    "value": "discord",
-                },
-                {
-                    "name": f"{t('cli.config.channel_feishu')}         [{feishu_status}]",
-                    "value": "feishu",
-                },
-                {
-                    "name": f"{t('cli.config.channel_dingtalk')}       [{dingtalk_status}]",
-                    "value": "dingtalk",
-                },
-                {
-                    "name": f"{t('cli.config.channel_wechat')}    [{wechat_status}]",
-                    "value": "wechat",
-                },
-                {
-                    "name": f"{t('cli.config.channel_email')}          [{email_status}]",
-                    "value": "email",
-                },
-            ]
-
-            title = f"\n[bold cyan]{t('cli.config.channels_title')}[/bold cyan]\n"
-            help_text = (
-                f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
-                f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
-                f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.quit')}[/dim]"
-            )
-
-            result = _keyboard_select(items, title, help_text)
-
-            if result is None:
-                break
-            elif result == "discord":
-                self._configure_discord_channel()
-            elif result == "feishu":
-                self._configure_feishu_channel()
-            elif result == "dingtalk":
-                self._configure_dingtalk_channel()
-            elif result == "wechat":
-                self._configure_wechat_channel()
-            elif result == "email":
-                self._configure_email_channel()
-
-    def _configure_single_channel(self, channel_name: str) -> None:
-        """配置单个渠道（从主菜单进入）."""
-        channel_map = {
-            t("cli.config.channel_discord"): "discord",
-            t("cli.config.channel_feishu"): "feishu",
-            t("cli.config.channel_dingtalk"): "dingtalk",
-            t("cli.config.channel_wechat"): "wechat",
-            t("cli.config.channel_email"): "email",
-        }
-        internal_name = channel_map.get(channel_name, channel_name.lower())
-
-        if internal_name == "discord":
-            self._configure_discord_channel()
-        elif internal_name == "feishu":
-            self._configure_feishu_channel()
-        elif internal_name == "dingtalk":
-            self._configure_dingtalk_channel()
-        elif internal_name == "wechat":
-            self._configure_wechat_channel()
-        elif internal_name == "email":
-            self._configure_email_channel()
-
-    def _configure_discord_channel(self) -> None:
-        """配置 Discord 渠道."""
-        console.print(f"\n[bold cyan]{t('cli.config.channel_discord')}[/bold cyan]")
-
-        channel_config = self.config.channels.discord
         status = (
             t("cli.config.channel_enabled")
-            if channel_config.enabled
+            if self.config.channels.langbot_enabled
             else t("cli.config.channel_disabled")
         )
-        token_status = "***" if channel_config.token else t("cli.config.not_set")
+        url = self.config.channels.langbot_url
 
-        console.print(f"[dim]Status: {status}[/dim]")
-        console.print(f"[dim]Token: {token_status}[/dim]")
+        console.print(f"[dim]状态: {status}[/dim]")
+        console.print(f"[dim]URL: {url}[/dim]\n")
 
         items = [
-            {"name": f"{t('cli.config.channel_toggle')}  [{status}]", "value": "toggle"},
-            {"name": f"{t('cli.config.channel_set_token')}       [{token_status}]", "value": "token"},
+            {"name": f"启用/禁用  [{status}]", "value": "toggle"},
+            {"name": f"设置 URL  [{url}]", "value": "url"},
             {"name": t("config.manager.back"), "value": "back"},
         ]
 
@@ -844,289 +740,26 @@ class ConfigManager:
         result = _keyboard_select(items, title, help_text)
 
         if result == "toggle":
-            channel_config.enabled = not channel_config.enabled
+            self.config.channels.langbot_enabled = not self.config.channels.langbot_enabled
             new_status = (
                 t("cli.config.channel_enabled")
-                if channel_config.enabled
+                if self.config.channels.langbot_enabled
                 else t("cli.config.channel_disabled")
             )
-            console.print(f"[green]✓ Discord {new_status}[/green]")
-        elif result == "token":
-            new_token = questionary.text(
-                "Enter Discord Bot Token:",
-                default="",
-                is_password=True,
+            console.print(f"[green]✓ LangBot {new_status}[/green]")
+        elif result == "url":
+            new_url = questionary.text(
+                "LangBot URL:",
+                default=url,
             ).unsafe_ask()
-            if new_token:
-                channel_config.token = new_token
-                console.print("[green]✓ Token updated[/green]")
-
-    def _configure_feishu_channel(self) -> None:
-        """配置飞书渠道."""
-        console.print(f"\n[bold cyan]{t('cli.config.channel_feishu')}[/bold cyan]")
-
-        channel_config = self.config.channels.feishu
-        status = (
-            t("cli.config.channel_enabled")
-            if channel_config.enabled
-            else t("cli.config.channel_disabled")
-        )
-        app_id_status = "***" if channel_config.app_id else t("cli.config.not_set")
-        app_secret_status = "***" if channel_config.app_secret else t("cli.config.not_set")
-
-        console.print(f"[dim]Status: {status}[/dim]")
-        console.print(f"[dim]App ID: {app_id_status}[/dim]")
-        console.print(f"[dim]App Secret: {app_secret_status}[/dim]")
-
-        items = [
-            {"name": f"{t('cli.config.channel_toggle')}  [{status}]", "value": "toggle"},
-            {"name": f"{t('cli.config.channel_set_app_id')}       [{app_id_status}]", "value": "app_id"},
-            {"name": f"{t('cli.config.channel_set_app_secret')} [{app_secret_status}]", "value": "app_secret"},
-            {"name": t("config.manager.back"), "value": "back"},
-        ]
-
-        title = f"\n[dim]{t('cli.config.select_action')}:[/dim]\n"
-        help_text = (
-            f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
-            f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
-            f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.back')}[/dim]"
-        )
-
-        result = _keyboard_select(items, title, help_text)
-
-        if result == "toggle":
-            channel_config.enabled = not channel_config.enabled
-            new_status = (
-                t("cli.config.channel_enabled")
-                if channel_config.enabled
-                else t("cli.config.channel_disabled")
-            )
-            console.print(f"[green]✓ Feishu {new_status}[/green]")
-        elif result == "app_id":
-            new_value = questionary.text(
-                "Enter App ID:",
-                default="",
-            ).unsafe_ask()
-            if new_value:
-                channel_config.app_id = new_value
-                console.print("[green]✓ App ID updated[/green]")
-        elif result == "app_secret":
-            new_value = questionary.text(
-                "Enter App Secret:",
-                default="",
-                is_password=True,
-            ).unsafe_ask()
-            if new_value:
-                channel_config.app_secret = new_value
-                console.print("[green]✓ App Secret updated[/green]")
-
-    def _configure_dingtalk_channel(self) -> None:
-        """配置钉钉渠道."""
-        console.print(f"\n[bold cyan]{t('cli.config.channel_dingtalk')}[/bold cyan]")
-
-        channel_config = self.config.channels.dingtalk
-        status = (
-            t("cli.config.channel_enabled")
-            if channel_config.enabled
-            else t("cli.config.channel_disabled")
-        )
-        client_id_status = "***" if channel_config.client_id else t("cli.config.not_set")
-        client_secret_status = "***" if channel_config.client_secret else t("cli.config.not_set")
-
-        console.print(f"[dim]Status: {status}[/dim]")
-        console.print(f"[dim]Client ID: {client_id_status}[/dim]")
-        console.print(f"[dim]Client Secret: {client_secret_status}[/dim]")
-
-        items = [
-            {"name": f"{t('cli.config.channel_toggle')}  [{status}]", "value": "toggle"},
-            {"name": f"{t('cli.config.channel_set_client_id')}     [{client_id_status}]", "value": "client_id"},
-            {"name": f"{t('cli.config.channel_set_client_secret')} [{client_secret_status}]", "value": "client_secret"},
-            {"name": t("config.manager.back"), "value": "back"},
-        ]
-
-        title = f"\n[dim]{t('cli.config.select_action')}:[/dim]\n"
-        help_text = (
-            f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
-            f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
-            f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.back')}[/dim]"
-        )
-
-        result = _keyboard_select(items, title, help_text)
-
-        if result == "toggle":
-            channel_config.enabled = not channel_config.enabled
-            new_status = (
-                t("cli.config.channel_enabled")
-                if channel_config.enabled
-                else t("cli.config.channel_disabled")
-            )
-            console.print(f"[green]✓ DingTalk {new_status}[/green]")
-        elif result == "client_id":
-            new_value = questionary.text(
-                "Enter Client ID:",
-                default="",
-            ).unsafe_ask()
-            if new_value:
-                channel_config.client_id = new_value
-                console.print("[green]✓ Client ID updated[/green]")
-        elif result == "client_secret":
-            new_value = questionary.text(
-                "Enter Client Secret:",
-                default="",
-                is_password=True,
-            ).unsafe_ask()
-            if new_value:
-                channel_config.client_secret = new_value
-                console.print("[green]✓ Client Secret updated[/green]")
-
-    def _configure_wechat_channel(self) -> None:
-        """配置企业微信渠道."""
-        console.print(f"\n[bold cyan]{t('cli.config.channel_wechat')}[/bold cyan]")
-
-        channel_config = self.config.channels.wechat
-        status = (
-            t("cli.config.channel_enabled")
-            if channel_config.enabled
-            else t("cli.config.channel_disabled")
-        )
-        corp_id_status = "***" if channel_config.corp_id else t("cli.config.not_set")
-        agent_id_status = "***" if channel_config.agent_id else t("cli.config.not_set")
-        secret_status = "***" if channel_config.secret else t("cli.config.not_set")
-
-        console.print(f"[dim]Status: {status}[/dim]")
-        console.print(f"[dim]Corp ID: {corp_id_status}[/dim]")
-        console.print(f"[dim]Agent ID: {agent_id_status}[/dim]")
-        console.print(f"[dim]Secret: {secret_status}[/dim]")
-
-        items = [
-            {"name": f"{t('cli.config.channel_toggle')}  [{status}]", "value": "toggle"},
-            {"name": f"{t('cli.config.channel_set_corp_id')}       [{corp_id_status}]", "value": "corp_id"},
-            {"name": f"{t('cli.config.channel_set_agent_id')}     [{agent_id_status}]", "value": "agent_id"},
-            {"name": f"{t('cli.config.channel_set_secret')}       [{secret_status}]", "value": "secret"},
-            {"name": t("config.manager.back"), "value": "back"},
-        ]
-
-        title = f"\n[dim]{t('cli.config.select_action')}:[/dim]\n"
-        help_text = (
-            f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
-            f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
-            f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.back')}[/dim]"
-        )
-
-        result = _keyboard_select(items, title, help_text)
-
-        if result == "toggle":
-            channel_config.enabled = not channel_config.enabled
-            new_status = (
-                t("cli.config.channel_enabled")
-                if channel_config.enabled
-                else t("cli.config.channel_disabled")
-            )
-            console.print(f"[green]✓ WeChat Work {new_status}[/green]")
-        elif result == "corp_id":
-            new_value = questionary.text(
-                "Enter Corp ID:",
-                default="",
-            ).unsafe_ask()
-            if new_value:
-                channel_config.corp_id = new_value
-                console.print("[green]✓ Corp ID updated[/green]")
-        elif result == "agent_id":
-            new_value = questionary.text(
-                "Enter Agent ID:",
-                default="",
-            ).unsafe_ask()
-            if new_value:
-                channel_config.agent_id = new_value
-                console.print("[green]✓ Agent ID updated[/green]")
-        elif result == "secret":
-            new_value = questionary.text(
-                "Enter Secret:",
-                default="",
-                is_password=True,
-            ).unsafe_ask()
-            if new_value:
-                channel_config.secret = new_value
-                console.print("[green]✓ Secret updated[/green]")
-
-    def _configure_email_channel(self) -> None:
-        """配置邮件渠道."""
-        console.print(f"\n[bold cyan]{t('cli.config.channel_email')}[/bold cyan]")
-
-        channel_config = self.config.channels.email
-        status = (
-            t("cli.config.channel_enabled")
-            if channel_config.enabled
-            else t("cli.config.channel_disabled")
-        )
-        smtp_host_status = channel_config.smtp_host or t("cli.config.not_set")
-        smtp_user_status = channel_config.smtp_user or t("cli.config.not_set")
-
-        console.print(f"[dim]Status: {status}[/dim]")
-        console.print(f"[dim]SMTP Host: {smtp_host_status}:{channel_config.smtp_port}[/dim]")
-        console.print(f"[dim]SMTP User: {smtp_user_status}[/dim]")
-
-        items = [
-            {"name": f"{t('cli.config.channel_toggle')}  [{status}]", "value": "toggle"},
-            {"name": t("cli.config.channel_set_smtp"), "value": "smtp"},
-            {"name": t("config.manager.back"), "value": "back"},
-        ]
-
-        title = f"\n[dim]{t('cli.config.select_action')}:[/dim]\n"
-        help_text = (
-            f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
-            f"[dim cyan]Enter[/dim cyan] [dim]{t('config.manager.select')}[/dim]  "
-            f"[dim cyan]Q[/dim cyan] [dim]{t('config.manager.back')}[/dim]"
-        )
-
-        result = _keyboard_select(items, title, help_text)
-
-        if result == "toggle":
-            channel_config.enabled = not channel_config.enabled
-            new_status = (
-                t("cli.config.channel_enabled")
-                if channel_config.enabled
-                else t("cli.config.channel_disabled")
-            )
-            console.print(f"[green]✓ Email {new_status}[/green]")
-        elif result == "smtp":
-            try:
-                host = questionary.text(
-                    "SMTP Host:",
-                    default=channel_config.smtp_host,
-                ).unsafe_ask()
-                port_str = questionary.text(
-                    "SMTP Port:",
-                    default=str(channel_config.smtp_port),
-                ).unsafe_ask()
-                user = questionary.text(
-                    "SMTP User:",
-                    default=channel_config.smtp_user,
-                ).unsafe_ask()
-                password = questionary.text(
-                    "SMTP Password:",
-                    default="",
-                    is_password=True,
-                ).unsafe_ask()
-                from_addr = questionary.text(
-                    "From Address:",
-                    default=channel_config.from_address,
-                ).unsafe_ask()
-
-                channel_config.smtp_host = host
-                channel_config.smtp_port = int(port_str) if port_str else 587
-                channel_config.smtp_user = user
-                if password:
-                    channel_config.smtp_password = password
-                channel_config.from_address = from_addr
-                console.print("[green]✓ SMTP config updated[/green]")
-            except ValueError:
-                console.print("[red]Invalid port number[/red]")
+            if new_url:
+                self.config.channels.langbot_url = new_url
+                console.print("[green]✓ URL updated[/green]")
 
 
-def _run_interactive_config() -> None:
+def _run_interactive_config(workspace: Path | None = None) -> None:
     """运行交互式配置（入口函数）."""
-    manager = ConfigManager()
+    manager = ConfigManager(workspace)
     manager.interactive_manage()
 
 

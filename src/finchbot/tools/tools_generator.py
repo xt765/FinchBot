@@ -3,6 +3,7 @@
 扫描工具模块，自动生成 TOOLS.md 文件。
 支持从 ToolRegistry 动态发现工具。
 支持外部工具列表（如 MCP 工具）。
+支持新的目录结构（generated/ 目录）。
 """
 
 from collections.abc import Sequence
@@ -12,6 +13,7 @@ from langchain_core.tools import BaseTool
 
 from finchbot.i18n import t
 from finchbot.tools.registry import get_global_registry
+from finchbot.workspace import GENERATED_DIR, get_generated_path
 
 
 class ToolsGenerator:
@@ -94,6 +96,8 @@ class ToolsGenerator:
     def write_to_file(self, filename: str = "TOOLS.md") -> Path | None:
         """将工具文档写入文件.
 
+        写入到 generated/ 目录。
+
         Args:
             filename: 文件名，默认为 TOOLS.md。
 
@@ -104,7 +108,10 @@ class ToolsGenerator:
             return None
 
         content = self.generate_tools_content()
-        file_path = self.workspace / filename
+        
+        # 使用新的目录结构
+        file_path = get_generated_path(self.workspace, filename)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             file_path.write_text(content, encoding="utf-8")

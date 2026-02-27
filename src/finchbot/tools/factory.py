@@ -10,12 +10,16 @@ from loguru import logger
 from finchbot.agent.skills import BUILTIN_SKILLS_DIR
 from finchbot.memory import MemoryManager
 from finchbot.tools import (
+    ConfigureMCPTool,
     EditFileTool,
     ExecTool,
     ForgetTool,
+    GetCapabilitiesTool,
+    GetMCPConfigPathTool,
     ListDirTool,
     ReadFileTool,
     RecallTool,
+    RefreshCapabilitiesTool,
     RememberTool,
     SessionTitleTool,
     WebExtractTool,
@@ -62,10 +66,10 @@ class ToolFactory:
 
         # 基础文件系统工具
         tools: list[BaseTool] = [
-            ReadFileTool(allowed_dirs=allowed_read_dirs),
-            WriteFileTool(allowed_dirs=[self.workspace]),
-            EditFileTool(allowed_dirs=[self.workspace]),
-            ListDirTool(allowed_dirs=allowed_read_dirs),
+            ReadFileTool(allowed_dirs=allowed_read_dirs, workspace=str(self.workspace)),
+            WriteFileTool(allowed_dirs=[self.workspace], workspace=str(self.workspace)),
+            EditFileTool(allowed_dirs=[self.workspace], workspace=str(self.workspace)),
+            ListDirTool(allowed_dirs=allowed_read_dirs, workspace=str(self.workspace)),
         ]
 
         # 记忆工具
@@ -82,7 +86,7 @@ class ToolFactory:
         exec_timeout = 60
         if hasattr(self.config, "tools") and hasattr(self.config.tools, "exec"):
             exec_timeout = self.config.tools.exec.timeout
-        tools.append(ExecTool(timeout=exec_timeout))
+        tools.append(ExecTool(timeout=exec_timeout, working_dir=str(self.workspace)))
 
         # 网页提取工具
         tools.append(WebExtractTool())
@@ -91,6 +95,14 @@ class ToolFactory:
         web_search_tool = self._create_web_search_tool()
         if web_search_tool:
             tools.append(web_search_tool)
+
+        # 配置工具
+        tools.extend([
+            ConfigureMCPTool(workspace=str(self.workspace)),
+            RefreshCapabilitiesTool(workspace=str(self.workspace)),
+            GetCapabilitiesTool(workspace=str(self.workspace)),
+            GetMCPConfigPathTool(workspace=str(self.workspace)),
+        ])
 
         return tools
 

@@ -4,6 +4,12 @@
 """
 
 from finchbot.tools.base import FinchTool
+from finchbot.tools.config_tools import (
+    ConfigureMCPTool,
+    GetCapabilitiesTool,
+    GetMCPConfigPathTool,
+    RefreshCapabilitiesTool,
+)
 from finchbot.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
 from finchbot.tools.memory import ForgetTool, RecallTool, RememberTool
 from finchbot.tools.registry import (
@@ -36,6 +42,11 @@ __all__ = [
     "ForgetTool",
     # 会话管理工具
     "SessionTitleTool",
+    # 配置工具
+    "ConfigureMCPTool",
+    "RefreshCapabilitiesTool",
+    "GetCapabilitiesTool",
+    "GetMCPConfigPathTool",
     # 工具注册表
     "ToolRegistry",
     "get_global_registry",

@@ -161,100 +161,16 @@ class MCPConfig(BaseModel):
     servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
-class DiscordChannelConfig(BaseModel):
-    """Discord 渠道配置.
-
-    Attributes:
-        enabled: 是否启用。
-        token: Bot Token。
-    """
-
-    enabled: bool = False
-    token: str = ""
-
-
-class FeishuChannelConfig(BaseModel):
-    """飞书渠道配置.
-
-    Attributes:
-        enabled: 是否启用。
-        app_id: 应用 ID。
-        app_secret: 应用密钥。
-    """
-
-    enabled: bool = False
-    app_id: str = ""
-    app_secret: str = ""
-
-
-class DingTalkChannelConfig(BaseModel):
-    """钉钉渠道配置.
-
-    Attributes:
-        enabled: 是否启用。
-        client_id: 客户端 ID。
-        client_secret: 客户端密钥。
-    """
-
-    enabled: bool = False
-    client_id: str = ""
-    client_secret: str = ""
-
-
-class WeChatWorkChannelConfig(BaseModel):
-    """企业微信渠道配置.
-
-    Attributes:
-        enabled: 是否启用。
-        corp_id: 企业 ID。
-        agent_id: 应用 ID。
-        secret: 应用密钥。
-    """
-
-    enabled: bool = False
-    corp_id: str = ""
-    agent_id: str = ""
-    secret: str = ""
-
-
-class EmailChannelConfig(BaseModel):
-    """邮件渠道配置.
-
-    Attributes:
-        enabled: 是否启用。
-        smtp_host: SMTP 服务器地址。
-        smtp_port: SMTP 端口。
-        smtp_user: SMTP 用户名。
-        smtp_password: SMTP 密码。
-        from_address: 发件人地址。
-        use_tls: 是否使用 TLS。
-    """
-
-    enabled: bool = False
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-    from_address: str = ""
-    use_tls: bool = True
-
-
 class ChannelsConfig(BaseModel):
-    """渠道配置集合.
+    """渠道配置.
 
-    注意：渠道功能已迁移到 LangBot 平台。
+    Channel 功能已迁移到 LangBot 平台。
     LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台。
     请使用 LangBot 的 WebUI 配置各平台：https://langbot.app
-
-    此配置保留用于兼容性，后续版本将移除。
     """
 
-    discord: DiscordChannelConfig = Field(default_factory=DiscordChannelConfig)
-    feishu: FeishuChannelConfig = Field(default_factory=FeishuChannelConfig)
-    dingtalk: DingTalkChannelConfig = Field(default_factory=DingTalkChannelConfig)
-    wechat: WeChatWorkChannelConfig = Field(default_factory=WeChatWorkChannelConfig)
-    email: EmailChannelConfig = Field(default_factory=EmailChannelConfig)
     langbot_enabled: bool = False
+    langbot_url: str = "http://localhost:5090"
 
 
 class Config(BaseSettings):

@@ -70,11 +70,11 @@ class ExecTool(FinchTool):
             "properties": {
                 "command": {
                     "type": "string",
-                    "description": "要执行的 shell 命令",
+                    "description": t("tools.exec.param_command"),
                 },
                 "working_dir": {
                     "type": "string",
-                    "description": "可选的工作目录",
+                    "description": t("tools.exec.param_working_dir"),
                 },
             },
             "required": ["command"],

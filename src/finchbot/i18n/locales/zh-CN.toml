@@ -112,6 +112,7 @@ mcp_env = "环境变量"
 mcp_select_template = "选择 MCP 服务器模板"
 mcp_custom = "自定义配置"
 mcp_servers_count = "{count} 个服务器"
+mcp_config_file = "MCP 配置文件"
 
 mcp_template_filesystem = "文件系统 (本地文件)"
 mcp_template_fetch = "Fetch (网页内容)"
@@ -124,26 +125,8 @@ mcp_path_required = "请输入允许访问的路径"
 mcp_db_path_required = "请输入数据库路径"
 mcp_env_required = "请输入 {env_var}"
 
-message_channels = "消息渠道"
-channels_title = "配置消息渠道"
 channel_enabled = "已启用"
 channel_disabled = "已禁用"
-channel_toggle = "启用/禁用"
-channel_set_token = "设置 Token"
-channel_set_app_id = "设置 App ID"
-channel_set_app_secret = "设置 App Secret"
-channel_set_client_id = "设置 Client ID"
-channel_set_client_secret = "设置 Client Secret"
-channel_set_corp_id = "设置企业 ID"
-channel_set_agent_id = "设置应用 ID"
-channel_set_secret = "设置密钥"
-channel_set_smtp = "设置 SMTP 配置"
-
-channel_discord = "Discord"
-channel_feishu = "飞书"
-channel_dingtalk = "钉钉"
-channel_wechat = "企业微信"
-channel_email = "邮件"
 
 [cli.commands]
 version_help = "显示版本信息"
@@ -599,6 +582,27 @@ system_md = """# FinchBot (雀翎)
 - 不要使用"我们"、"咱们"等模糊称呼
 - 不要混淆"你"和"我"的指代对象
 
+## 工作区结构
+工作区目录结构如下：
+- config/mcp.json: MCP 服务器配置
+- bootstrap/: Bootstrap 文件（系统提示词）
+- generated/: 自动生成的文件（TOOLS.md, CAPABILITIES.md）
+- skills/: 自定义技能
+- memory/: 记忆数据库（memory.db）
+- memory_vectors/: 向量数据库（语义搜索索引）
+- sessions/: 会话数据
+  - metadata.db: 会话元数据（标题、时间等）
+  - checkpoints.db: 会话检查点（对话历史）
+
+## Agent 自配置能力
+你可以使用以下工具动态配置自己：
+- `configure_mcp`: 添加/修改/删除 MCP 服务器
+- `refresh_capabilities`: 刷新能力描述文件
+- `get_capabilities`: 获取当前能力描述
+- `get_mcp_config_path`: 获取 MCP 配置文件路径
+
+MCP 配置存储在工作区的 config/mcp.json 文件中。
+
 ## 文件系统工具使用指南
 - `list_dir`: 探索目录结构，了解有哪些文件
 - `read_file`: 读取文件内容，了解文件详情
@@ -711,42 +715,35 @@ langbot_steps = """如需多平台消息支持，请：
 1. 访问 https://langbot.app
 2. 配置所需平台
 3. 在配置中启用 `langbot_enabled: true`"""
-configured_platforms = "已配置的平台"
-supported_platforms = "支持的平台"
-platforms_list = """- QQ
-- 微信 (WeChat)
-- 飞书 (Feishu/Lark)
-- 钉钉 (DingTalk)
-- Discord
-- Telegram
-- Slack
-- 企业微信 (WeChat Work)
-- 邮件 (Email)"""
 
 [capabilities.status]
 enabled = "已启用"
 disabled = "已禁用"
-
-[capabilities.platform]
-discord = "Discord"
-feishu = "飞书"
-dingtalk = "钉钉"
-wechat = "企业微信"
-email = "邮件"
 
 [capabilities.extension]
 title = "如何扩展我的能力"
 add_mcp = "新增 MCP 服务器"
 mcp_steps = """1. 运行 `finchbot config`
 2. 选择 "MCP 服务器"
-3. 选择预设模板或自定义配置"""
+3. 选择预设模板或自定义配置
+
+或者使用 `configure_mcp` 工具动态配置。"""
+mcp_config_location = "MCP 配置存储在工作区的 config/mcp.json 文件中"
 add_skill = "新增技能"
 skill_steps = """1. 在工作目录的 `skills/` 文件夹中创建新目录
 2. 创建 `SKILL.md` 文件描述技能"""
-configure_channel = "配置消息渠道"
-channel_steps = """1. 访问 https://langbot.app
-2. 配置所需平台（QQ、微信、飞书等）
-3. 在配置中启用 `langbot_enabled: true`"""
+refresh_capabilities = "刷新能力描述"
+refresh_hint = "使用 `refresh_capabilities` 工具可以刷新 CAPABILITIES.md 文件"
+
+[workspace]
+title = "工作区结构"
+description = """工作区目录结构：
+- config/mcp.json: MCP 服务器配置
+- bootstrap/: Bootstrap 文件（系统提示词）
+- generated/: 自动生成的文件（TOOLS.md, CAPABILITIES.md）
+- skills/: 自定义技能
+- memory/: 记忆存储
+- sessions/: 会话数据"""
 
 # ========================================
 # 配置环境变量翻译
@@ -755,7 +752,6 @@ channel_steps = """1. 访问 https://langbot.app
 [config.env]
 title = "环境变量配置"
 mcp_env_hint = "MCP 敏感信息可通过环境变量配置"
-channel_env_hint = "Channel 敏感信息可通过环境变量配置"
 priority_note = "环境变量优先级高于配置文件"
 
 [config.env.mcp]
@@ -766,18 +762,6 @@ google_maps_key = "Google Maps API Key"
 postgres_conn = "PostgreSQL 连接字符串"
 sqlite_path = "SQLite 数据库路径"
 
-[config.env.channel]
-discord_token = "Discord Bot Token"
-feishu_app_id = "飞书 App ID"
-feishu_app_secret = "飞书 App Secret"
-dingtalk_client_id = "钉钉 Client ID"
-dingtalk_client_secret = "钉钉 Client Secret"
-wechat_corp_id = "企业微信 Corp ID"
-wechat_agent_id = "企业微信 Agent ID"
-wechat_secret = "企业微信 Secret"
-email_smtp_user = "SMTP 用户名"
-email_smtp_password = "SMTP 密码"
-
 # ========================================
 # 配置测试翻译
 # ========================================
@@ -786,7 +770,4 @@ email_smtp_password = "SMTP 密码"
 mcp_title = "测试 MCP 服务器连接"
 mcp_success = "连接成功，发现 {count} 个工具"
 mcp_failed = "连接失败: {error}"
-channel_title = "测试 Channel 配置"
-channel_success = "配置验证成功"
-channel_failed = "配置验证失败: {error}"
 testing = "正在测试..."

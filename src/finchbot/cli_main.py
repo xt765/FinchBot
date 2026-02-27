@@ -99,10 +99,19 @@ app.add_typer(config_app, name="config")
 
 
 @config_app.callback(invoke_without_command=True)
-def config_callback(ctx: typer.Context) -> None:
+def config_callback(
+    ctx: typer.Context,
+    workspace: str = typer.Option(
+        None,
+        "--workspace",
+        "-w",
+        help=t("cli.chat.workspace_option"),
+    ),
+) -> None:
     """配置管理（完全交互式界面）."""
     if ctx.invoked_subcommand is None:
-        _run_interactive_config()
+        ws_path = Path(workspace).expanduser() if workspace else get_default_workspace()
+        _run_interactive_config(ws_path)
 
 
 models_app = typer.Typer(help=t("cli.commands.models_help"))

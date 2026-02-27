@@ -2,6 +2,7 @@
 
 参考 Nanobot 的 ContextBuilder 设计，支持 Bootstrap 文件和技能系统。
 增强动态配置、错误处理和性能优化。
+支持新的目录结构（bootstrap/ 目录）。
 """
 
 from pathlib import Path
@@ -10,6 +11,7 @@ from loguru import logger
 
 from finchbot.agent.skills import SkillsLoader
 from finchbot.i18n import t
+from finchbot.workspace import BOOTSTRAP_DIR, BOOTSTRAP_FILES
 
 
 class ContextBuilder:
@@ -17,15 +19,10 @@ class ContextBuilder:
 
     负责组装系统提示，包括 Bootstrap 文件和技能。
     支持动态配置、缓存和详细的错误处理。
+    支持新的目录结构（bootstrap/ 目录）。
     """
 
-    # 可配置的 Bootstrap 文件列表
-    DEFAULT_BOOTSTRAP_FILES = [
-        "SYSTEM.md",
-        "MEMORY_GUIDE.md",
-        "AGENT_CONFIG.md",
-        "SOUL.md",
-    ]
+    DEFAULT_BOOTSTRAP_FILES = BOOTSTRAP_FILES
 
     def __init__(self, workspace: Path, bootstrap_files: list[str] | None = None) -> None:
         """初始化上下文构建器.
@@ -37,7 +34,7 @@ class ContextBuilder:
         self.workspace = workspace
         self.skills = SkillsLoader(workspace)
         self.bootstrap_files = bootstrap_files or self.DEFAULT_BOOTSTRAP_FILES
-        self._prompt_cache: dict[str, tuple[str, float]] = {}  # 缓存键 -> (提示词, 修改时间)
+        self._prompt_cache: dict[str, tuple[str, float]] = {}
         logger.debug(
             f"ContextBuilder 初始化: workspace={workspace}, bootstrap_files={self.bootstrap_files}"
         )
@@ -105,6 +102,8 @@ class ContextBuilder:
     def _load_bootstrap_files(self) -> str:
         """加载工作区下的 Bootstrap 文件.
 
+        从 bootstrap/ 目录加载。
+
         Returns:
             合并后的 Bootstrap 文件内容.
         """
@@ -112,17 +111,20 @@ class ContextBuilder:
         loaded_files = 0
         failed_files = 0
 
+        bootstrap_dir = self.workspace / BOOTSTRAP_DIR
+
         for filename in self.bootstrap_files:
-            file_path = self.workspace / filename
+            file_path = bootstrap_dir / filename
+            
             if file_path.exists():
                 try:
                     content = file_path.read_text(encoding="utf-8")
                     if content.strip():
                         parts.append(
-                            f"## {filename} ({t('agent.bootstrap_file_location')}: {file_path})\n\n{content}"
+                            f"## {filename} ({t('agent.bootstrap_file_location')}: bootstrap/{filename})\n\n{content}"
                         )
                         loaded_files += 1
-                        logger.debug(f"加载 Bootstrap 文件: {filename}")
+                        logger.debug(f"加载 Bootstrap 文件: bootstrap/{filename}")
                     else:
                         logger.warning(f"Bootstrap 文件为空: {filename}")
                 except Exception as e:
@@ -167,9 +169,11 @@ class ContextBuilder:
         """
         max_mtime = 0.0
 
+        bootstrap_dir = self.workspace / BOOTSTRAP_DIR
+
         # 检查 Bootstrap 文件
         for filename in self.bootstrap_files:
-            file_path = self.workspace / filename
+            file_path = bootstrap_dir / filename
             if file_path.exists():
                 try:
                     mtime = file_path.stat().st_mtime

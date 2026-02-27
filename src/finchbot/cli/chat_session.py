@@ -30,6 +30,7 @@ from finchbot.config import load_config
 from finchbot.constants import EXIT_COMMANDS
 from finchbot.i18n import t
 from finchbot.sessions import SessionMetadataStore
+from finchbot.workspace import SESSIONS_DIR
 
 console = Console()
 
@@ -950,7 +951,7 @@ def _get_last_active_session(workspace: Path) -> str:
     Returns:
         最近活跃的会话 ID，如果没有会话则生成新的会话 ID
     """
-    db_path = workspace / "sessions_metadata.db"
+    db_path = workspace / SESSIONS_DIR / "metadata.db"
     if not db_path.exists():
         from finchbot.sessions import SessionMetadataStore
 

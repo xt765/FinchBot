@@ -100,6 +100,34 @@ use_custom_api_base = "使用自訂 API Base？"
 default_hint = "預設：{}"
 configured_custom_provider = "已設定自訂提供者"
 
+mcp_servers = "MCP 伺服器"
+mcp_title = "設定 MCP 伺服器"
+mcp_add = "新增 MCP 伺服器"
+mcp_edit = "編輯 MCP 伺服器"
+mcp_delete = "刪除 MCP 伺服器"
+mcp_server_name = "伺服器名稱"
+mcp_command = "命令"
+mcp_args = "參數"
+mcp_env = "環境變數"
+mcp_select_template = "選擇 MCP 伺服器範本"
+mcp_custom = "自訂設定"
+mcp_servers_count = "{count} 個伺服器"
+mcp_config_file = "MCP 設定檔"
+
+mcp_template_filesystem = "檔案系統 (本地檔案)"
+mcp_template_fetch = "Fetch (網頁內容)"
+mcp_template_sqlite = "SQLite (資料庫)"
+mcp_template_github = "GitHub API"
+mcp_template_brave_search = "Brave 搜尋"
+mcp_template_puppeteer = "Puppeteer (瀏覽器自動化)"
+
+mcp_path_required = "請輸入允許存取的路徑"
+mcp_db_path_required = "請輸入資料庫路徑"
+mcp_env_required = "請輸入 {env_var}"
+
+channel_enabled = "已啟用"
+channel_disabled = "已停用"
+
 
 [cli.commands]
 version_help = "顯示版本資訊"
@@ -522,6 +550,27 @@ system_md = """# FinchBot (雀翎)
 - 不要使用「我們」、「咱們」等模糊稱呼
 - 不要混淆「你」和「我」的指代對象
 
+## 工作區結構
+工作區目錄結構如下：
+- config/mcp.json: MCP 伺服器配置
+- bootstrap/: Bootstrap 檔案（系統提示詞）
+- generated/: 自動產生的檔案（TOOLS.md, CAPABILITIES.md）
+- skills/: 自訂技能
+- memory/: 記憶資料庫（memory.db）
+- memory_vectors/: 向量資料庫（語意搜尋索引）
+- sessions/: 會話資料
+  - metadata.db: 會話元資料（標題、時間等）
+  - checkpoints.db: 會話檢查點（對話歷史）
+
+## Agent 自配置能力
+你可以使用以下工具動態配置自己：
+- `configure_mcp`: 新增/修改/刪除 MCP 伺服器
+- `refresh_capabilities`: 刷新能力描述檔案
+- `get_capabilities`: 取得目前能力描述
+- `get_mcp_config_path`: 取得 MCP 配置檔案路徑
+
+MCP 配置儲存在工作區的 config/mcp.json 檔案中。
+
 ## 檔案系統工具使用指南
 - `list_dir`: 探索目錄結構，了解有哪些檔案
 - `read_file`: 讀取檔案內容，了解檔案詳情
@@ -663,42 +712,35 @@ langbot_steps = """如需多平台訊息支援，請：
 1. 訪問 https://langbot.app
 2. 配置所需平台
 3. 在配置中啟用 `langbot_enabled: true`"""
-configured_platforms = "已配置的平台"
-supported_platforms = "支援的平台"
-platforms_list = """- QQ
-- 微信 (WeChat)
-- 飛書 (Feishu/Lark)
-- 釘釘 (DingTalk)
-- Discord
-- Telegram
-- Slack
-- 企業微信 (WeChat Work)
-- 郵件 (Email)"""
 
 [capabilities.status]
 enabled = "已啟用"
 disabled = "已停用"
-
-[capabilities.platform]
-discord = "Discord"
-feishu = "飛書"
-dingtalk = "釘釘"
-wechat = "企業微信"
-email = "郵件"
 
 [capabilities.extension]
 title = "如何擴展我的能力"
 add_mcp = "新增 MCP 伺服器"
 mcp_steps = """1. 執行 `finchbot config`
 2. 選擇 "MCP 伺服器"
-3. 選擇預設範本或自訂配置"""
+3. 選擇預設範本或自訂配置
+
+或者使用 `configure_mcp` 工具動態配置。"""
+mcp_config_location = "MCP 配置儲存在工作區的 config/mcp.json 檔案中"
 add_skill = "新增技能"
 skill_steps = """1. 在工作目錄的 `skills/` 資料夾中建立新目錄
 2. 建立 `SKILL.md` 檔案描述技能"""
-configure_channel = "配置訊息渠道"
-channel_steps = """1. 訪問 https://langbot.app
-2. 配置所需平台（QQ、微信、飛書等）
-3. 在配置中啟用 `langbot_enabled: true`"""
+refresh_capabilities = "刷新能力描述"
+refresh_hint = "使用 `refresh_capabilities` 工具可以刷新 CAPABILITIES.md 檔案"
+
+[workspace]
+title = "工作區結構"
+description = """工作區目錄結構：
+- config/mcp.json: MCP 伺服器配置
+- bootstrap/: Bootstrap 檔案（系統提示詞）
+- generated/: 自動產生的檔案（TOOLS.md, CAPABILITIES.md）
+- skills/: 自訂技能
+- memory/: 記憶儲存
+- sessions/: 會話資料"""
 
 # ========================================
 # 配置環境變數翻譯
@@ -707,7 +749,6 @@ channel_steps = """1. 訪問 https://langbot.app
 [config.env]
 title = "環境變數配置"
 mcp_env_hint = "MCP 敏感資訊可透過環境變數配置"
-channel_env_hint = "Channel 敏感資訊可透過環境變數配置"
 priority_note = "環境變數優先級高於配置檔案"
 
 [config.env.mcp]
@@ -717,18 +758,6 @@ slack_token = "Slack Bot Token"
 google_maps_key = "Google Maps API Key"
 postgres_conn = "PostgreSQL 連線字串"
 sqlite_path = "SQLite 資料庫路徑"
-
-[config.env.channel]
-discord_token = "Discord Bot Token"
-feishu_app_id = "飛書 App ID"
-feishu_app_secret = "飛書 App Secret"
-dingtalk_client_id = "釘釘 Client ID"
-dingtalk_client_secret = "釘釘 Client Secret"
-wechat_corp_id = "企業微信 Corp ID"
-wechat_agent_id = "企業微信 Agent ID"
-wechat_secret = "企業微信 Secret"
-email_smtp_user = "SMTP 使用者名稱"
-email_smtp_password = "SMTP 密碼"
 
 # ========================================
 # 配置測試翻譯

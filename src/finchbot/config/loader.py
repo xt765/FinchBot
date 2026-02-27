@@ -1,11 +1,11 @@
 """FinchBot 配置加载工具.
 
 支持多种配置来源：
-1. 配置文件 (~/.finchbot/config.json)
-2. 环境变量 (FINCHBOT_*)
-3. 敏感信息环境变量 (MCP/Channel)
+1. 全局配置文件 (~/.finchbot/config.json)
+2. 工作区 MCP 配置 ({workspace}/config/mcp.json)
+3. 环境变量 (FINCHBOT_*)
 
-优先级：环境变量 > 配置文件
+优先级：环境变量 > 工作区 MCP 配置 > 全局配置
 """
 
 import json
@@ -13,12 +13,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from finchbot.config.schema import (
-    ChannelsConfig,
-    Config,
-    MCPServerConfig,
-    ProviderConfig,
-)
+from finchbot.config.schema import Config, MCPServerConfig, ProviderConfig
+from finchbot.workspace import get_mcp_config_path
 
 
 def get_config_path() -> Path:
@@ -153,133 +149,81 @@ def _load_mcp_from_env() -> dict[str, MCPServerConfig]:
     return servers
 
 
-def _load_channels_from_env() -> dict[str, dict[str, Any]]:
-    """从环境变量加载 Channel 配置.
+def load_mcp_config(workspace: Path | None = None) -> dict[str, MCPServerConfig]:
+    """从工作区加载 MCP 配置.
 
-    支持两种格式：
-    1. 完整格式: FINCHBOT_CHANNELS__{CHANNEL_NAME}__{FIELD}
-    2. 敏感信息格式: FINCHBOT_{CHANNEL}_{FIELD} (使用预定义映射)
-
-    Returns:
-        Channel 名称到配置字段的映射。
-    """
-    from finchbot.config.env_mappings import (
-        CHANNELS_ENV_PREFIX,
-        CHANNEL_SENSITIVE_ENV_VARS,
-        get_channel_env_var,
-    )
-
-    channels: dict[str, dict[str, Any]] = {}
-
-    # 1. 加载完整格式环境变量
-    for key, value in os.environ.items():
-        if not key.startswith(CHANNELS_ENV_PREFIX):
-            continue
-
-        parts = key[len(CHANNELS_ENV_PREFIX) :].split("__")
-        if len(parts) < 2:
-            continue
-
-        channel_name = parts[0].lower()
-        field = parts[1].lower()
-
-        if channel_name not in channels:
-            channels[channel_name] = {}
-
-        if field == "enabled":
-            channels[channel_name]["enabled"] = value.lower() == "true"
-        else:
-            channels[channel_name][field] = value
-
-    # 2. 加载敏感信息格式环境变量
-    for channel_name, mapping in CHANNEL_SENSITIVE_ENV_VARS.items():
-        for field, env_var in mapping.items():
-            value = get_channel_env_var(env_var)
-            if value:
-                if channel_name not in channels:
-                    channels[channel_name] = {}
-                channels[channel_name][field] = value
-
-    return channels
-
-
-def _apply_mcp_env_vars(config: Config) -> Config:
-    """应用 MCP 环境变量到配置.
-
-    环境变量优先级高于配置文件。
+    优先级：
+    1. 环境变量（最高优先级）
+    2. 工作区配置文件 {workspace}/config/mcp.json
+    3. 默认空配置
 
     Args:
-        config: 原始配置对象。
+        workspace: 工作区路径，如果为 None 则只加载环境变量。
 
     Returns:
-        应用环境变量后的配置对象。
+        MCP 服务器名称到配置的映射。
     """
-    from finchbot.config.env_mappings import MCP_SENSITIVE_ENV_VARS, get_mcp_env_var
+    servers: dict[str, MCPServerConfig] = {}
 
-    # 应用敏感信息环境变量到已存在的 MCP 服务器配置
-    for server_name, mapping in MCP_SENSITIVE_ENV_VARS.items():
-        if server_name in config.mcp.servers:
-            server = config.mcp.servers[server_name]
-            for suffix, config_key in mapping.items():
-                value = get_mcp_env_var(suffix)
-                if value:
-                    if server.env is None:
-                        server.env = {}
-                    server.env[config_key] = value
+    # 1. 加载工作区配置文件
+    if workspace:
+        from finchbot.workspace import get_mcp_config_path
 
-    # 合并完整格式环境变量配置
+        mcp_path = get_mcp_config_path(workspace)
+        if mcp_path.exists():
+            try:
+                data = json.loads(mcp_path.read_text(encoding="utf-8"))
+                for name, server_config in data.get("servers", {}).items():
+                    servers[name] = MCPServerConfig(**server_config)
+            except Exception as e:
+                from loguru import logger
+                logger.warning(f"加载 MCP 配置失败: {e}")
+
+    # 2. 加载环境变量（最高优先级，覆盖文件配置）
     env_servers = _load_mcp_from_env()
-    for server_name, server_config in env_servers.items():
-        if server_name in config.mcp.servers:
-            # 合并配置，环境变量优先
-            existing = config.mcp.servers[server_name]
-            if server_config.command:
-                existing.command = server_config.command
-            if server_config.args:
-                existing.args = server_config.args
-            if server_config.url:
-                existing.url = server_config.url
-            if server_config.env:
-                if existing.env is None:
-                    existing.env = {}
-                existing.env.update(server_config.env)
+    for name, config in env_servers.items():
+        if name in servers:
+            # 合并环境变量到现有配置
+            if servers[name].env is None:
+                servers[name].env = {}
+            if config.env:
+                servers[name].env.update(config.env)
+            # 如果环境变量定义了完整配置，则覆盖
+            if config.command:
+                servers[name].command = config.command
+            if config.args:
+                servers[name].args = config.args
+            if config.url:
+                servers[name].url = config.url
         else:
-            config.mcp.servers[server_name] = server_config
+            servers[name] = config
 
-    return config
+    return servers
 
 
-def _apply_channels_env_vars(config: Config) -> Config:
-    """应用 Channel 环境变量到配置.
-
-    环境变量优先级高于配置文件。
+def save_mcp_config(
+    servers: dict[str, MCPServerConfig],
+    workspace: Path,
+) -> None:
+    """保存 MCP 配置到工作区.
 
     Args:
-        config: 原始配置对象。
-
-    Returns:
-        应用环境变量后的配置对象。
+        servers: MCP 服务器配置字典.
+        workspace: 工作区路径.
     """
-    from finchbot.config.env_mappings import CHANNEL_SENSITIVE_ENV_VARS, get_channel_env_var
+    from finchbot.workspace import get_mcp_config_path
 
-    # 应用敏感信息环境变量
-    for channel_name, mapping in CHANNEL_SENSITIVE_ENV_VARS.items():
-        channel = getattr(config.channels, channel_name, None)
-        if channel:
-            for field, env_var in mapping.items():
-                value = get_channel_env_var(env_var)
-                if value:
-                    setattr(channel, field, value)
+    mcp_path = get_mcp_config_path(workspace)
+    mcp_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 合并完整格式环境变量配置
-    env_channels = _load_channels_from_env()
-    for channel_name, channel_fields in env_channels.items():
-        channel = getattr(config.channels, channel_name, None)
-        if channel:
-            for field, value in channel_fields.items():
-                setattr(channel, field, value)
+    data = {
+        "servers": {
+            name: server.model_dump(exclude_none=True)
+            for name, server in servers.items()
+        }
+    }
 
-    return config
+    mcp_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def load_config(config_path: Path | None = None) -> Config:
@@ -299,7 +243,6 @@ def load_config(config_path: Path | None = None) -> Config:
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-            data = _migrate_config(data)
             config = Config.model_validate(convert_keys(data))
         except (json.JSONDecodeError, ValueError) as e:
             print(f"警告: 无法从 {path} 加载配置: {e}")
@@ -335,11 +278,8 @@ def load_config(config_path: Path | None = None) -> Config:
             # 预设 provider
             setattr(config.providers, provider_name, provider_config)
 
-    # 从环境变量加载 MCP 配置并合并（环境变量优先级高于配置文件）
-    config = _apply_mcp_env_vars(config)
-
-    # 从环境变量加载 Channel 配置并合并（环境变量优先级高于配置文件）
-    config = _apply_channels_env_vars(config)
+    # MCP 配置从工作区加载，不再从全局配置加载
+    # 环境变量中的 MCP 配置由 load_mcp_config() 处理
 
     # 如果默认模型未被用户设置过，尝试自动检测
     if not config.default_model_set_by_user:
@@ -353,6 +293,8 @@ def load_config(config_path: Path | None = None) -> Config:
 def save_config(config: Config, config_path: Path | None = None) -> None:
     """保存配置到文件.
 
+    注意：MCP 配置不保存到全局文件，而是保存到工作区的 config/mcp.json。
+
     Args:
         config: 要保存的配置对象。
         config_path: 可选的保存路径，未提供则使用默认路径。
@@ -363,20 +305,11 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
     data = config.model_dump()
     data = convert_to_camel(data)
 
+    if "mcp" in data:
+        del data["mcp"]
+
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-
-
-def _migrate_config(data: dict) -> dict:
-    """迁移旧配置格式.
-
-    Args:
-        data: 原始配置数据。
-
-    Returns:
-        迁移后的配置数据。
-    """
-    return data
 
 
 def convert_keys(data: Any) -> Any:

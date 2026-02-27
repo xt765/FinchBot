@@ -11,6 +11,8 @@ from typing import Any
 
 from loguru import logger
 
+from finchbot.workspace import SESSIONS_DIR
+
 
 @dataclass
 class SessionMetadata:
@@ -69,12 +71,12 @@ class SessionMetadataStore:
             workspace: 工作目录路径
         """
         self.workspace = Path(workspace)
-        self.db_path = self.workspace / "sessions_metadata.db"
+        self.db_path = self.workspace / SESSIONS_DIR / "metadata.db"
         self._init_db()
 
     def _init_db(self) -> None:
         """初始化数据库表."""
-        self.workspace.mkdir(parents=True, exist_ok=True)
+        (self.workspace / SESSIONS_DIR).mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.execute("""

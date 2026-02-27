@@ -46,6 +46,7 @@ class FinchTool(BaseTool):
         """验证并解析路径.
 
         检查路径是否在允许的目录范围内，防止越权访问。
+        支持相对路径解析为相对于 workspace 的路径。
 
         Args:
             path: 要验证的路径字符串。
@@ -54,13 +55,17 @@ class FinchTool(BaseTool):
             解析后的绝对路径，如果验证失败返回 None。
         """
         try:
-            resolved = Path(path).expanduser().resolve()
+            path_obj = Path(path).expanduser()
 
-            # 如果没有设置允许目录，允许所有路径
+            if not path_obj.is_absolute() and self.workspace:
+                workspace_path = Path(self.workspace).expanduser().resolve()
+                resolved = (workspace_path / path_obj).resolve()
+            else:
+                resolved = path_obj.resolve()
+
             if self.allowed_dirs is None:
                 return resolved
 
-            # 检查路径是否在允许的目录内
             allowed_dirs = self.allowed_dirs
             if isinstance(allowed_dirs, Path):
                 allowed_dirs = [allowed_dirs]

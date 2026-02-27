@@ -16,6 +16,7 @@ from rich.console import Console
 from finchbot.i18n import t
 from finchbot.sessions.metadata import SessionMetadata, SessionMetadataStore
 from finchbot.sessions.ui import SessionListRenderer
+from finchbot.workspace import SESSIONS_DIR
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -354,7 +355,7 @@ class SessionSelector:
         import sqlite3
         from contextlib import closing
 
-        db_path = self.workspace / "sessions_metadata.db"
+        db_path = self.workspace / SESSIONS_DIR / "metadata.db"
         if not db_path.exists():
             return
 
@@ -385,7 +386,7 @@ class SessionSelector:
         import sqlite3
         from contextlib import closing
 
-        db_path = self.workspace / "checkpoints.db"
+        db_path = self.workspace / SESSIONS_DIR / "checkpoints.db"
         if not db_path.exists():
             return
 
@@ -437,7 +438,7 @@ class SessionSelector:
         import sqlite3
         from contextlib import closing
 
-        db_path = self.workspace / "checkpoints.db"
+        db_path = self.workspace / SESSIONS_DIR / "checkpoints.db"
         if not db_path.exists():
             return
 

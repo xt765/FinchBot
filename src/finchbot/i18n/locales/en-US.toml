@@ -112,6 +112,7 @@ mcp_env = "Environment Variables"
 mcp_select_template = "Select MCP Server Template"
 mcp_custom = "Custom Configuration"
 mcp_servers_count = "{count} servers"
+mcp_config_file = "MCP Config File"
 
 mcp_template_filesystem = "Filesystem (Local files)"
 mcp_template_fetch = "Fetch (Web content)"
@@ -124,26 +125,8 @@ mcp_path_required = "Enter path to allow"
 mcp_db_path_required = "Enter database path"
 mcp_env_required = "Enter {env_var}"
 
-message_channels = "Message Channels"
-channels_title = "Configure Message Channels"
 channel_enabled = "Enabled"
 channel_disabled = "Disabled"
-channel_toggle = "Enable/Disable"
-channel_set_token = "Set Token"
-channel_set_app_id = "Set App ID"
-channel_set_app_secret = "Set App Secret"
-channel_set_client_id = "Set Client ID"
-channel_set_client_secret = "Set Client Secret"
-channel_set_corp_id = "Set Corp ID"
-channel_set_agent_id = "Set Agent ID"
-channel_set_secret = "Set Secret"
-channel_set_smtp = "Set SMTP Config"
-
-channel_discord = "Discord"
-channel_feishu = "Feishu"
-channel_dingtalk = "DingTalk"
-channel_wechat = "WeChat Work"
-channel_email = "Email"
 
 
 [cli.commands]
@@ -632,6 +615,27 @@ You are FinchBot, a professional AI assistant.
 - Do not use ambiguous terms like "we" or "let's"
 - Do not confuse "you" and "I"
 
+## Workspace Structure
+Workspace directory structure:
+- config/mcp.json: MCP server configuration
+- bootstrap/: Bootstrap files (system prompts)
+- generated/: Auto-generated files (TOOLS.md, CAPABILITIES.md)
+- skills/: Custom skills
+- memory/: Memory database (memory.db)
+- memory_vectors/: Vector database (semantic search index)
+- sessions/: Session data
+  - metadata.db: Session metadata (title, time, etc.)
+  - checkpoints.db: Session checkpoints (conversation history)
+
+## Agent Self-Configuration Capabilities
+You can use the following tools to dynamically configure yourself:
+- `configure_mcp`: Add/modify/remove MCP servers
+- `refresh_capabilities`: Refresh the capabilities description file
+- `get_capabilities`: Get current capabilities description
+- `get_mcp_config_path`: Get MCP configuration file path
+
+MCP configuration is stored in the workspace's config/mcp.json file.
+
 ## File System Tool Guidelines
 - `list_dir`: Explore directory structure to understand what files exist
 - `read_file`: Read file content to understand file details
@@ -745,42 +749,35 @@ langbot_steps = """For multi-platform messaging support:
 1. Visit https://langbot.app
 2. Configure desired platforms
 3. Enable `langbot_enabled: true` in configuration"""
-configured_platforms = "Configured Platforms"
-supported_platforms = "Supported Platforms"
-platforms_list = """- QQ
-- WeChat
-- Feishu/Lark
-- DingTalk
-- Discord
-- Telegram
-- Slack
-- WeChat Work
-- Email"""
 
 [capabilities.status]
 enabled = "Enabled"
 disabled = "Disabled"
-
-[capabilities.platform]
-discord = "Discord"
-feishu = "Feishu"
-dingtalk = "DingTalk"
-wechat = "WeChat Work"
-email = "Email"
 
 [capabilities.extension]
 title = "How to Extend My Capabilities"
 add_mcp = "Add MCP Server"
 mcp_steps = """1. Run `finchbot config`
 2. Select "MCP Servers"
-3. Choose a preset template or custom configuration"""
+3. Choose a preset template or custom configuration
+
+Or use the `configure_mcp` tool for dynamic configuration."""
+mcp_config_location = "MCP configuration is stored in the workspace's config/mcp.json file"
 add_skill = "Add Skill"
 skill_steps = """1. Create a new directory in the workspace's `skills/` folder
 2. Create a `SKILL.md` file describing the skill"""
-configure_channel = "Configure Message Channel"
-channel_steps = """1. Visit https://langbot.app
-2. Configure desired platforms (QQ, WeChat, Feishu, etc.)
-3. Enable `langbot_enabled: true` in configuration"""
+refresh_capabilities = "Refresh Capabilities"
+refresh_hint = "Use the `refresh_capabilities` tool to refresh the CAPABILITIES.md file"
+
+[workspace]
+title = "Workspace Structure"
+description = """Workspace directory structure:
+- config/mcp.json: MCP server configuration
+- bootstrap/: Bootstrap files (system prompts)
+- generated/: Auto-generated files (TOOLS.md, CAPABILITIES.md)
+- skills/: Custom skills
+- memory/: Memory storage
+- sessions/: Session data"""
 
 # ========================================
 # Configuration Environment Variables
@@ -789,7 +786,6 @@ channel_steps = """1. Visit https://langbot.app
 [config.env]
 title = "Environment Variable Configuration"
 mcp_env_hint = "MCP sensitive info can be configured via environment variables"
-channel_env_hint = "Channel sensitive info can be configured via environment variables"
 priority_note = "Environment variables take precedence over config file"
 
 [config.env.mcp]
@@ -799,18 +795,6 @@ slack_token = "Slack Bot Token"
 google_maps_key = "Google Maps API Key"
 postgres_conn = "PostgreSQL Connection String"
 sqlite_path = "SQLite Database Path"
-
-[config.env.channel]
-discord_token = "Discord Bot Token"
-feishu_app_id = "Feishu App ID"
-feishu_app_secret = "Feishu App Secret"
-dingtalk_client_id = "DingTalk Client ID"
-dingtalk_client_secret = "DingTalk Client Secret"
-wechat_corp_id = "WeChat Work Corp ID"
-wechat_agent_id = "WeChat Work Agent ID"
-wechat_secret = "WeChat Work Secret"
-email_smtp_user = "SMTP Username"
-email_smtp_password = "SMTP Password"
 
 # ========================================
 # Configuration Testing
