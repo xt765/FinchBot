@@ -268,18 +268,27 @@ FinchBot 使用文件系统管理 Agent 提示词和行为：
 
 ```
 ~/.finchbot/
- config.json         # 主配置文件
- SYSTEM.md           # 角色定义
- MEMORY_GUIDE.md     # 记忆使用指南
- SOUL.md             # 灵魂定义（性格）
- AGENT_CONFIG.md     # Agent 配置
- workspace/
-     checkpoints.db  # 对话状态持久化
-     memories.db     # 记忆存储
-     chroma/         # 向量数据库
-     skills/         # 自定义技能
-         my-skill/
-             SKILL.md
+├── config.json              # 主配置文件
+└── workspace/
+    ├── bootstrap/           # Bootstrap 文件目录
+    │   ├── SYSTEM.md        # 角色设定
+    │   ├── MEMORY_GUIDE.md  # 记忆使用指南
+    │   ├── SOUL.md          # 灵魂设定（性格特征）
+    │   └── AGENT_CONFIG.md  # Agent 配置
+    ├── config/              # 配置目录
+    │   └── mcp.json         # MCP 服务器配置
+    ├── generated/           # 自动生成文件
+    │   ├── TOOLS.md         # 工具文档
+    │   └── CAPABILITIES.md  # 能力信息
+    ├── skills/              # 自定义技能
+    │   └── my-skill/
+    │       └── SKILL.md
+    ├── memory/              # 记忆存储
+    │   └── memory.db
+    ├── memory_vectors/      # 向量数据库
+    └── sessions/            # 会话数据
+        ├── checkpoints.db   # 对话状态持久化
+        └── metadata.db      # 会话元数据
 ```
 
 ### 自定义 SYSTEM.md
@@ -355,11 +364,13 @@ uv run finchbot chat
 | 文件/目录 | 路径 | 说明 |
 | :--- | :--- | :--- |
 | 用户配置 | `~/.finchbot/config.json` | 主配置文件 |
-| 环境变量 | 项目根目录的 `.env` | 可选 |
-| 工作区 | `~/.finchbot/workspace/` | 默认工作目录 |
-| 记忆数据库 | `~/.finchbot/workspace/memories.db` | SQLite 存储 |
-| 向量数据库 | `~/.finchbot/workspace/chroma/` | ChromaDB |
-| 对话状态 | `~/.finchbot/workspace/checkpoints.db` | LangGraph 持久化 |
+| MCP 配置 | `{workspace}/config/mcp.json` | MCP 服务器配置 |
+| Bootstrap 文件 | `{workspace}/bootstrap/` | 系统提示词文件目录 |
+| 生成文件 | `{workspace}/generated/` | 自动生成的文件目录 |
+| 记忆数据库 | `{workspace}/memory/memory.db` | SQLite 存储数据库 |
+| 向量数据库 | `{workspace}/memory_vectors/` | ChromaDB 向量存储 |
+| 对话状态 | `{workspace}/sessions/checkpoints.db` | LangGraph 持久化 |
+| 会话元数据 | `{workspace}/sessions/metadata.db` | 会话信息数据库 |
 
 ---
 
@@ -368,6 +379,8 @@ uv run finchbot chat
 MCP (Model Context Protocol) 允许集成外部工具服务器，动态扩展 Agent 能力。
 
 FinchBot 使用官方 `langchain-mcp-adapters` 库集成 MCP，支持 **stdio** 和 **HTTP** 两种传输方式。
+
+> **注意**：MCP 配置存储在工作区的 `config/mcp.json` 文件中，而不是全局配置文件。Agent 可以通过 `configure_mcp` 工具动态修改 MCP 配置。
 
 ### `mcp` 配置
 

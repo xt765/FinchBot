@@ -11,6 +11,17 @@ from typing import Any
 
 from finchbot.config.schema import Config, ProviderConfig
 from finchbot.config.utils import get_api_base, get_api_key
+from finchbot.i18n import t
+
+
+def _get_provider_name(provider_id: str) -> str:
+    """获取提供商的本地化名称."""
+    key = f"providers.{provider_id}"
+    result = t(key, default=None)
+    if result:
+        return result
+    return PRESET_PROVIDERS.get(provider_id, {}).get("name", provider_id)
+
 
 PRESET_PROVIDERS: dict[str, dict[str, Any]] = {
     "openai": {

@@ -25,21 +25,19 @@ Factory class for assembling and configuring Agent instances.
 ```python
 class AgentFactory:
     @staticmethod
-    def create_for_cli(
-        model: BaseChatModel,
-        workspace: Path,
+    async def create_for_cli(
         session_id: str,
+        workspace: Path,
+        model: BaseChatModel,
         config: Config,
-        session_metadata_store: SessionMetadataStore | None = None,
-    ) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver, list[BaseTool]]:
+    ) -> tuple[CompiledStateGraph, Any, list[Any]]:
 ```
 
 **Parameters**:
-- `model`: Base chat model instance
-- `workspace`: Workspace directory path
 - `session_id`: Session ID
+- `workspace`: Workspace directory path
+- `model`: Base chat model instance
 - `config`: Configuration object
-- `session_metadata_store`: Session metadata store (optional)
 
 **Returns**:
 - `(agent, checkpointer, tools)` tuple
@@ -114,6 +112,7 @@ class ContextBuilder:
 - `AGENT_CONFIG.md`: Agent configuration
 - `SKILL.md`: Dynamically loaded skill descriptions
 - `TOOLS.md`: Auto-generated tool documentation
+- `CAPABILITIES.md`: Auto-generated MCP and capability info
 - Runtime info (OS, Time, Python Version)
 
 ---
@@ -379,6 +378,10 @@ class MyCustomTool(FinchTool):
 | `RecallTool` | `recall` | Retrieve memory | `query`: Query, `query_type`: Query type |
 | `ForgetTool` | `forget` | Delete memory | `pattern`: Match pattern |
 | `SessionTitleTool` | `session_title` | Manage session title | `action`: get/set, `title`: Title |
+| `ConfigureMCPTool` | `configure_mcp` | Dynamically configure MCP servers | `action`, `server_name`, `command`, `args`, `env`, `url` |
+| `RefreshCapabilitiesTool` | `refresh_capabilities` | Refresh capabilities file | None |
+| `GetCapabilitiesTool` | `get_capabilities` | Get current capabilities | None |
+| `GetMCPConfigPathTool` | `get_mcp_config_path` | Get MCP config file path | None |
 
 ---
 
@@ -827,4 +830,82 @@ Or using uv:
 
 ```bash
 uv add langchain-mcp-adapters
+```
+
+---
+
+## 10. Capabilities Module (`finchbot.agent.capabilities`)
+
+### 10.1 `CapabilitiesBuilder`
+
+Agent capabilities builder, responsible for building capability-related system prompts.
+
+```python
+class CapabilitiesBuilder:
+    def __init__(self, config: Config, tools: Sequence[BaseTool] | None = None): ...
+    
+    def build_capabilities_prompt(self) -> str: ...
+    def get_mcp_server_count(self) -> int: ...
+    def get_mcp_tool_count(self) -> int: ...
+```
+
+**Features**:
+- Build MCP server configuration info
+- List available MCP tools
+- Provide Channel configuration status
+- Generate extension guides
+
+**Usage Example**:
+```python
+from finchbot.agent.capabilities import CapabilitiesBuilder, write_capabilities_md
+from finchbot.config import load_config
+from pathlib import Path
+
+config = load_config()
+builder = CapabilitiesBuilder(config, tools)
+
+# Get capabilities description
+capabilities = builder.build_capabilities_prompt()
+
+# Write to file
+write_capabilities_md(Path("./workspace"), config, tools)
+```
+
+---
+
+## 11. Tools Generator Module (`finchbot.tools.tools_generator`)
+
+### 11.1 `ToolsGenerator`
+
+Tool information auto-generator for generating TOOLS.md files.
+
+```python
+class ToolsGenerator:
+    def __init__(
+        self, 
+        workspace: Path | None = None,
+        tools: Sequence[BaseTool] | None = None
+    ): ...
+    
+    def generate_tools_content(self) -> str: ...
+    def write_to_file(self, filename: str = "TOOLS.md") -> Path | None: ...
+```
+
+**Features**:
+- Generate tool documentation from ToolRegistry or external tool list
+- Auto-identify MCP tools and categorize separately
+- Support grouping tools by category
+
+**Usage Example**:
+```python
+from finchbot.tools.tools_generator import ToolsGenerator
+from pathlib import Path
+
+generator = ToolsGenerator(workspace=Path("./workspace"), tools=tools)
+
+# Generate content
+content = generator.generate_tools_content()
+
+# Write to file
+generator.write_to_file("TOOLS.md")
 ```

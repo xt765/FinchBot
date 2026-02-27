@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from finchbot.cli.providers import PRESET_PROVIDERS
+from finchbot.cli.providers import PRESET_PROVIDERS, _get_provider_name
 from finchbot.cli.ui import _keyboard_select
 from finchbot.config import get_config_path, load_config, save_config
 from finchbot.config.loader import load_mcp_config, save_mcp_config
@@ -225,7 +225,6 @@ class ConfigManager:
 
         web_config = self.config.tools.web.search
 
-        # 检查配置文件和环境变量
         has_tavily = bool(
             web_config.api_key
             or os.getenv("FINCHBOT_TOOLS__WEB__SEARCH__API_KEY")
@@ -239,12 +238,12 @@ class ConfigManager:
 
         engines = []
         if has_tavily:
-            engines.append("Tavily")
+            engines.append(f"Tavily ({t('search.status.available')})")
         if has_brave:
-            engines.append("Brave")
+            engines.append(f"Brave ({t('search.status.available')})")
         if engines:
-            return ", ".join(engines)
-        return t("cli.config.web_search_not_configured")
+            return " | ".join(engines)
+        return t("search.status.no_api_key")
 
     def _get_mcp_status(self) -> str:
         """获取 MCP 配置状态."""
@@ -327,7 +326,8 @@ class ConfigManager:
     def _configure_providers_submenu(self) -> None:
         """配置提供商子菜单（键盘导航）."""
         providers = [
-            {"name": info["name"], "value": name} for name, info in PRESET_PROVIDERS.items()
+            {"name": _get_provider_name(name), "value": name}
+            for name, info in PRESET_PROVIDERS.items()
         ]
         providers.append({"name": t("cli.config.add_custom_provider"), "value": "custom"})
 

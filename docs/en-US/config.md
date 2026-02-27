@@ -268,18 +268,27 @@ FinchBot uses a file system to manage Agent prompts and behaviors:
 
 ```
 ~/.finchbot/
- config.json         # Main configuration file
- SYSTEM.md           # Role definition
- MEMORY_GUIDE.md     # Memory usage guide
- SOUL.md             # Soul definition (personality)
- AGENT_CONFIG.md     # Agent configuration
- workspace/
-     checkpoints.db  # Conversation state persistence
-     memories.db     # Memory storage
-     chroma/         # Vector database
-     skills/         # Custom skills
-         my-skill/
-             SKILL.md
+├── config.json              # Main configuration file
+└── workspace/
+    ├── bootstrap/           # Bootstrap files directory
+    │   ├── SYSTEM.md        # Role definition
+    │   ├── MEMORY_GUIDE.md  # Memory usage guide
+    │   ├── SOUL.md          # Soul definition (personality)
+    │   └── AGENT_CONFIG.md  # Agent configuration
+    ├── config/              # Configuration directory
+    │   └── mcp.json         # MCP server configuration
+    ├── generated/           # Auto-generated files
+    │   ├── TOOLS.md         # Tool documentation
+    │   └── CAPABILITIES.md  # Capabilities info
+    ├── skills/              # Custom skills
+    │   └── my-skill/
+    │       └── SKILL.md
+    ├── memory/              # Memory storage
+    │   └── memory.db
+    ├── memory_vectors/      # Vector database
+    └── sessions/            # Session data
+        ├── checkpoints.db   # Conversation state persistence
+        └── metadata.db      # Session metadata
 ```
 
 ### Custom SYSTEM.md
@@ -355,11 +364,13 @@ uv run finchbot chat
 | File/Directory | Path | Description |
 | :--- | :--- | :--- |
 | User config | `~/.finchbot/config.json` | Main configuration file |
-| Environment variables | `.env` in project root | Optional |
-| Workspace | `~/.finchbot/workspace/` | Default working directory |
-| Memory database | `~/.finchbot/workspace/memories.db` | SQLite storage |
-| Vector database | `~/.finchbot/workspace/chroma/` | ChromaDB |
-| Conversation state | `~/.finchbot/workspace/checkpoints.db` | LangGraph persistence |
+| MCP config | `{workspace}/config/mcp.json` | MCP server configuration |
+| Bootstrap files | `{workspace}/bootstrap/` | System prompt files directory |
+| Generated files | `{workspace}/generated/` | Auto-generated files directory |
+| Memory database | `{workspace}/memory/memory.db` | SQLite storage database |
+| Vector database | `{workspace}/memory_vectors/` | ChromaDB vector storage |
+| Conversation state | `{workspace}/sessions/checkpoints.db` | LangGraph persistence |
+| Session metadata | `{workspace}/sessions/metadata.db` | Session info database |
 
 ---
 
@@ -368,6 +379,8 @@ uv run finchbot chat
 MCP (Model Context Protocol) allows integration of external tool servers to dynamically extend Agent capabilities.
 
 FinchBot uses the official `langchain-mcp-adapters` library for MCP integration, supporting both **stdio** and **HTTP** transports.
+
+> **Note**: MCP configuration is stored in the workspace's `config/mcp.json` file, not in the global configuration file. Agents can dynamically modify MCP configuration via the `configure_mcp` tool.
 
 ### `mcp` Configuration
 

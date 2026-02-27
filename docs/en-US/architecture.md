@@ -37,7 +37,7 @@ graph TB
     subgraph Core [Agent Core]
         Agent[LangGraph Agent<br/>Decision Engine]:::coreLayer
         Context[ContextBuilder<br/>Context Building]:::coreLayer
-        Tools[ToolRegistry<br/>12 Built-in Tools + MCP]:::coreLayer
+        Tools[ToolRegistry<br/>15 Built-in Tools + MCP]:::coreLayer
         Memory[MemoryManager<br/>Dual-layer Memory]:::coreLayer
     end
 
@@ -65,6 +65,7 @@ finchbot/
 │   ├── core.py        # Agent creation and execution (Async Optimized)
 │   ├── factory.py     # AgentFactory (Concurrent Thread Pool)
 │   ├── context.py     # ContextBuilder for prompt assembly
+│   ├── capabilities.py # CapabilitiesBuilder for capability info
 │   └── skills.py      # SkillsLoader for Markdown skills
 ├── channels/           # Multi-Platform Messaging (via LangBot)
 │   ├── base.py        # BaseChannel abstract class
@@ -105,6 +106,8 @@ finchbot/
 │   ├── base.py
 │   ├── registry.py
 │   ├── factory.py     # ToolFactory (MCP tools via langchain-mcp-adapters)
+│   ├── config_tools.py # Configuration tools (configure_mcp, etc.)
+│   ├── tools_generator.py # Tool documentation generator
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -127,33 +130,33 @@ FinchBot introduces a fully asynchronous startup architecture, leveraging `async
 sequenceDiagram
     autonumber
     participant CLI as CLI (Main Thread)
-    participant Loop as Event Loop
+    participant EventLoop as Event Loop
     participant Pool as Thread Pool
     participant LLM as LLM Init
     participant Mem as Memory Store
     participant Tools as Tool Factory
 
-    CLI->>Loop: Start _run_chat_session_async
+    CLI->>EventLoop: Start _run_chat_session_async
     
     par Concurrent Init Tasks
-        Loop->>Pool: Submit create_chat_model
+        EventLoop->>Pool: Submit create_chat_model
         Pool->>LLM: Load Tiktoken/Schema (Slow)
         LLM-->>Pool: Return ChatModel
         
-        Loop->>Pool: Submit SessionMetadataStore
+        EventLoop->>Pool: Submit SessionMetadataStore
         Pool->>Mem: Connect SQLite
         Mem-->>Pool: Return Store
         
-        Loop->>Pool: Submit get_default_workspace
+        EventLoop->>Pool: Submit get_default_workspace
         Pool->>Pool: File I/O Check
     end
     
-    Loop->>Pool: Submit AgentFactory.create_for_cli
+    EventLoop->>Pool: Submit AgentFactory.create_for_cli
     Pool->>Tools: create_default_tools
     Tools-->>Pool: Return Tool List
-    Pool->>Loop: Return Agent & Tools
+    Pool->>EventLoop: Return Agent & Tools
     
-    Loop->>CLI: Init Complete, Enter Interaction Loop
+    EventLoop->>CLI: Init Complete, Enter Interaction Loop
 ```
 
 ---
@@ -178,6 +181,7 @@ Agent Core is the brain of FinchBot, responsible for decision-making, planning, 
     * **Soul**: `SOUL.md` (Soul definition)
     * **Skills**: Dynamically loaded skill descriptions
     * **Tools**: `TOOLS.md` (Tool documentation)
+    * **Capabilities**: `CAPABILITIES.md` (MCP and capability info)
     * **Runtime Info**: Current time, OS, Python version, etc.
 
 #### Key Classes and Functions
@@ -370,11 +374,12 @@ flowchart TB
     TR[ToolRegistry<br/>Global Registry]:::registry
     Lock[Single-Lock Pattern<br/>Thread-Safe Singleton]:::registry
 
-    subgraph BuiltIn [Built-in Tools - 12]
+    subgraph BuiltIn [Built-in Tools - 15]
         File[File Operations<br/>read/write/edit/list]:::builtin
         Web[Network<br/>search/extract]:::builtin
         Memory[Memory<br/>remember/recall/forget]:::builtin
         System[System<br/>exec/session_title]:::builtin
+        Config[Configuration<br/>configure_mcp/refresh_capabilities<br/>get_capabilities/get_mcp_config_path]:::builtin
     end
 
     subgraph MCP [MCP Tools - langchain-mcp-adapters]
@@ -419,6 +424,10 @@ All tools inherit from the `FinchTool` base class and must implement:
 | `recall` | Memory | `memory.py` | Retrieve memory |
 | `forget` | Memory | `memory.py` | Delete/archive memory |
 | `session_title` | System | `session_title.py` | Manage session title |
+| `configure_mcp` | Config | `config_tools.py` | Dynamically configure MCP servers |
+| `refresh_capabilities` | Config | `config_tools.py` | Refresh capabilities file |
+| `get_capabilities` | Config | `config_tools.py` | Get current capabilities |
+| `get_mcp_config_path` | Config | `config_tools.py` | Get MCP config file path |
 
 #### Web Search: Three-Engine Fallback Design
 
@@ -560,12 +569,23 @@ class OutboundMessage(BaseModel):
 
 ```
 ~/.finchbot/
- SYSTEM.md           # Role definition
- MEMORY_GUIDE.md     # Memory usage guide
- SOUL.md             # Personality settings
- AGENT_CONFIG.md     # Agent configuration
- workspace/
-     skills/         # Custom skills
+├── config.json              # Main configuration file
+└── workspace/
+    ├── bootstrap/           # Bootstrap files directory
+    │   ├── SYSTEM.md        # Role definition
+    │   ├── MEMORY_GUIDE.md  # Memory usage guide
+    │   ├── SOUL.md          # Personality settings
+    │   └── AGENT_CONFIG.md  # Agent configuration
+    ├── config/              # Configuration directory
+    │   └── mcp.json         # MCP server configuration
+    ├── generated/           # Auto-generated files
+    │   ├── TOOLS.md         # Tool documentation
+    │   └── CAPABILITIES.md  # Capabilities info
+    ├── skills/              # Custom skills
+    ├── memory/              # Memory storage
+    │   └── memory.db
+    └── sessions/            # Session storage
+        └── checkpoints.db
 ```
 
 #### Prompt Loading Flow
@@ -579,10 +599,10 @@ flowchart TD
 
     A([Agent Startup]):::startEnd --> B[Load Bootstrap Files]:::process
     
-    B --> C[SYSTEM.md]:::file
-    B --> D[MEMORY_GUIDE.md]:::file
-    B --> E[SOUL.md]:::file
-    B --> F[AGENT_CONFIG.md]:::file
+    B --> C[bootstrap/SYSTEM.md]:::file
+    B --> D[bootstrap/MEMORY_GUIDE.md]:::file
+    B --> E[bootstrap/SOUL.md]:::file
+    B --> F[bootstrap/AGENT_CONFIG.md]:::file
 
     C --> G[Assemble Prompt]:::process
     D --> G
@@ -656,7 +676,7 @@ Config (Root)
 │   ├── web.search (Search config)
 │   ├── exec (Shell execution config)
 │   └── restrict_to_workspace
-├── mcp                    # MCP Configuration
+├── mcp                    # MCP Configuration (stored in workspace/config/mcp.json)
 │   └── servers
 │       └── {server_name}
 │           ├── command    # stdio transport command
@@ -672,6 +692,21 @@ Config (Root)
     ├── wechat
     ├── email
     └── langbot_enabled
+```
+
+**Workspace Directory Structure**:
+
+```
+workspace/
+├── bootstrap/           # Bootstrap files (system prompts)
+├── config/              # Configuration files
+│   └── mcp.json         # MCP server configuration
+├── generated/           # Auto-generated files
+│   ├── TOOLS.md         # Tool documentation
+│   └── CAPABILITIES.md  # Capabilities info
+├── skills/              # Skills directory
+├── memory/              # Memory storage
+└── sessions/            # Session data
 ```
 
 #### MCP Configuration Example

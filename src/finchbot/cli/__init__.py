@@ -28,6 +28,7 @@ from finchbot.cli.providers import (
     _auto_detect_provider,
     _get_llm_config,
     _get_provider_config,
+    _get_provider_name,
     _get_tavily_key,
 )
 from finchbot.cli.ui import (
@@ -42,6 +43,7 @@ __all__ = [
     "_get_tavily_key",
     "_get_provider_config",
     "_get_llm_config",
+    "_get_provider_name",
     "_auto_detect_provider",
     "console",
     "_keyboard_select",

@@ -25,21 +25,19 @@
 ```python
 class AgentFactory:
     @staticmethod
-    def create_for_cli(
-        model: BaseChatModel,
-        workspace: Path,
+    async def create_for_cli(
         session_id: str,
+        workspace: Path,
+        model: BaseChatModel,
         config: Config,
-        session_metadata_store: SessionMetadataStore | None = None,
-    ) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver, list[BaseTool]]:
+    ) -> tuple[CompiledStateGraph, Any, list[Any]]:
 ```
 
 **参数**：
-- `model`：基础聊天模型实例
-- `workspace`：工作区目录路径
 - `session_id`：会话 ID
+- `workspace`：工作区目录路径
+- `model`：基础聊天模型实例
 - `config`：配置对象
-- `session_metadata_store`：会话元数据存储（可选）
 
 **返回值**：
 - `(agent, checkpointer, tools)` 元组
@@ -114,6 +112,7 @@ class ContextBuilder:
 - `AGENT_CONFIG.md`：Agent 配置
 - `SKILL.md`：动态加载的技能描述
 - `TOOLS.md`：自动生成的工具文档
+- `CAPABILITIES.md`：自动生成的 MCP 和能力信息
 - 运行时信息（操作系统、时间、Python 版本）
 
 ---
@@ -379,6 +378,10 @@ class MyCustomTool(FinchTool):
 | `RecallTool` | `recall` | 检索记忆 | `query`：查询，`query_type`：查询类型 |
 | `ForgetTool` | `forget` | 删除记忆 | `pattern`：匹配模式 |
 | `SessionTitleTool` | `session_title` | 管理会话标题 | `action`：get/set，`title`：标题 |
+| `ConfigureMCPTool` | `configure_mcp` | 动态配置 MCP 服务器 | `action`, `server_name`, `command`, `args`, `env`, `url` |
+| `RefreshCapabilitiesTool` | `refresh_capabilities` | 刷新能力描述文件 | 无 |
+| `GetCapabilitiesTool` | `get_capabilities` | 获取当前能力描述 | 无 |
+| `GetMCPConfigPathTool` | `get_mcp_config_path` | 获取 MCP 配置文件路径 | 无 |
 
 ---
 
@@ -827,4 +830,82 @@ pip install langchain-mcp-adapters
 
 ```bash
 uv add langchain-mcp-adapters
+```
+
+---
+
+## 10. 能力构建模块 (`finchbot.agent.capabilities`)
+
+### 10.1 `CapabilitiesBuilder`
+
+智能体能力构建器，负责构建 Agent 能力相关的系统提示词。
+
+```python
+class CapabilitiesBuilder:
+    def __init__(self, config: Config, tools: Sequence[BaseTool] | None = None): ...
+    
+    def build_capabilities_prompt(self) -> str: ...
+    def get_mcp_server_count(self) -> int: ...
+    def get_mcp_tool_count(self) -> int: ...
+```
+
+**功能**：
+- 构建 MCP 服务器配置信息
+- 列出可用的 MCP 工具
+- 提供 Channel 配置状态
+- 生成扩展指南
+
+**使用示例**：
+```python
+from finchbot.agent.capabilities import CapabilitiesBuilder, write_capabilities_md
+from finchbot.config import load_config
+from pathlib import Path
+
+config = load_config()
+builder = CapabilitiesBuilder(config, tools)
+
+# 获取能力描述
+capabilities = builder.build_capabilities_prompt()
+
+# 写入文件
+write_capabilities_md(Path("./workspace"), config, tools)
+```
+
+---
+
+## 11. 工具生成模块 (`finchbot.tools.tools_generator`)
+
+### 11.1 `ToolsGenerator`
+
+工具信息自动生成器，用于生成 TOOLS.md 文件。
+
+```python
+class ToolsGenerator:
+    def __init__(
+        self, 
+        workspace: Path | None = None,
+        tools: Sequence[BaseTool] | None = None
+    ): ...
+    
+    def generate_tools_content(self) -> str: ...
+    def write_to_file(self, filename: str = "TOOLS.md") -> Path | None: ...
+```
+
+**功能**：
+- 从 ToolRegistry 或外部工具列表生成工具文档
+- 自动识别 MCP 工具并单独分类
+- 支持按类别分组工具
+
+**使用示例**：
+```python
+from finchbot.tools.tools_generator import ToolsGenerator
+from pathlib import Path
+
+generator = ToolsGenerator(workspace=Path("./workspace"), tools=tools)
+
+# 生成内容
+content = generator.generate_tools_content()
+
+# 写入文件
+generator.write_to_file("TOOLS.md")
 ```

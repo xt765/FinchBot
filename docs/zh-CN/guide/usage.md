@@ -244,18 +244,19 @@ finchbot models download
 
 ## 6. 内置工具使用
 
-FinchBot 包含 12 个内置工具，分为四大类：
+FinchBot 包含 15 个内置工具，分为五大类：
 
 ```mermaid
 flowchart TB
     classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    subgraph Tools [12 个内置工具]
+    subgraph Tools [15 个内置工具]
         File[文件操作]:::category
         Web[网络]:::category
         Memory[记忆]:::category
         System[系统]:::category
+        Config[配置]:::category
     end
 
     File --> F1[read_file]:::tool
@@ -272,6 +273,11 @@ flowchart TB
 
     System --> S1[exec]:::tool
     System --> S2[session_title]:::tool
+    
+    Config --> C1[configure_mcp]:::tool
+    Config --> C2[refresh_capabilities]:::tool
+    Config --> C3[get_capabilities]:::tool
+    Config --> C4[get_mcp_config_path]:::tool
 ```
 
 ### 文件操作工具
@@ -347,6 +353,23 @@ flowchart TB
 | :--- | :--- | :--- |
 | `exec` | 执行 Shell 命令 | 批量操作、系统命令 |
 | `session_title` | 管理会话标题 | 获取/设置会话标题 |
+
+### 配置工具
+
+| 工具 | 说明 | 使用场景 |
+| :--- | :--- | :--- |
+| `configure_mcp` | 动态配置 MCP 服务器 | 添加/删除/更新 MCP 服务器 |
+| `refresh_capabilities` | 刷新能力描述文件 | 更新 CAPABILITIES.md |
+| `get_capabilities` | 获取当前能力描述 | 查看可用的 MCP 工具 |
+| `get_mcp_config_path` | 获取 MCP 配置文件路径 | 查找配置文件位置 |
+
+**最佳实践**：
+
+```
+1. 使用 get_capabilities 查看当前 MCP 工具
+2. 使用 configure_mcp 添加新的 MCP 服务器
+3. 使用 refresh_capabilities 更新能力描述
+```
 
 ---
 

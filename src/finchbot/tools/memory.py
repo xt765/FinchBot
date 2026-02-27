@@ -250,7 +250,7 @@ class ForgetTool(FinchTool):
             "properties": {
                 "pattern": {
                     "type": "string",
-                    "description": "要删除的内容匹配模式",
+                    "description": t("tools.forget.param_pattern"),
                 },
             },
             "required": ["pattern"],

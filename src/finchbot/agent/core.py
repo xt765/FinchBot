@@ -26,6 +26,7 @@ from loguru import logger
 
 from finchbot.agent.context import ContextBuilder
 from finchbot.i18n import t
+from finchbot.workspace import SESSIONS_DIR
 
 if TYPE_CHECKING:
     from finchbot.config.schema import Config

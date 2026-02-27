@@ -37,7 +37,7 @@ graph TB
     subgraph Core [Agent 核心层]
         Agent[LangGraph Agent<br/>决策引擎]:::coreLayer
         Context[ContextBuilder<br/>上下文构建]:::coreLayer
-        Tools[ToolRegistry<br/>12 内置工具 + MCP]:::coreLayer
+        Tools[ToolRegistry<br/>15 内置工具 + MCP]:::coreLayer
         Memory[MemoryManager<br/>双层记忆]:::coreLayer
     end
 
@@ -65,6 +65,7 @@ finchbot/
 │   ├── core.py        # Agent 创建与运行（异步优化）
 │   ├── factory.py     # AgentFactory（并发线程池）
 │   ├── context.py     # ContextBuilder 提示词组装
+│   ├── capabilities.py # CapabilitiesBuilder 能力构建
 │   └── skills.py      # SkillsLoader Markdown 技能加载
 ├── channels/           # 多平台消息（通过 LangBot）
 │   ├── base.py        # BaseChannel 抽象基类
@@ -105,6 +106,8 @@ finchbot/
 │   ├── base.py
 │   ├── factory.py     # ToolFactory（MCP 工具通过 langchain-mcp-adapters）
 │   ├── registry.py
+│   ├── config_tools.py # 配置工具（configure_mcp 等）
+│   ├── tools_generator.py # 工具文档生成器
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -127,33 +130,33 @@ FinchBot 引入了全异步启动架构，利用 `asyncio` 和 `concurrent.futur
 sequenceDiagram
     autonumber
     participant CLI as CLI（主线程）
-    participant Loop as 事件循环
+    participant EventLoop as 事件循环
     participant Pool as 线程池
     participant LLM as LLM 初始化
     participant Mem as 记忆存储
     participant Tools as 工具工厂
 
-    CLI->>Loop: 启动 _run_chat_session_async
+    CLI->>EventLoop: 启动 _run_chat_session_async
     
     par 并发初始化任务
-        Loop->>Pool: 提交 create_chat_model
+        EventLoop->>Pool: 提交 create_chat_model
         Pool->>LLM: 加载 Tiktoken/Schema（慢操作）
         LLM-->>Pool: 返回 ChatModel
         
-        Loop->>Pool: 提交 SessionMetadataStore
+        EventLoop->>Pool: 提交 SessionMetadataStore
         Pool->>Mem: 连接 SQLite
         Mem-->>Pool: 返回 Store
         
-        Loop->>Pool: 提交 get_default_workspace
+        EventLoop->>Pool: 提交 get_default_workspace
         Pool->>Pool: 文件 I/O 检查
     end
     
-    Loop->>Pool: 提交 AgentFactory.create_for_cli
+    EventLoop->>Pool: 提交 AgentFactory.create_for_cli
     Pool->>Tools: create_default_tools
     Tools-->>Pool: 返回工具列表
-    Pool->>Loop: 返回 Agent 和工具
+    Pool->>EventLoop: 返回 Agent 和工具
     
-    Loop->>CLI: 初始化完成，进入交互循环
+    EventLoop->>CLI: 初始化完成，进入交互循环
 ```
 
 ---
@@ -178,6 +181,7 @@ Agent 核心是 FinchBot 的大脑，负责决策、规划和工具调度。现�
     * **灵魂**：`SOUL.md`（性格定义）
     * **技能**：动态加载的技能描述
     * **工具**：`TOOLS.md`（工具文档）
+    * **能力**：`CAPABILITIES.md`（MCP 和能力信息）
     * **运行时信息**：当前时间、操作系统、Python 版本等
 
 #### 关键类和函数
@@ -383,11 +387,12 @@ flowchart TB
     TR[ToolRegistry<br/>全局注册表]:::registry
     Lock[单锁模式<br/>线程安全单例]:::registry
 
-    subgraph BuiltIn [内置工具 - 12个]
+    subgraph BuiltIn [内置工具 - 15个]
         File[文件操作<br/>read/write/edit/list]:::builtin
         Web[网络<br/>search/extract]:::builtin
         Memory[记忆<br/>remember/recall/forget]:::builtin
         System[系统<br/>exec/session_title]:::builtin
+        Config[配置<br/>configure_mcp/refresh_capabilities<br/>get_capabilities/get_mcp_config_path]:::builtin
     end
 
     subgraph MCP [MCP 工具 - langchain-mcp-adapters]
@@ -432,6 +437,10 @@ flowchart TB
 | `recall` | 记忆 | `memory.py` | 检索记忆 |
 | `forget` | 记忆 | `memory.py` | 删除/归档记忆 |
 | `session_title` | 系统 | `session_title.py` | 管理会话标题 |
+| `configure_mcp` | 配置 | `config_tools.py` | 动态配置 MCP 服务器 |
+| `refresh_capabilities` | 配置 | `config_tools.py` | 刷新能力描述文件 |
+| `get_capabilities` | 配置 | `config_tools.py` | 获取当前能力描述 |
+| `get_mcp_config_path` | 配置 | `config_tools.py` | 获取 MCP 配置文件路径 |
 
 #### 网页搜索：三引擎降级设计
 
@@ -574,12 +583,23 @@ class OutboundMessage(BaseModel):
 
 ```
 ~/.finchbot/
-├── SYSTEM.md           # 角色定义
-├── MEMORY_GUIDE.md     # 记忆使用指南
-├── SOUL.md             # 性格设定
-├── AGENT_CONFIG.md     # Agent 配置
+├── config.json              # 主配置文件
 └── workspace/
-    └── skills/         # 自定义技能
+    ├── bootstrap/           # Bootstrap 文件目录
+    │   ├── SYSTEM.md        # 角色定义
+    │   ├── MEMORY_GUIDE.md  # 记忆使用指南
+    │   ├── SOUL.md          # 性格设定
+    │   └── AGENT_CONFIG.md  # Agent 配置
+    ├── config/              # 配置目录
+    │   └── mcp.json         # MCP 服务器配置
+    ├── generated/           # 自动生成文件
+    │   ├── TOOLS.md         # 工具文档
+    │   └── CAPABILITIES.md  # 能力信息
+    ├── skills/              # 自定义技能
+    ├── memory/              # 记忆存储
+    │   └── memory.db
+    └── sessions/            # 会话存储
+        └── checkpoints.db
 ```
 
 #### 提示词加载流程
@@ -593,10 +613,10 @@ flowchart TD
 
     A([Agent 启动]):::startEnd --> B[加载 Bootstrap 文件]:::process
     
-    B --> C[SYSTEM.md]:::file
-    B --> D[MEMORY_GUIDE.md]:::file
-    B --> E[SOUL.md]:::file
-    B --> F[AGENT_CONFIG.md]:::file
+    B --> C[bootstrap/SYSTEM.md]:::file
+    B --> D[bootstrap/MEMORY_GUIDE.md]:::file
+    B --> E[bootstrap/SOUL.md]:::file
+    B --> F[bootstrap/AGENT_CONFIG.md]:::file
 
     C --> G[组装提示词]:::process
     D --> G
@@ -670,7 +690,7 @@ Config（根）
 │   ├── web.search（搜索配置）
 │   ├── exec（Shell 执行配置）
 │   └── restrict_to_workspace
-├── mcp                    # MCP 配置
+├── mcp                    # MCP 配置（存储在 workspace/config/mcp.json）
 │   └── servers
 │       └── {server_name}
 │           ├── command    # stdio 传输命令
@@ -686,6 +706,21 @@ Config（根）
     ├── wechat
     ├── email
     └── langbot_enabled
+```
+
+**工作区目录结构**：
+
+```
+workspace/
+├── bootstrap/           # Bootstrap 文件（系统提示词）
+├── config/              # 配置文件
+│   └── mcp.json         # MCP 服务器配置
+├── generated/           # 自动生成文件
+│   ├── TOOLS.md         # 工具文档
+│   └── CAPABILITIES.md  # 能力信息
+├── skills/              # 技能目录
+├── memory/              # 记忆存储
+└── sessions/            # 会话数据
 ```
 
 #### MCP 配置示例

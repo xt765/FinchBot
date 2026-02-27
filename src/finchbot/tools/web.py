@@ -60,11 +60,11 @@ class WebSearchTool(FinchTool):
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Search query",
+                    "description": t("tools.web_search.param_query"),
                 },
                 "max_results": {
                     "type": "integer",
-                    "description": "Max results",
+                    "description": t("tools.web_search.param_max_results"),
                     "default": 5,
                 },
             },
@@ -140,7 +140,12 @@ class WebExtractTool(FinchTool):
                 "urls": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "URLs to extract",
+                    "description": t("tools.web_extract.param_urls"),
+                },
+                "extract_depth": {
+                    "type": "string",
+                    "description": t("tools.web_extract.param_extract_depth"),
+                    "default": "advanced",
                 },
             },
             "required": ["urls"],
