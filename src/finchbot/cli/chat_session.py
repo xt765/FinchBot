@@ -381,9 +381,20 @@ async def _update_session_turn_count_async(
         # 如果将来 session_store 也变异步了，这里也需要 await
         session_store.update_activity(session_id, turn_count=turn_count)
 
-        # 标题生成逻辑暂时略过或需要异步化
-        # if chat_model and turn_count >= 2:
-        #    ...
+        # 自动生成标题逻辑
+        if chat_model and turn_count >= 2:
+            from finchbot.sessions.title_generator import generate_session_title_with_ai
+
+            session = session_store.get_session(session_id)
+            if session:
+                current_title = session.title
+                needs_title = not current_title.strip() or current_title == session_id
+
+                if needs_title:
+                    generated_title = generate_session_title_with_ai(chat_model, messages)
+                    if generated_title:
+                        session_store.update_activity(session_id, title=generated_title)
+                        logger.info(f"自动生成会话标题: {generated_title}")
 
     except Exception as e:
         logger.warning(f"Failed to update turn count for session {session_id}: {e}")
