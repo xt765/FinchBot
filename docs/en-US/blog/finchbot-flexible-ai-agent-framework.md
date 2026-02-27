@@ -169,7 +169,7 @@ graph TB
     subgraph Core [Agent Core Layer]
         Agent[LangGraph Agent<br/>Decision Engine]:::coreLayer
         Context[ContextBuilder<br/>Prompt Assembly]:::coreLayer
-        Tools[ToolRegistry<br/>12 Built-in Tools + MCP]:::coreLayer
+        Tools[ToolRegistry<br/>15 Built-in Tools + MCP]:::coreLayer
         Memory[MemoryManager<br/>Dual-Layer Memory]:::coreLayer
     end
 
@@ -236,6 +236,7 @@ finchbot/
 │   ├── core.py        # Agent creation and execution
 │   ├── factory.py     # AgentFactory component assembly
 │   ├── context.py     # ContextBuilder prompt assembly
+│   ├── capabilities.py # CapabilitiesBuilder capability building
 │   └── skills.py      # SkillsLoader Markdown skill loading
 ├── channels/           # Multi-platform messaging (via LangBot)
 │   ├── base.py        # BaseChannel abstract base class
@@ -357,12 +358,21 @@ FinchBot's prompt system uses **file system + modular assembly** design.
 
 ```
 ~/.finchbot/
-├── SYSTEM.md           # Role definition
-├── MEMORY_GUIDE.md     # Memory usage guide
-├── SOUL.md             # Soul settings (personality)
-├── AGENT_CONFIG.md     # Agent configuration
+├── config.json              # Main configuration file
 └── workspace/
-    └── skills/         # Custom skills
+    ├── bootstrap/           # Bootstrap files directory
+    │   ├── SYSTEM.md        # Role definition
+    │   ├── MEMORY_GUIDE.md  # Memory usage guide
+    │   ├── SOUL.md          # Soul settings (personality)
+    │   └── AGENT_CONFIG.md  # Agent configuration
+    ├── config/              # Configuration directory
+    │   └── mcp.json         # MCP server configuration
+    ├── generated/           # Auto-generated files
+    │   ├── TOOLS.md         # Tool documentation
+    │   └── CAPABILITIES.md  # Capabilities info
+    ├── skills/              # Custom skills
+    ├── memory/              # Memory storage
+    └── sessions/            # Session data
 ```
 
 #### Prompt Loading Process
@@ -376,10 +386,10 @@ flowchart TD
 
     A([Agent Start]):::startEnd --> B[Load Bootstrap Files]:::process
 
-    B --> C[SYSTEM.md]:::file
-    B --> D[MEMORY_GUIDE.md]:::file
-    B --> E[SOUL.md]:::file
-    B --> F[AGENT_CONFIG.md]:::file
+    B --> C[bootstrap/SYSTEM.md]:::file
+    B --> D[bootstrap/MEMORY_GUIDE.md]:::file
+    B --> E[bootstrap/SOUL.md]:::file
+    B --> F[bootstrap/AGENT_CONFIG.md]:::file
 
     C --> G[Assemble Prompts]:::process
     D --> G
@@ -388,16 +398,17 @@ flowchart TD
 
     G --> H[Load Always-On Skills]:::process
     H --> I[Build Skills Summary XML]:::process
-    I --> J[Generate Tool Docs]:::process
-    J --> K[Inject Runtime Info]:::process
-    K --> L[Complete System Prompt]:::output
+    I --> J[Generate Tool Docs TOOLS.md]:::process
+    J --> K[Generate Capabilities CAPABILITIES.md]:::process
+    K --> L[Inject Runtime Info]:::process
+    L --> M[Complete System Prompt]:::output
 
-    L --> M([Send to LLM]):::startEnd
+    M --> N([Send to LLM]):::startEnd
 ```
 
 ### 3.3 Tool System: Code-Level Capability Extension
 
-Tools are the bridge between Agent and the external world. FinchBot provides 12 built-in tools with easy extensibility.
+Tools are the bridge between Agent and the external world. FinchBot provides 15 built-in tools with easy extensibility.
 
 #### Tool System Architecture
 
@@ -411,11 +422,12 @@ flowchart TB
     TR[ToolRegistry<br/>Global Registry]:::registry
     Lock[Single Lock<br/>Thread-Safe Singleton]:::registry
 
-    subgraph BuiltIn [Built-in Tools - 12]
+    subgraph BuiltIn [Built-in Tools - 15]
         File[File Operations<br/>read/write/edit/list]:::builtin
         Web[Network<br/>search/extract]:::builtin
         Memory[Memory<br/>remember/recall/forget]:::builtin
         System[System<br/>exec/session_title]:::builtin
+        Config[Configuration<br/>configure_mcp/refresh_capabilities<br/>get_capabilities/get_mcp_config_path]:::builtin
     end
 
     subgraph MCP [MCP Tools - langchain-mcp-adapters]
@@ -446,7 +458,11 @@ flowchart TB
 |                     | `recall`        | Memory retrieval               |
 |                     | `forget`        | Delete/archive memory          |
 |  **System**         | `exec`          | Safe shell command execution   |
-|                     | `session_title` | Session title management       |
+|                     | `session_title` | Manage session title           |
+|  **Configuration**  | `configure_mcp` | Dynamically configure MCP servers |
+|                     | `refresh_capabilities` | Refresh capabilities file |
+|                     | `get_capabilities` | Get current capabilities  |
+|                     | `get_mcp_config_path` | Get MCP config path   |
 
 #### Web Search: Three-Engine Fallback Design
 

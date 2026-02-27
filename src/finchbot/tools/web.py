@@ -151,11 +151,12 @@ class WebExtractTool(FinchTool):
             "required": ["urls"],
         }
 
-    def _run(self, urls: list[str]) -> str:
+    def _run(self, urls: list[str], extract_depth: str = "advanced") -> str:
         """提取网页内容.
 
         Args:
             urls: URL 列表。
+            extract_depth: 提取深度，basic 或 advanced。
 
         Returns:
             提取的内容字符串。
@@ -188,7 +189,7 @@ class WebExtractTool(FinchTool):
                 },
                 json={
                     "urls": urls,
-                    "extract_depth": self.extract_depth,
+                    "extract_depth": extract_depth,
                 },
                 timeout=30.0,
             )

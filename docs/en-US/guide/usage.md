@@ -244,18 +244,19 @@ The system will automatically detect your network environment and choose the bes
 
 ## 6. Built-in Tools Usage
 
-FinchBot includes 12 built-in tools across four categories:
+FinchBot includes 15 built-in tools across five categories:
 
 ```mermaid
 flowchart TB
     classDef category fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    subgraph Tools [12 Built-in Tools]
+    subgraph Tools [15 Built-in Tools]
         File[File Operations]:::category
         Web[Network]:::category
         Memory[Memory]:::category
         System[System]:::category
+        Config[Configuration]:::category
     end
 
     File --> F1[read_file]:::tool
@@ -272,6 +273,11 @@ flowchart TB
 
     System --> S1[exec]:::tool
     System --> S2[session_title]:::tool
+    
+    Config --> C1[configure_mcp]:::tool
+    Config --> C2[refresh_capabilities]:::tool
+    Config --> C3[get_capabilities]:::tool
+    Config --> C4[get_mcp_config_path]:::tool
 ```
 
 ### File Operation Tools
@@ -348,20 +354,56 @@ flowchart TB
 | `exec` | Execute shell commands | Batch operations, system commands |
 | `session_title` | Manage session title | Get/set session title |
 
+### Configuration Tools
+
+| Tool | Description | Use Case |
+| :--- | :--- | :--- |
+| `configure_mcp` | Dynamically configure MCP servers | Add/remove/update MCP servers |
+| `refresh_capabilities` | Refresh capabilities file | Update CAPABILITIES.md |
+| `get_capabilities` | Get current capabilities | View available MCP tools |
+| `get_mcp_config_path` | Get MCP config file path | Find config file location |
+
+**Best Practice**:
+
+```
+1. Use get_capabilities to view current MCP tools
+2. Use configure_mcp to add new MCP servers
+3. Use refresh_capabilities to update capabilities description
+```
+
 ---
 
 ## 7. Bootstrap File System
 
-FinchBot uses an editable Bootstrap file system to define Agent behavior. These files are located in the workspace directory and can be edited at any time.
+FinchBot uses an editable Bootstrap file system to define Agent behavior. These files are located in the workspace's `bootstrap/` directory and can be edited at any time.
 
 ### Bootstrap Files
 
-| File | Description |
-| :--- | :--- |
-| `SYSTEM.md` | System prompt, defines Agent's basic behavior |
-| `MEMORY_GUIDE.md` | Memory system usage guide |
-| `SOUL.md` | Agent's self-awareness and personality traits |
-| `AGENT_CONFIG.md` | Agent configuration (temperature, max tokens, etc.) |
+| File | Path | Description |
+| :--- | :--- | :--- |
+| `SYSTEM.md` | `workspace/bootstrap/SYSTEM.md` | System prompt, defines Agent's basic behavior |
+| `MEMORY_GUIDE.md` | `workspace/bootstrap/MEMORY_GUIDE.md` | Memory system usage guide |
+| `SOUL.md` | `workspace/bootstrap/SOUL.md` | Agent's self-awareness and personality traits |
+| `AGENT_CONFIG.md` | `workspace/bootstrap/AGENT_CONFIG.md` | Agent configuration (temperature, max tokens, etc.) |
+
+### Workspace Directory Structure
+
+```
+workspace/
+├── bootstrap/           # Bootstrap files directory
+│   ├── SYSTEM.md
+│   ├── MEMORY_GUIDE.md
+│   ├── SOUL.md
+│   └── AGENT_CONFIG.md
+├── config/              # Configuration directory
+│   └── mcp.json         # MCP server configuration
+├── generated/           # Auto-generated files
+│   ├── TOOLS.md         # Tool documentation
+│   └── CAPABILITIES.md  # Capabilities info
+├── skills/              # Custom skills
+├── memory/              # Memory storage
+└── sessions/            # Session data
+```
 
 ### Editing Bootstrap Files
 
@@ -372,7 +414,7 @@ You can directly edit these files to customize Agent behavior:
 finchbot chat --workspace "~/my-workspace"
 
 # Edit system prompt
-# File location: ~/my-workspace/SYSTEM.md
+# File location: ~/my-workspace/bootstrap/SYSTEM.md
 ```
 
 **Example - Custom SYSTEM.md**:

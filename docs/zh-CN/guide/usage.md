@@ -375,16 +375,35 @@ flowchart TB
 
 ## 7. Bootstrap 文件系统
 
-FinchBot 使用可编辑的 Bootstrap 文件系统来定义 Agent 行为。这些文件位于工作区目录，可随时编辑。
+FinchBot 使用可编辑的 Bootstrap 文件系统来定义 Agent 行为。这些文件位于工作区的 `bootstrap/` 目录，可随时编辑。
 
 ### Bootstrap 文件
 
-| 文件 | 说明 |
-| :--- | :--- |
-| `SYSTEM.md` | 系统提示词，定义 Agent 基本行为 |
-| `MEMORY_GUIDE.md` | 记忆系统使用指南 |
-| `SOUL.md` | Agent 自我认知和性格特征 |
-| `AGENT_CONFIG.md` | Agent 配置（温度、最大令牌等） |
+| 文件 | 路径 | 说明 |
+| :--- | :--- | :--- |
+| `SYSTEM.md` | `workspace/bootstrap/SYSTEM.md` | 系统提示词，定义 Agent 基本行为 |
+| `MEMORY_GUIDE.md` | `workspace/bootstrap/MEMORY_GUIDE.md` | 记忆系统使用指南 |
+| `SOUL.md` | `workspace/bootstrap/SOUL.md` | Agent 自我认知和性格特征 |
+| `AGENT_CONFIG.md` | `workspace/bootstrap/AGENT_CONFIG.md` | Agent 配置（温度、最大令牌等） |
+
+### 工作区目录结构
+
+```
+workspace/
+├── bootstrap/           # Bootstrap 文件目录
+│   ├── SYSTEM.md
+│   ├── MEMORY_GUIDE.md
+│   ├── SOUL.md
+│   └── AGENT_CONFIG.md
+├── config/              # 配置目录
+│   └── mcp.json         # MCP 服务器配置
+├── generated/           # 自动生成文件
+│   ├── TOOLS.md         # 工具文档
+│   └── CAPABILITIES.md  # 能力信息
+├── skills/              # 自定义技能
+├── memory/              # 记忆存储
+└── sessions/            # 会话数据
+```
 
 ### 编辑 Bootstrap 文件
 
@@ -395,7 +414,7 @@ FinchBot 使用可编辑的 Bootstrap 文件系统来定义 Agent 行为。这�
 finchbot chat --workspace "~/my-workspace"
 
 # 编辑系统提示词
-# 文件位置：~/my-workspace/SYSTEM.md
+# 文件位置：~/my-workspace/bootstrap/SYSTEM.md
 ```
 
 **示例 - 自定义 SYSTEM.md**：
