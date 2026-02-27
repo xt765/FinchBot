@@ -1,35 +1,35 @@
-<div align="center">
-  <img src="https://i-blog.csdnimg.cn/direct/8abea218c2804256a17cc8f2d6c81630.jpeg" width="150" >
-  <h1><strong>玄同 765 (xt765)</strong></h1>
-  <p><strong>LLM 开发工程师 | 中国传媒大学 · 数字媒体技术</strong></p>
-  <p>
-    <a href="https://blog.csdn.net/Yunyi_Chi" target="_blank" style="text-decoration: none;">
-      <span style="background-color: #f39c12; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">CSDN · 主页 |</span>
-    </a>
-    <a href="https://github.com/xt765" target="_blank" style="text-decoration: none; margin-left: 8px;">
-      <span style="background-color: #24292e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">GitHub · Follow</span>
-    </a>
-  </p>
-</div>
+<div align="center"> 
+  <img src="https://i-blog.csdnimg.cn/direct/8abea218c2804256a17cc8f2d6c81630.jpeg" width="150" > 
+  <h1><strong>玄同 765</strong></h1> 
+  <p><strong>大语言模型 (LLM) 开发工程师 | 中国传媒大学 · 数字媒体技术（智能交互与游戏设计）</strong></p> 
+  <p> 
+    <a href="https://blog.csdn.net/Yunyi_Chi" target="_blank" style="text-decoration: none;"> 
+      <span style="background-color: #f39c12; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">CSDN · 个人主页 |</span> 
+    </a> 
+    <a href="https://github.com/xt765" target="_blank" style="text-decoration: none; margin-left: 8px;"> 
+      <span style="background-color: #24292e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">GitHub · Follow</span> 
+    </a> 
+  </p> 
+</div> 
 
----
+--- 
 
-### **关于作者**
+### **关于作者** 
 
-- **专注领域**：LLM 开发 / RAG 知识库 / AI Agent 实现 / 模型微调
-- **技术栈**：Python | RAG (LangChain / Dify + Milvus) | FastAPI + Docker
-- **工程化**：模型工程部署、知识库搭建优化、全栈解决方案
+- **深耕领域**：大语言模型开发 / RAG 知识库 / AI Agent 落地 / 模型微调 
+- **技术栈**：Python | RAG (LangChain / Dify + Milvus) | FastAPI + Docker 
+- **工程能力**：专注模型工程化部署、知识库构建与优化，擅长全流程解决方案 
 
-> **"让 AI 交互更智能，让技术落地更高效"**
-> 欢迎技术交流和项目合作！
+> **「让 AI 交互更智能，让技术落地更高效」** 
+> 欢迎技术探讨与项目合作，解锁大模型与智能交互的无限可能！
 
 ---
 
 # FinchBot (雀翎) — 轻量灵活，无限扩展的 AI Agent 框架
 
-<p align="center">
-  <img src="docs/image/image.png" alt="FinchBot Logo" width="600">
-</p>
+<p align="center"> 
+   <img src="https://i-blog.csdnimg.cn/direct/60cd5e5971cc4226977289a17a99dbae.png" alt="FinchBot Logo" width="600"> 
+ </p>
 
 <p align="center">
   <em>基于 LangChain v1.2 与 LangGraph v1.0 构建<br>
@@ -91,13 +91,7 @@ graph BT
 
 FinchBot 通过 [LangBot](https://github.com/langbot-app/LangBot) 平台提供生产级多平台支持：
 
-![QQ](https://img.shields.io/badge/QQ-supported-blue)
-![WeChat](https://img.shields.io/badge/WeChat-supported-green)
-![Feishu](https://img.shields.io/badge/Feishu-supported-blue)
-![DingTalk](https://img.shields.io/badge/DingTalk-supported-blue)
-![Discord](https://img.shields.io/badge/Discord-supported-purple)
-![Telegram](https://img.shields.io/badge/Telegram-supported-blue)
-![Slack](https://img.shields.io/badge/Slack-supported-red)
+**支持平台**：QQ、微信（公众号/企业微信）、飞书、钉钉、Discord、Telegram、Slack、LINE、KOOK 等 12+ 平台
 
 ```bash
 # 安装 LangBot
@@ -753,4 +747,4 @@ docker exec -it finchbot finchbot chat
 
 ---
 
-> 如果对你有帮助，请给个 Star
+> 如果对你有帮助，请给个 Star⭐，支持一下！

@@ -1,35 +1,35 @@
-<div align="center">
-  <img src="https://i-blog.csdnimg.cn/direct/8abea218c2804256a17cc8f2d6c81630.jpeg" width="150" >
-  <h1><strong>Xuantong 765 (xt765)</strong></h1>
-  <p><strong>LLM Engineer | China University of Communication · Digital Media Technology</strong></p>
-  <p>
-    <a href="https://blog.csdn.net/Yunyi_Chi" target="_blank" style="text-decoration: none;">
-      <span style="background-color: #f39c12; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">CSDN · Profile |</span>
-    </a>
-    <a href="https://github.com/xt765" target="_blank" style="text-decoration: none; margin-left: 8px;">
-      <span style="background-color: #24292e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">GitHub · Follow</span>
-    </a>
-  </p>
-</div>
+<div align="center"> 
+  <img src="https://i-blog.csdnimg.cn/direct/8abea218c2804256a17cc8f2d6c81630.jpeg" width="150" > 
+  <h1><strong>Xuantong 765</strong></h1> 
+  <p><strong>LLM Development Engineer | Communication University of China · Digital Media Technology (Intelligent Interaction & Game Design)</strong></p> 
+  <p> 
+    <a href="https://blog.csdn.net/Yunyi_Chi" target="_blank" style="text-decoration: none;"> 
+      <span style="background-color: #f39c12; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">CSDN · Profile |</span> 
+    </a> 
+    <a href="https://github.com/xt765" target="_blank" style="text-decoration: none; margin-left: 8px;"> 
+      <span style="background-color: #24292e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">GitHub · Follow</span> 
+    </a> 
+  </p> 
+</div> 
 
----
+--- 
 
-### **About the Author**
+### **About the Author** 
 
-- **Focus**: LLM Development / RAG Knowledge Base / AI Agent Implementation / Model Fine-tuning
-- **Tech Stack**: Python | RAG (LangChain / Dify + Milvus) | FastAPI + Docker
-- **Expertise**: Model Deployment, Knowledge Base Architecture, Full-stack Solutions
+- **Deep Focus**: LLM Development / RAG Knowledge Base / AI Agent Implementation / Model Fine-tuning 
+- **Tech Stack**: Python | RAG (LangChain / Dify + Milvus) | FastAPI + Docker 
+- **Engineering**: Model Deployment, Knowledge Base Optimization, Full-stack Solutions 
 
-> **"Make AI interaction smarter, make technology implementation more efficient"**
+> **「Make AI interaction smarter, make technology implementation more efficient」** 
 > Welcome for technical exchanges and project cooperation!
 
 ---
 
 # FinchBot — A Lightweight, Flexible, Infinitely Extensible AI Agent Framework
 
-<p align="center">
-  <img src="docs/image/image.png" alt="FinchBot Logo" width="600">
-</p>
+<p align="center"> 
+   <img src="https://i-blog.csdnimg.cn/direct/60cd5e5971cc4226977289a17a99dbae.png" alt="FinchBot Logo" width="600"> 
+ </p>
 
 <p align="center">
   <em>Built on LangChain v1.2 and LangGraph v1.0<br>
@@ -91,13 +91,7 @@ graph BT
 
 FinchBot provides production-grade multi-platform support via [LangBot](https://github.com/langbot-app/LangBot):
 
-![QQ](https://img.shields.io/badge/QQ-supported-blue)
-![WeChat](https://img.shields.io/badge/WeChat-supported-green)
-![Feishu](https://img.shields.io/badge/Feishu-supported-blue)
-![DingTalk](https://img.shields.io/badge/DingTalk-supported-blue)
-![Discord](https://img.shields.io/badge/Discord-supported-purple)
-![Telegram](https://img.shields.io/badge/Telegram-supported-blue)
-![Slack](https://img.shields.io/badge/Slack-supported-red)
+**Supported Platforms**: QQ, WeChat (Official/Enterprise), Feishu, DingTalk, Discord, Telegram, Slack, LINE, KOOK, and 12+ more platforms
 
 ```bash
 # Install LangBot
@@ -753,4 +747,4 @@ docker exec -it finchbot finchbot chat
 
 ---
 
-> If this is helpful, please give a Star
+> If this is helpful, please give a Star⭐ to support!
