@@ -54,13 +54,13 @@
 
 ### Pain Points of Existing Frameworks
 
-|         Pain Point         | Traditional Solution         | FinchBot Solution                        |
-| :------------------------: | :--------------------------- | :---------------------------------------- |
-|   **Difficult to extend**  | Modify core code             | Inherit base class or create Markdown    |
-|   **Fragile memory**       | Rely on LLM context window   | Dual-layer persistent storage + semantic |
-|  **Inflexible prompts**    | Hard-coded in source         | File system with hot reload              |
-|   **Slow startup**          | Synchronous blocking load    | Full async + thread pool concurrency    |
-|   **Outdated architecture**| Old LangChain API           | LangChain v1.2 + LangGraph v1.0          |
+|         Pain Point         | Traditional Solution         | FinchBot Solution                                        |
+| :------------------------: | :--------------------------- | :------------------------------------------------------- |
+|   **Difficult to extend**  | Modify core code             | Inherit FinchTool base class or create Markdown skill files |
+|   **Fragile memory**       | Rely on LLM context window   | SQLite + Vector dual storage + Agentic RAG + Weighted RRF |
+|  **Inflexible prompts**    | Hard-coded in source         | Bootstrap file system, user-customizable prompts, hot reload |
+|   **Slow startup**          | Synchronous blocking load    | Full async + Thread pool concurrency, 3-5x faster startup |
+|   **Outdated architecture**| Old LangChain API           | LangChain v1.2 + LangGraph v1.0 state graph orchestration |
 
 ### Design Philosophy
 
