@@ -163,7 +163,7 @@ graph TB
     subgraph Core [Agent Core]
         Agent[LangGraph Agent<br/>Decision Engine]:::coreLayer
         Context[ContextBuilder<br/>Context Building]:::coreLayer
-        Tools[ToolRegistry<br/>12 Built-in Tools + MCP]:::coreLayer
+        Tools[ToolRegistry<br/>15 Built-in Tools + MCP]:::coreLayer
         Memory[MemoryManager<br/>Dual-layer Memory]:::coreLayer
     end
 
@@ -230,6 +230,7 @@ finchbot/
 │   ├── core.py        # Agent creation and execution
 │   ├── factory.py     # AgentFactory for component assembly
 │   ├── context.py     # ContextBuilder for prompt assembly
+│   ├── capabilities.py # CapabilitiesBuilder for capability building
 │   └── skills.py      # SkillsLoader for Markdown skills
 ├── channels/           # Multi-Platform Messaging (via LangBot)
 │   ├── base.py        # BaseChannel abstract class
@@ -269,6 +270,8 @@ finchbot/
 │   ├── base.py
 │   ├── factory.py     # MCP tools via langchain-mcp-adapters
 │   ├── registry.py
+│   ├── config_tools.py # Configuration tools
+│   ├── tools_generator.py # Tool documentation generator
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -350,12 +353,21 @@ FinchBot's prompt system uses **file system + modular assembly** design.
 
 ```
 ~/.finchbot/
-├── SYSTEM.md           # Role definition
-├── MEMORY_GUIDE.md     # Memory usage guide
-├── SOUL.md             # Personality settings
-├── AGENT_CONFIG.md     # Agent configuration
+├── config.json              # Main configuration file
 └── workspace/
-    └── skills/         # Custom skills
+    ├── bootstrap/           # Bootstrap files directory
+    │   ├── SYSTEM.md        # Role definition
+    │   ├── MEMORY_GUIDE.md  # Memory usage guide
+    │   ├── SOUL.md          # Personality settings
+    │   └── AGENT_CONFIG.md  # Agent configuration
+    ├── config/              # Configuration directory
+    │   └── mcp.json         # MCP server configuration
+    ├── generated/           # Auto-generated files
+    │   ├── TOOLS.md         # Tool documentation
+    │   └── CAPABILITIES.md  # Capabilities info
+    ├── skills/              # Custom skills
+    ├── memory/              # Memory storage
+    └── sessions/            # Session data
 ```
 
 #### Prompt Loading Flow
@@ -369,10 +381,10 @@ flowchart TD
 
     A([Agent Startup]):::startEnd --> B[Load Bootstrap Files]:::process
     
-    B --> C[SYSTEM.md]:::file
-    B --> D[MEMORY_GUIDE.md]:::file
-    B --> E[SOUL.md]:::file
-    B --> F[AGENT_CONFIG.md]:::file
+    B --> C[bootstrap/SYSTEM.md]:::file
+    B --> D[bootstrap/MEMORY_GUIDE.md]:::file
+    B --> E[bootstrap/SOUL.md]:::file
+    B --> F[bootstrap/AGENT_CONFIG.md]:::file
 
     C --> G[Assemble Prompt]:::process
     D --> G
@@ -381,16 +393,17 @@ flowchart TD
 
     G --> H[Load Always-on Skills]:::process
     H --> I[Build Skill Summary XML]:::process
-    I --> J[Generate Tool Docs]:::process
-    J --> K[Inject Runtime Info]:::process
-    K --> L[Complete System Prompt]:::output
+    I --> J[Generate Tool Docs TOOLS.md]:::process
+    J --> K[Generate Capabilities CAPABILITIES.md]:::process
+    K --> L[Inject Runtime Info]:::process
+    L --> M[Complete System Prompt]:::output
 
-    L --> M([Send to LLM]):::startEnd
+    M --> N([Send to LLM]):::startEnd
 ```
 
 ### 3. Tool System: Code-Level Capability Extension
 
-Tools are the bridge for Agent to interact with the external world. FinchBot provides 12 built-in tools with easy extension.
+Tools are the bridge for Agent to interact with the external world. FinchBot provides 15 built-in tools with easy extension.
 
 #### Tool System Architecture
 
@@ -408,6 +421,7 @@ flowchart TB
     Web[Network<br/>web_search / web_extract]:::builtin
     Memory[Memory<br/>remember / recall / forget]:::builtin
     System[System<br/>exec / session_title]:::builtin
+    Config[Configuration<br/>configure_mcp / refresh_capabilities<br/>get_capabilities / get_mcp_config_path]:::builtin
 
     Inherit[Inherit FinchTool<br/>Implement _run]:::custom
     Register[Register to Registry]:::custom
@@ -415,13 +429,14 @@ flowchart TB
     Agent[Agent Call]:::agent
 
     TR --> Lock
-    Lock --> File & Web & Memory & System
+    Lock --> File & Web & Memory & System & Config
     Lock --> Inherit --> Register
 
     File --> Agent
     Web --> Agent
     Memory --> Agent
     System --> Agent
+    Config --> Agent
     Register --> Agent
 ```
 
@@ -440,6 +455,10 @@ flowchart TB
 |                    | `forget`        | Delete/archive memories       |
 |  **System**  | `exec`          | Secure shell execution        |
 |                    | `session_title` | Manage session titles         |
+| **Config**   | `configure_mcp` | Dynamically configure MCP servers |
+|                    | `refresh_capabilities` | Refresh capabilities file |
+|                    | `get_capabilities` | Get current capabilities  |
+|                    | `get_mcp_config_path` | Get MCP config path   |
 
 #### Web Search: Three-Engine Fallback Design
 

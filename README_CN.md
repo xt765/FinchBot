@@ -163,7 +163,7 @@ graph TB
     subgraph Core [Agent 核心层]
         Agent[LangGraph Agent<br/>决策引擎]:::coreLayer
         Context[ContextBuilder<br/>上下文构建]:::coreLayer
-        Tools[ToolRegistry<br/>12 内置工具 + MCP]:::coreLayer
+        Tools[ToolRegistry<br/>15 内置工具 + MCP]:::coreLayer
         Memory[MemoryManager<br/>双层记忆]:::coreLayer
     end
 
@@ -230,6 +230,7 @@ finchbot/
 │   ├── core.py        # Agent 创建与运行
 │   ├── factory.py     # AgentFactory 组件装配
 │   ├── context.py     # ContextBuilder 提示词组装
+│   ├── capabilities.py # CapabilitiesBuilder 能力构建
 │   └── skills.py      # SkillsLoader Markdown 技能加载
 ├── channels/           # 多平台消息（通过 LangBot）
 │   ├── base.py        # BaseChannel 抽象基类
@@ -269,6 +270,8 @@ finchbot/
 │   ├── base.py
 │   ├── factory.py     # MCP 工具通过 langchain-mcp-adapters
 │   ├── registry.py
+│   ├── config_tools.py # 配置工具
+│   ├── tools_generator.py # 工具文档生成器
 │   ├── filesystem.py
 │   ├── memory.py
 │   ├── shell.py
@@ -350,12 +353,21 @@ FinchBot 的提示词系统采用**文件系统 + 模块化组装**的设计。
 
 ```
 ~/.finchbot/
-├── SYSTEM.md           # 角色设定
-├── MEMORY_GUIDE.md     # 记忆使用指南
-├── SOUL.md             # 灵魂设定（性格特征）
-├── AGENT_CONFIG.md     # Agent 配置
+├── config.json              # 主配置文件
 └── workspace/
-    └── skills/         # 自定义技能
+    ├── bootstrap/           # Bootstrap 文件目录
+    │   ├── SYSTEM.md        # 角色设定
+    │   ├── MEMORY_GUIDE.md  # 记忆使用指南
+    │   ├── SOUL.md          # 灵魂设定（性格特征）
+    │   └── AGENT_CONFIG.md  # Agent 配置
+    ├── config/              # 配置目录
+    │   └── mcp.json         # MCP 服务器配置
+    ├── generated/           # 自动生成文件
+    │   ├── TOOLS.md         # 工具文档
+    │   └── CAPABILITIES.md  # 能力信息
+    ├── skills/              # 自定义技能
+    ├── memory/              # 记忆存储
+    └── sessions/            # 会话数据
 ```
 
 #### 提示词加载流程
@@ -369,10 +381,10 @@ flowchart TD
 
     A([Agent 启动]):::startEnd --> B[加载 Bootstrap 文件]:::process
     
-    B --> C[SYSTEM.md]:::file
-    B --> D[MEMORY_GUIDE.md]:::file
-    B --> E[SOUL.md]:::file
-    B --> F[AGENT_CONFIG.md]:::file
+    B --> C[bootstrap/SYSTEM.md]:::file
+    B --> D[bootstrap/MEMORY_GUIDE.md]:::file
+    B --> E[bootstrap/SOUL.md]:::file
+    B --> F[bootstrap/AGENT_CONFIG.md]:::file
 
     C --> G[组装提示词]:::process
     D --> G
@@ -381,16 +393,17 @@ flowchart TD
 
     G --> H[加载常驻技能]:::process
     H --> I[构建技能摘要 XML]:::process
-    I --> J[生成工具文档]:::process
-    J --> K[注入运行时信息]:::process
-    K --> L[完整系统提示]:::output
+    I --> J[生成工具文档 TOOLS.md]:::process
+    J --> K[生成能力文档 CAPABILITIES.md]:::process
+    K --> L[注入运行时信息]:::process
+    L --> M[完整系统提示]:::output
 
-    L --> M([发送给 LLM]):::startEnd
+    M --> N([发送给 LLM]):::startEnd
 ```
 
 ### 3. 工具系统：代码级能力扩展
 
-工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 12 个内置工具，并支持轻松扩展。
+工具是 Agent 与外部世界交互的桥梁。FinchBot 提供了 15 个内置工具，并支持轻松扩展。
 
 #### 工具系统架构
 
@@ -408,6 +421,7 @@ flowchart TB
     Web[网络<br/>web_search / web_extract]:::builtin
     Memory[记忆<br/>remember / recall / forget]:::builtin
     System[系统<br/>exec / session_title]:::builtin
+    Config[配置<br/>configure_mcp / refresh_capabilities<br/>get_capabilities / get_mcp_config_path]:::builtin
 
     Inherit[继承 FinchTool<br/>实现 _run]:::custom
     Register[注册到 Registry]:::custom
@@ -415,13 +429,14 @@ flowchart TB
     Agent[Agent 调用]:::agent
 
     TR --> Lock
-    Lock --> File & Web & Memory & System
+    Lock --> File & Web & Memory & System & Config
     Lock --> Inherit --> Register
 
     File --> Agent
     Web --> Agent
     Memory --> Agent
     System --> Agent
+    Config --> Agent
     Register --> Agent
 ```
 
@@ -440,6 +455,10 @@ flowchart TB
 |                    | `forget`        | 删除/归档记忆               |
 | **系统控制** | `exec`          | 安全执行 Shell 命令         |
 |                    | `session_title` | 管理会话标题                |
+| **配置管理** | `configure_mcp` | 动态配置 MCP 服务器         |
+|                    | `refresh_capabilities` | 刷新能力描述文件   |
+|                    | `get_capabilities` | 获取当前能力描述        |
+|                    | `get_mcp_config_path` | 获取 MCP 配置路径    |
 
 #### 网页搜索：三引擎降级设计
 
