@@ -6,12 +6,16 @@
 
 from __future__ import annotations
 
+import inspect
+import warnings
 from pathlib import Path
 from typing import Any
 
 from langchain_core.tools import BaseTool
+from langchain_core.utils.pydantic import _create_subset_model, get_fields
 from loguru import logger
-from pydantic import Field
+from pydantic import Field, validate_arguments
+from pydantic.warnings import PydanticDeprecationWarning
 
 
 class FinchTool(BaseTool):
@@ -41,6 +45,64 @@ class FinchTool(BaseTool):
         子类可以覆写此属性以提供自定义参数定义。
         """
         return {}
+
+    def get_input_schema(self, config: Any = None) -> Any:
+        """获取输入 schema，修复 LangChain 的 v__args bug.
+
+        LangChain 的 create_schema_from_function 函数在处理名为 'args' 或 'kwargs'
+        的参数时存在两个问题：
+        1. Pydantic 会创建内部字段 v__args/v__kwargs，但 LangChain 没有过滤
+        2. LangChain 会错误地过滤掉名为 'args' 的普通参数（即使不是 *args）
+
+        此方法修复这两个问题。
+
+        Args:
+            config: Runnable 配置（可选）。
+
+        Returns:
+            输入 schema（Pydantic BaseModel）。
+        """
+        if self.args_schema is not None:
+            return self.args_schema
+
+        # 自己实现 schema 生成，避免 LangChain 的 bug
+        sig = inspect.signature(self._run)
+
+        # 检查是否有 VAR_POSITIONAL 或 VAR_KEYWORD 参数
+        has_var_args = any(p.kind == p.VAR_POSITIONAL for p in sig.parameters.values())
+        has_var_kwargs = any(p.kind == p.VAR_KEYWORD for p in sig.parameters.values())
+
+        # 使用 Pydantic validate_arguments
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=PydanticDeprecationWarning)
+            validated = validate_arguments(self._run)  # type: ignore[misc]
+
+        inferred_model = validated.model
+
+        # 过滤字段
+        internal_fields = {"v__args", "v__kwargs", "v__duplicate_kwargs"}
+        filtered_fields = {"self", "run_manager", "callbacks"}
+
+        valid_fields = []
+        for field in get_fields(inferred_model):
+            # 过滤内部字段
+            if field in internal_fields:
+                continue
+            # 过滤 self 和 callbacks
+            if field in filtered_fields:
+                continue
+            # LangChain bug: 当没有 VAR_POSITIONAL 时过滤 args
+            # 我们修复这个：只有当 args 不是普通参数时才过滤
+            if field == "args" and not has_var_args and "args" not in sig.parameters:
+                continue
+            if field == "kwargs" and not has_var_kwargs and "kwargs" not in sig.parameters:
+                continue
+            valid_fields.append(field)
+
+        if len(valid_fields) == len(get_fields(inferred_model)):
+            return inferred_model
+
+        return _create_subset_model(self.name, inferred_model, valid_fields)
 
     def validate_path(self, path: str) -> Path | None:
         """验证并解析路径.
