@@ -26,7 +26,7 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
-from finchbot.config import load_config
+from finchbot.config import ProviderConfig, load_config
 from finchbot.constants import EXIT_COMMANDS
 from finchbot.i18n import t
 from finchbot.sessions import SessionMetadataStore
@@ -229,9 +229,6 @@ def _display_tool_call_with_result(
         console: Rich Console
     """
     _render_tool_message(tool_name, result, console, tool_args=tool_args, duration=duration)
-
-
-
 
 
 def _display_messages_by_turn(
@@ -458,8 +455,15 @@ def _get_provider_config(provider: str, config_obj: Any) -> tuple[str | None, st
     api_key = None
     api_base = None
     if hasattr(config_obj, "providers") and config_obj.providers:
-        provider_config = config_obj.providers.get(provider)
-        if provider_config:
+        provider_name_map = {
+            "google": "gemini",
+            "azure": "openai",
+        }
+        config_provider = provider_name_map.get(provider, provider)
+        provider_config: ProviderConfig | None = getattr(
+            config_obj.providers, config_provider, None
+        )
+        if provider_config and provider_config.api_key:
             api_key = provider_config.api_key
             api_base = provider_config.api_base
 
@@ -697,7 +701,7 @@ async def _run_chat_session_async(
             api_key=api_key,
             api_base=api_base,
             temperature=config_obj.agents.defaults.temperature,
-        )
+        ),
     )
 
     history_file = Path.home() / ".finchbot" / "history" / "chat_history"
@@ -709,7 +713,9 @@ async def _run_chat_session_async(
     session_store = await loop.run_in_executor(None, SessionMetadataStore, ws_path)
 
     if not await loop.run_in_executor(None, session_store.session_exists, session_id):
-        await loop.run_in_executor(None, partial(session_store.create_session, session_id, title=session_id))
+        await loop.run_in_executor(
+            None, partial(session_store.create_session, session_id, title=session_id)
+        )
 
     current_session = await loop.run_in_executor(None, session_store.get_session, session_id)
     session_title = current_session.title if current_session else None
