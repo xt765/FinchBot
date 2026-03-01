@@ -497,15 +497,33 @@ flowchart TD
 
 这个设计确保**即使没有任何 API Key 配置，网页搜索也能开箱即用**！
 
-#### 会话标题：智能命名，开箱即用
+#### Agent 自主配置：动态 MCP 管理
 
-`session_title` 工具体现了 FinchBot 的开箱即用理念：
+FinchBot 的 Agent 可以通过 `configure_mcp` 工具自主管理 MCP 服务器，实现动态能力扩展，无需手动编辑配置文件。
 
-|       操作方式       | 说明                                   | 示例                   |
-| :------------------: | :------------------------------------- | :--------------------- |
-|  **自动生成**  | 对话 2-3 轮后，AI 自动根据内容生成标题 | "Python 异步编程讨论"  |
-| **Agent 修改** | 告诉 Agent "把会话标题改成 XXX"        | Agent 调用工具自动修改 |
-| **手动重命名** | 在会话管理器中按 `r` 键重命名        | 用户手动输入新标题     |
+**支持的操作**：
+
+| 操作 | 说明 |
+| :--- | :--- |
+| `add` | 添加新 MCP 服务器 |
+| `update` | 更新现有服务器配置 |
+| `remove` | 删除 MCP 服务器 |
+| `enable` | 启用已禁用的 MCP 服务器 |
+| `disable` | 暂时禁用 MCP 服务器 |
+| `list` | 列出所有已配置的服务器 |
+
+**动态提示词更新**：
+
+当 MCP 配置变更时，Agent 可通过 `refresh_capabilities` 刷新能力描述，确保系统提示词始终反映当前能力。
+
+```mermaid
+flowchart LR
+    classDef config fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef system fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef prompt fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    MCP[MCP 配置<br/>configure_mcp]:::config --> Refresh[refresh_capabilities]:::system --> Builder[CapabilitiesBuilder<br/>重新生成]:::system --> Write[CAPABILITIES.md]:::prompt --> Load[下次对话<br/>自动加载]:::prompt
+```
 
 ### 3.4 技能系统：用 Markdown 定义 Agent 能力
 

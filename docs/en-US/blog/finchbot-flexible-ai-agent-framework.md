@@ -497,15 +497,33 @@ flowchart TD
 
 This design ensures **web search works out of the box even without any API Key configured**!
 
-#### Session Title: Smart Naming, Out of Box
+#### Agent Self-Configuration: Dynamic MCP Management
 
-The `session_title` tool embodies FinchBot's out-of-box philosophy:
+FinchBot's Agent can autonomously manage MCP servers through the `configure_mcp` tool, enabling dynamic capability expansion without manual configuration file editing.
 
-|     Operation      | Description                                | Example                   |
-| :----------------: | :----------------------------------------- | :------------------------ |
-|  **Auto-generate** | After 2-3 dialogue rounds, AI generates  | "Python Async Discussion" |
-| **Agent Modify**   | Tell Agent "change session title to XXX" | Agent calls tool to edit |
-|  **Manual Rename** | Press 'r' in session manager              | User manually enters      |
+**Supported Operations**:
+
+| Operation | Description |
+| :--- | :--- |
+| `add` | Add new MCP server |
+| `update` | Update existing server configuration |
+| `remove` | Delete MCP server |
+| `enable` | Enable disabled MCP server |
+| `disable` | Temporarily disable MCP server |
+| `list` | List all configured servers |
+
+**Dynamic Prompt Updates**:
+
+When MCP configuration changes, the Agent can refresh capability descriptions through `refresh_capabilities`, ensuring the system prompt always reflects current capabilities.
+
+```mermaid
+flowchart LR
+    classDef config fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef system fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef prompt fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    MCP[MCP Config<br/>configure_mcp]:::config --> Refresh[refresh_capabilities]:::system --> Builder[CapabilitiesBuilder<br/>Regenerate]:::system --> Write[CAPABILITIES.md]:::prompt --> Load[Next Session<br/>Auto-Load]:::prompt
+```
 
 ### 3.4 Skill System: Define Agent Capabilities with Markdown
 
