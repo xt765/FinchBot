@@ -30,6 +30,8 @@ Actions:
 - add: Add a new MCP server
 - update: Update an existing MCP server
 - remove: Remove an MCP server
+- enable: Enable a disabled MCP server
+- disable: Disable an MCP server
 - list: List all configured MCP servers
 
 For 'add' and 'update' actions, provide:
@@ -39,8 +41,8 @@ For 'add' and 'update' actions, provide:
 - env: Environment variables dict (optional)
 - url: URL for HTTP-based MCP servers (optional)
 
-For 'remove' action, provide:
-- server_name: Name of the server to remove
+For 'remove', 'enable', 'disable' actions, provide:
+- server_name: Name of the server
 
 For 'list' action, no additional parameters needed.
 """
@@ -53,7 +55,7 @@ For 'list' action, no additional parameters needed.
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["add", "update", "remove", "list"],
+                    "enum": ["add", "update", "remove", "enable", "disable", "list"],
                     "description": "Action to perform",
                 },
                 "server_name": {
@@ -100,11 +102,13 @@ For 'list' action, no additional parameters needed.
             return "Error: server_name is required for this action"
 
         if action == "add" or action == "update":
-            return self._add_or_update_server(
-                workspace, server_name, command, args, env, url
-            )
+            return self._add_or_update_server(workspace, server_name, command, args, env, url)
         elif action == "remove":
             return self._remove_server(workspace, server_name)
+        elif action == "enable":
+            return self._toggle_server(workspace, server_name, disabled=False)
+        elif action == "disable":
+            return self._toggle_server(workspace, server_name, disabled=True)
         else:
             return f"Error: Unknown action '{action}'"
 
@@ -182,6 +186,30 @@ For 'list' action, no additional parameters needed.
         save_mcp_config(servers, workspace)
 
         return f"MCP server '{server_name}' has been removed successfully."
+
+    def _toggle_server(
+        self,
+        workspace: Path,
+        server_name: str,
+        disabled: bool,
+    ) -> str:
+        servers = load_mcp_config(workspace)
+
+        if server_name not in servers:
+            return f"Error: MCP server '{server_name}' not found"
+
+        existing = servers[server_name]
+        servers[server_name] = MCPServerConfig(
+            command=existing.command,
+            args=existing.args,
+            env=existing.env,
+            url=existing.url,
+            disabled=disabled,
+        )
+        save_mcp_config(servers, workspace)
+
+        status = "disabled" if disabled else "enabled"
+        return f"MCP server '{server_name}' has been {status} successfully."
 
 
 class RefreshCapabilitiesTool(FinchTool):

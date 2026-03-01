@@ -572,10 +572,15 @@ class ConfigManager:
                 {"name": t("cli.config.mcp_add"), "value": "add"},
             ]
 
-            for server_name in self.config.mcp.servers:
+            for server_name, server_config in self.config.mcp.servers.items():
+                status = (
+                    t("cli.config.mcp_enabled")
+                    if not server_config.disabled
+                    else t("cli.config.mcp_disabled")
+                )
                 items.append(
                     {
-                        "name": f"{server_name}        [{t('cli.config.channel_enabled')}]",
+                        "name": f"{server_name}  [{status}]",
                         "value": f"edit.{server_name}",
                     }
                 )
@@ -689,7 +694,15 @@ class ConfigManager:
         console.print(f"[dim]Command: {server_config.command}[/dim]")
         console.print(f"[dim]Args: {' '.join(server_config.args)}[/dim]")
 
+        if server_config.disabled:
+            toggle_name = t("cli.config.mcp_enable")
+            toggle_value = "enable"
+        else:
+            toggle_name = t("cli.config.mcp_disable")
+            toggle_value = "disable"
+
         items = [
+            {"name": toggle_name, "value": toggle_value},
             {"name": t("cli.config.mcp_delete"), "value": "delete"},
             {"name": t("config.manager.back"), "value": "back"},
         ]
@@ -703,16 +716,28 @@ class ConfigManager:
 
         result = _keyboard_select(items, title, help_text)
 
-        if result == "delete":
+        if result == "enable":
+            server_config.disabled = False
+            console.print(
+                f"[green]✓ {t('cli.config.mcp_enable_success').format(server_name=server_name)}[/green]"
+            )
+        elif result == "disable":
+            server_config.disabled = True
+            console.print(
+                f"[yellow]✓ {t('cli.config.mcp_disable_success').format(server_name=server_name)}[/yellow]"
+            )
+        elif result == "delete":
             del self.config.mcp.servers[server_name]
-            console.print(f"[yellow]✓ MCP server '{server_name}' {t('cli.config.cleared')}[/yellow]")
+            console.print(
+                f"[yellow]✓ MCP server '{server_name}' {t('cli.config.cleared')}[/yellow]"
+            )
 
     def _configure_langbot(self) -> None:
         """配置 LangBot 集成."""
         console.print("\n[bold cyan]LangBot 配置[/bold cyan]")
         console.print("[dim]Channel 功能已迁移到 LangBot 平台[/dim]")
         console.print("[dim]LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台[/dim]")
-        console.print(f"[dim]官网: https://langbot.app[/dim]\n")
+        console.print("[dim]官网: https://langbot.app[/dim]\n")
 
         status = (
             t("cli.config.channel_enabled")
