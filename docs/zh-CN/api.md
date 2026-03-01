@@ -378,7 +378,7 @@ class MyCustomTool(FinchTool):
 | `RecallTool` | `recall` | 检索记忆 | `query`：查询，`query_type`：查询类型 |
 | `ForgetTool` | `forget` | 删除记忆 | `pattern`：匹配模式 |
 | `SessionTitleTool` | `session_title` | 管理会话标题 | `action`：get/set，`title`：标题 |
-| `ConfigureMCPTool` | `configure_mcp` | 动态配置 MCP 服务器 | `action`, `server_name`, `command`, `args`, `env`, `url` |
+| `ConfigureMCPTool` | `configure_mcp` | 动态配置 MCP 服务器 | `action`: add/update/remove/enable/disable/list, `server_name`, `command`, `args`, `env`, `url` |
 | `RefreshCapabilitiesTool` | `refresh_capabilities` | 刷新能力描述文件 | 无 |
 | `GetCapabilitiesTool` | `get_capabilities` | 获取当前能力描述 | 无 |
 | `GetMCPConfigPathTool` | `get_mcp_config_path` | 获取 MCP 配置文件路径 | 无 |

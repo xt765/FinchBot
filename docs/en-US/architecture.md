@@ -424,7 +424,7 @@ All tools inherit from the `FinchTool` base class and must implement:
 | `recall` | Memory | `memory.py` | Retrieve memory |
 | `forget` | Memory | `memory.py` | Delete/archive memory |
 | `session_title` | System | `session_title.py` | Manage session title |
-| `configure_mcp` | Config | `config_tools.py` | Dynamically configure MCP servers |
+| `configure_mcp` | Config | `config_tools.py` | Dynamically configure MCP servers (add/remove/update/enable/disable/list) |
 | `refresh_capabilities` | Config | `config_tools.py` | Refresh capabilities file |
 | `get_capabilities` | Config | `config_tools.py` | Get current capabilities |
 | `get_mcp_config_path` | Config | `config_tools.py` | Get MCP config file path |

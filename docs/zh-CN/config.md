@@ -477,6 +477,82 @@ finchbot config
 # 选择 "MCP Configuration" 选项
 ```
 
+### Agent 自主配置 MCP
+
+FinchBot 的 Agent 可以通过 `configure_mcp` 工具自主管理 MCP 服务器，无需用户手动编辑配置文件。
+
+#### 支持的操作
+
+| 操作 | 说明 | 示例对话 |
+| :--- | :--- | :--- |
+| `add` | 添加新服务器 | "帮我添加一个 GitHub MCP 服务器" |
+| `update` | 更新服务器配置 | "更新 GitHub 服务器的环境变量" |
+| `remove` | 删除服务器 | "删除 test 服务器" |
+| `enable` | 启用服务器 | "启用 GitHub 服务器" |
+| `disable` | 禁用服务器 | "暂时禁用 GitHub 服务器" |
+| `list` | 列出所有服务器 | "查看当前配置的 MCP 服务器" |
+
+#### 使用示例
+
+**添加服务器**：
+
+```
+用户: 帮我添加一个 GitHub MCP 服务器，命令是 mcp-github
+Agent: [调用 configure_mcp 工具]
+       ✅ MCP server 'github' has been added successfully.
+```
+
+**禁用服务器**：
+
+```
+用户: 暂时禁用 GitHub 服务器
+Agent: [调用 configure_mcp 工具]
+       ✅ MCP server 'github' has been disabled successfully.
+```
+
+**列出服务器**：
+
+```
+用户: 查看当前配置的 MCP 服务器
+Agent: [调用 configure_mcp 工具]
+       Configured MCP servers:
+         - github (disabled)
+           command: mcp-github
+         - filesystem (enabled)
+           command: mcp-filesystem
+```
+
+### 提示词动态更新机制
+
+FinchBot 的提示词系统支持动态更新，Agent 可以通过工具刷新能力描述。
+
+#### 核心组件
+
+| 组件 | 文件 | 功能 |
+| :--- | :--- | :--- |
+| `ContextBuilder` | `agent/context.py` | 组装系统提示词，加载 Bootstrap 文件和技能 |
+| `CapabilitiesBuilder` | `agent/capabilities.py` | 构建能力描述，写入 CAPABILITIES.md |
+| `ToolsGenerator` | `tools/tools_generator.py` | 生成工具文档，写入 TOOLS.md |
+
+#### 动态更新流程
+
+```mermaid
+flowchart TD
+    A[Agent 调用 configure_mcp] --> B[MCP 配置变更]
+    B --> C[Agent 调用 refresh_capabilities]
+    C --> D[CapabilitiesBuilder 重新生成]
+    D --> E[写入 CAPABILITIES.md]
+    E --> F[下次对话自动加载新配置]
+```
+
+#### 相关工具
+
+| 工具 | 说明 |
+| :--- | :--- |
+| `refresh_capabilities` | 刷新 CAPABILITIES.md 文件，反映当前的 MCP 和工具配置 |
+| `get_capabilities` | 返回当前配置的能力描述，不写入文件 |
+| `get_mcp_config_path` | 返回 MCP 配置文件路径，方便用户手动编辑 |
+
 ---
 
 ## 7. Channel 配置

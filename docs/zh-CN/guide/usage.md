@@ -358,10 +358,21 @@ flowchart TB
 
 | 工具 | 说明 | 使用场景 |
 | :--- | :--- | :--- |
-| `configure_mcp` | 动态配置 MCP 服务器 | 添加/删除/更新 MCP 服务器 |
+| `configure_mcp` | 动态配置 MCP 服务器 | 添加/删除/更新/启用/禁用 MCP 服务器 |
 | `refresh_capabilities` | 刷新能力描述文件 | 更新 CAPABILITIES.md |
 | `get_capabilities` | 获取当前能力描述 | 查看可用的 MCP 工具 |
 | `get_mcp_config_path` | 获取 MCP 配置文件路径 | 查找配置文件位置 |
+
+#### configure_mcp 操作
+
+| Action | 说明 | 示例 |
+| :--- | :--- | :--- |
+| `add` | 添加新服务器 | `configure_mcp(action="add", server_name="github", command="mcp-github")` |
+| `update` | 更新服务器 | `configure_mcp(action="update", server_name="github", env={"TOKEN": "xxx"})` |
+| `remove` | 删除服务器 | `configure_mcp(action="remove", server_name="github")` |
+| `enable` | 启用服务器 | `configure_mcp(action="enable", server_name="github")` |
+| `disable` | 禁用服务器 | `configure_mcp(action="disable", server_name="github")` |
+| `list` | 列出服务器 | `configure_mcp(action="list")` |
 
 **最佳实践**：
 

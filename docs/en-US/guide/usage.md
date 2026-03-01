@@ -358,10 +358,21 @@ flowchart TB
 
 | Tool | Description | Use Case |
 | :--- | :--- | :--- |
-| `configure_mcp` | Dynamically configure MCP servers | Add/remove/update MCP servers |
+| `configure_mcp` | Dynamically configure MCP servers | Add/remove/update/enable/disable MCP servers |
 | `refresh_capabilities` | Refresh capabilities file | Update CAPABILITIES.md |
 | `get_capabilities` | Get current capabilities | View available MCP tools |
 | `get_mcp_config_path` | Get MCP config file path | Find config file location |
+
+#### configure_mcp Actions
+
+| Action | Description | Example |
+| :--- | :--- | :--- |
+| `add` | Add a new server | `configure_mcp(action="add", server_name="github", command="mcp-github")` |
+| `update` | Update a server | `configure_mcp(action="update", server_name="github", env={"TOKEN": "xxx"})` |
+| `remove` | Remove a server | `configure_mcp(action="remove", server_name="github")` |
+| `enable` | Enable a server | `configure_mcp(action="enable", server_name="github")` |
+| `disable` | Disable a server | `configure_mcp(action="disable", server_name="github")` |
+| `list` | List all servers | `configure_mcp(action="list")` |
 
 **Best Practice**:
 

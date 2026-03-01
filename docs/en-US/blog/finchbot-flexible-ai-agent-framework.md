@@ -453,7 +453,7 @@ flowchart TB
 |                     | `forget`        | Delete/archive memory          |
 |  **System**         | `exec`          | Safe shell command execution   |
 |                     | `session_title` | Manage session title           |
-|  **Configuration**  | `configure_mcp` | Dynamically configure MCP servers |
+|  **Configuration**  | `configure_mcp` | Dynamically configure MCP servers (supports enable/disable) |
 |                     | `refresh_capabilities` | Refresh capabilities file |
 |                     | `get_capabilities` | Get current capabilities  |
 |                     | `get_mcp_config_path` | Get MCP config path   |

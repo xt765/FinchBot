@@ -378,7 +378,7 @@ class MyCustomTool(FinchTool):
 | `RecallTool` | `recall` | Retrieve memory | `query`: Query, `query_type`: Query type |
 | `ForgetTool` | `forget` | Delete memory | `pattern`: Match pattern |
 | `SessionTitleTool` | `session_title` | Manage session title | `action`: get/set, `title`: Title |
-| `ConfigureMCPTool` | `configure_mcp` | Dynamically configure MCP servers | `action`, `server_name`, `command`, `args`, `env`, `url` |
+| `ConfigureMCPTool` | `configure_mcp` | Dynamically configure MCP servers | `action`: add/update/remove/enable/disable/list, `server_name`, `command`, `args`, `env`, `url` |
 | `RefreshCapabilitiesTool` | `refresh_capabilities` | Refresh capabilities file | None |
 | `GetCapabilitiesTool` | `get_capabilities` | Get current capabilities | None |
 | `GetMCPConfigPathTool` | `get_mcp_config_path` | Get MCP config file path | None |

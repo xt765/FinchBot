@@ -455,7 +455,7 @@ flowchart TB
 |                    | `forget`        | 删除/归档记忆               |
 | **系统控制** | `exec`          | 安全执行 Shell 命令         |
 |                    | `session_title` | 管理会话标题                |
-| **配置管理** | `configure_mcp` | 动态配置 MCP 服务器         |
+| **配置管理** | `configure_mcp` | 动态配置 MCP 服务器（支持启用/禁用/添加/更新/删除/列出） |
 |                    | `refresh_capabilities` | 刷新能力描述文件   |
 |                    | `get_capabilities` | 获取当前能力描述        |
 |                    | `get_mcp_config_path` | 获取 MCP 配置路径    |

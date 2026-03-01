@@ -437,7 +437,7 @@ flowchart TB
 | `recall` | 记忆 | `memory.py` | 检索记忆 |
 | `forget` | 记忆 | `memory.py` | 删除/归档记忆 |
 | `session_title` | 系统 | `session_title.py` | 管理会话标题 |
-| `configure_mcp` | 配置 | `config_tools.py` | 动态配置 MCP 服务器 |
+| `configure_mcp` | 配置 | `config_tools.py` | 动态配置 MCP 服务器（添加/删除/更新/启用/禁用/列出） |
 | `refresh_capabilities` | 配置 | `config_tools.py` | 刷新能力描述文件 |
 | `get_capabilities` | 配置 | `config_tools.py` | 获取当前能力描述 |
 | `get_mcp_config_path` | 配置 | `config_tools.py` | 获取 MCP 配置文件路径 |

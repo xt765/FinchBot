@@ -477,6 +477,82 @@ finchbot config
 # Select "MCP Configuration" option
 ```
 
+### Agent Self-Configuration of MCP
+
+FinchBot's Agent can autonomously manage MCP servers through the `configure_mcp` tool, without requiring users to manually edit configuration files.
+
+#### Supported Actions
+
+| Action | Description | Example Dialog |
+| :--- | :--- | :--- |
+| `add` | Add a new server | "Help me add a GitHub MCP server" |
+| `update` | Update server configuration | "Update GitHub server's environment variables" |
+| `remove` | Delete a server | "Delete test server" |
+| `enable` | Enable a server | "Enable GitHub server" |
+| `disable` | Disable a server | "Temporarily disable GitHub server" |
+| `list` | List all servers | "Show currently configured MCP servers" |
+
+#### Usage Examples
+
+**Adding a Server**:
+
+```
+User: Help me add a GitHub MCP server with command mcp-github
+Agent: [Calls configure_mcp tool]
+       ✅ MCP server 'github' has been added successfully.
+```
+
+**Disabling a Server**:
+
+```
+User: Temporarily disable GitHub server
+Agent: [Calls configure_mcp tool]
+       ✅ MCP server 'github' has been disabled successfully.
+```
+
+**Listing Servers**:
+
+```
+User: Show currently configured MCP servers
+Agent: [Calls configure_mcp tool]
+       Configured MCP servers:
+         - github (disabled)
+           command: mcp-github
+         - filesystem (enabled)
+           command: mcp-filesystem
+```
+
+### Prompt Dynamic Update Mechanism
+
+FinchBot's prompt system supports dynamic updates. Agents can refresh capability descriptions through tools.
+
+#### Core Components
+
+| Component | File | Function |
+| :--- | :--- | :--- |
+| `ContextBuilder` | `agent/context.py` | Assembles system prompts, loads Bootstrap files and skills |
+| `CapabilitiesBuilder` | `agent/capabilities.py` | Builds capability descriptions, writes to CAPABILITIES.md |
+| `ToolsGenerator` | `tools/tools_generator.py` | Generates tool documentation, writes to TOOLS.md |
+
+#### Dynamic Update Flow
+
+```mermaid
+flowchart TD
+    A[Agent calls configure_mcp] --> B[MCP config changed]
+    B --> C[Agent calls refresh_capabilities]
+    C --> D[CapabilitiesBuilder regenerates]
+    D --> E[Write to CAPABILITIES.md]
+    E --> F[Next conversation auto-loads new config]
+```
+
+#### Related Tools
+
+| Tool | Description |
+| :--- | :--- |
+| `refresh_capabilities` | Refresh CAPABILITIES.md file to reflect current MCP and tool configuration |
+| `get_capabilities` | Return current capability description without writing to file |
+| `get_mcp_config_path` | Return MCP config file path for manual editing |
+
 ---
 
 ## 7. Channel Configuration
