@@ -40,25 +40,37 @@
 
 ---
 
-**FinchBot (雀翎)** 是一个赋予智能体真正自主性的 AI Agent 框架，基于 **LangChain v1.2** 和 **LangGraph v1.0** 构建。全异步架构设计，让智能体具备自主决策、自主扩展、自主进化的能力：
-
-1. **能力自扩展** — Agent 遇到能力边界时，可使用内置工具配置 MCP、创建技能
-2. **任务自调度** — Agent 可自主设定后台任务、定时执行，不阻塞对话
-3. **记忆自管理** — Agent 可自主记忆、检索、遗忘，Agentic RAG + 加权 RRF 混合检索，智能召回
-4. **行为自进化** — Agent 和用户都可自主修改提示词，持续迭代优化行为
+> **项目地址**：[GitHub - FinchBot](https://github.com/xt765/FinchBot) | [Gitee - FinchBot](https://gitee.com/xt765/FinchBot)
+> **文档**：[FinchBot 文档](https://github.com/xt765/FinchBot/tree/main/docs)
+> **问题反馈**：[GitHub Issues](https://github.com/xt765/FinchBot/issues)
 
 ---
 
-## 能力边界问题
+## 摘要
 
-| 用户请求 | 传统 AI 回应 | FinchBot 回应 |
+想象这样一个对话：
+
+> 用户："帮我分析这个 SQLite 数据库"
+> 
+> **传统 AI**："抱歉，我没有数据库操作的能力，无法完成这个任务。"
+> 
+> **FinchBot**：*[思考：我还没有数据库工具...]* 
+> "让我配置一下数据库工具。" 
+> *[调用 configure_mcp 添加 SQLite MCP]* 
+> *[新工具已加载：query_sqlite, list_tables...]* 
+> "好了！现在可以分析你的数据库了。数据库包含 3 张表..."
+
+**这就是 FinchBot 的核心差异**：遇到能力边界时，不是"放弃"，而是"想办法"。
+
+基于 **LangChain v1.2** 和 **LangGraph v1.0**，FinchBot 赋予智能体真正的自主性：
+
+| 边界 | 传统 AI | FinchBot |
 |:---|:---|:---|
-| "分析这个数据库" | "我没有数据库工具" | 自主配置 SQLite MCP，然后分析 |
-| "学会做某事" | "等开发者添加功能" | 通过 skill-creator 自主创建技能 |
-| "帮我监控 24 小时" | "我只能在你问的时候响应" | 创建定时任务，自主监控 |
-| "处理这个大文件" | 阻塞对话，用户等待 | 后台执行，用户继续 |
-| "记住我的偏好" | "下次对话就忘了" | 持久记忆，Agentic RAG + 加权 RRF 混合检索 |
-| "调整你的行为" | "提示词是固定的" | 动态修改提示词，热加载 |
+| **能力边界** | "我没有这个能力" | 自主配置 MCP，扩展能力 |
+| **时间边界** | 阻塞对话，等待完成 | 后台执行，对话继续 |
+| **规划边界** | "你需要自己设置" | 自主创建定时任务 |
+
+**而且它是安全的**：所有自主操作都在安全边界内 — 文件操作限制在 workspace 目录，危险 Shell 命令被黑名单阻止，只有注册的工具才能执行。
 
 ---
 
@@ -833,8 +845,6 @@ flowchart LR
     LangBot <--> Platforms
 ```
 
-#### 快速开始
-
 ```bash
 # 安装 LangBot
 uvx langbot
@@ -844,163 +854,6 @@ uvx langbot
 ```
 
 更多详情请参阅 [LangBot 文档](https://docs.langbot.app)。
-
----
-
-## 快速开始
-
-### 前置要求
-
-|   项目   | 要求                    |
-| :------: | :---------------------- |
-| 操作系统 | Windows / Linux / macOS |
-|  Python  | 3.13+                   |
-| 包管理器 | uv (推荐)               |
-
-### 安装
-
-```bash
-# 克隆仓库（二选一）
-# Gitee（国内推荐）
-git clone https://gitee.com/xt765/finchbot.git
-# 或 GitHub
-git clone https://github.com/xt765/finchbot.git
-
-cd finchbot
-
-# 安装依赖
-uv sync
-```
-
-> **注意**：嵌入模型（约 95MB）会在首次运行时自动下载到本地。
-
-<details>
-<summary>开发环境安装</summary>
-
-```bash
-uv sync --extra dev
-```
-
-包含：pytest、ruff、basedpyright
-
-</details>
-
-### 基本使用
-
-```bash
-# 第一步：配置 API 密钥
-uv run finchbot config
-
-# 第二步：开始对话
-uv run finchbot chat
-
-# 第三步：管理会话
-uv run finchbot sessions
-
-# 第四步：管理定时任务
-uv run finchbot cron
-```
-
-| 命令 | 功能 |
-| :--- | :--- |
-| `finchbot config` | 交互式配置 LLM 提供商、API 密钥 |
-| `finchbot chat` | 开始或继续交互式对话 |
-| `finchbot sessions` | 全屏会话管理器 |
-| `finchbot cron` | 定时任务管理器 |
-
-### Docker 部署
-
-```bash
-# 1. 克隆仓库
-git clone https://gitee.com/xt765/finchbot.git
-cd finchbot
-
-# 2. 配置环境变量
-cp .env.example .env
-# 编辑 .env 填入 API 密钥
-
-# 3. 启动服务
-docker-compose up -d
-
-# 4. 进入容器使用
-docker exec -it finchbot finchbot chat
-```
-
-### 环境变量
-
-```bash
-# 方式一：直接设置
-export OPENAI_API_KEY="your-api-key"
-uv run finchbot chat
-
-# 方式二：使用 .env 文件
-cp .env.example .env
-# 编辑 .env 填入 API 密钥
-```
-
-### 日志级别
-
-```bash
-finchbot chat          # 默认：WARNING 及以上
-finchbot -v chat       # INFO 及以上
-finchbot -vv chat      # DEBUG 及以上（调试模式）
-```
-
----
-
-## 技术栈
-
-|    层级    | 技术              |  版本  |
-| :--------: | :---------------- | :-----: |
-|  基础语言  | Python            |  3.13+  |
-| Agent 框架 | LangChain         | 1.2.10+ |
-|  状态管理  | LangGraph         |  1.0.8+ |
-|  数据验证  | Pydantic          |   v2   |
-|  向量存储  | ChromaDB          | 0.5.0+ |
-|  本地嵌入  | FastEmbed         | 0.4.0+ |
-|  CLI 框架  | Typer             | 0.23.0+ |
-|   富文本   | Rich              | 14.3.0+ |
-|    日志    | Loguru            |  0.7.3+ |
-
----
-
-## 扩展指南
-
-### 添加工具
-
-**内置工具**：继承 `FinchTool` 基类，实现 `_run()` 方法，注册到 `ToolRegistry`。
-
-**MCP 工具**：在 `finchbot config` 中配置 MCP 服务器，或编辑 `~/.finchbot/workspace/config/mcp.json`。
-
-### 添加技能
-
-在 `~/.finchbot/workspace/skills/{skill-name}/` 下创建 `SKILL.md` 文件，或让 Agent 通过 `skill-creator` 自主创建。
-
-### 添加 LLM 提供商
-
-在 `providers/factory.py` 中添加新的 Provider 类。
-
-### 多平台支持
-
-使用 [LangBot](https://github.com/langbot-app/LangBot) 实现多平台消息支持，详见 [LangBot 文档](https://docs.langbot.app)。
-
----
-
-## 文档
-
-[使用指南](docs/zh-CN/guide/usage.md) • [API 文档](docs/zh-CN/api.md) • [配置指南](docs/zh-CN/config.md) • [扩展指南](docs/zh-CN/guide/extension.md) • [系统架构](docs/zh-CN/architecture.md) • [部署指南](docs/zh-CN/deployment.md) • [开发环境](docs/zh-CN/development.md) • [贡献指南](docs/zh-CN/contributing.md)
-
----
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request。请阅读 [贡献指南](docs/zh-CN/contributing.md) 了解更多信息。
-
----
-
-## 许可证
-
-本项目采用 [MIT 许可证](LICENSE)。
 
 ---
 
