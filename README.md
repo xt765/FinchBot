@@ -121,7 +121,7 @@ graph TB
     subgraph Core [Agent Core]
         Agent[LangGraph Agent<br/>Decision Engine]:::coreLayer
         Context[ContextBuilder<br/>Context Building]:::coreLayer
-        Tools[ToolRegistry<br/>15 Built-in Tools + MCP]:::coreLayer
+        Tools[ToolRegistry<br/>24 Built-in Tools + MCP]:::coreLayer
         Memory[MemoryManager<br/>Dual-layer Memory]:::coreLayer
     end
 
@@ -219,6 +219,27 @@ FinchBot provides a three-layer capability extension mechanism, allowing agents 
 |                    | `refresh_capabilities` | Refresh capabilities file |
 |                    | `get_capabilities` | Get current capabilities  |
 |                    | `get_mcp_config_path` | Get MCP config path   |
+| **Background** | `start_background_task` | Start background task |
+|                    | `check_task_status` | Check task status     |
+|                    | `get_task_result` | Get task result         |
+|                    | `cancel_task`   | Cancel task                  |
+| **Scheduled** | `create_cron`   | Create scheduled task        |
+|                    | `list_crons`    | List all scheduled tasks     |
+|                    | `delete_cron`   | Delete scheduled task        |
+|                    | `toggle_cron`   | Enable/disable scheduled task |
+|                    | `run_cron_now`  | Execute scheduled task now   |
+
+#### Session Title: Smart Naming, Out of the Box
+
+The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
+
+|         Method         | Description                                                        | Example                                  |
+| :---------------------: | :----------------------------------------------------------------- | :--------------------------------------- |
+| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion"    |
+| **Agent Modify** | Tell Agent "Change session title to XXX"                           | Agent calls tool to modify automatically |
+| **Manual Rename** | Press `r` key in session manager to rename                       | User manually enters new title           |
+
+This design lets users **manage sessions without technical details**—whether automatic or manual.
 
 #### Web Search: Three-Engine Fallback Design
 
@@ -369,7 +390,30 @@ sequenceDiagram
 
 #### Scheduled Task System
 
-Support for **Cron expressions** in scheduled tasks:
+FinchBot's scheduled task system enables agents to autonomously create and manage periodic tasks for true automation.
+
+```mermaid
+flowchart LR
+    classDef agent fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef system fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef action fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    Agent[Agent Creates Task]:::agent --> Scheduler[Cron Scheduler]:::system
+    Scheduler --> |Trigger| Execute[Execute Task]:::action
+    Execute --> |Success| Notify[Notify User]:::action
+    Execute --> |Failure| Retry[Auto Retry]:::action
+```
+
+**Core Features**:
+
+| Feature | Description |
+| :--- | :--- |
+| **Cron Expressions** | Standard Cron syntax for flexible scheduling |
+| **Persistent Storage** | Tasks saved in SQLite, auto-recover after restart |
+| **Auto Retry** | Automatic retry on failure for reliability |
+| **Status Tracking** | Execution history for audit and debugging |
+
+**Common Cron Expression Examples**:
 
 | Expression | Description |
 | :--- | :--- |
@@ -377,30 +421,62 @@ Support for **Cron expressions** in scheduled tasks:
 | `0 */2 * * *` | Every 2 hours |
 | `30 18 * * 1-5` | Weekdays at 6:30 PM |
 | `0 0 1 * *` | First day of month at midnight |
+| `0 0 * * 0` | Every Sunday at midnight |
 
-**Interactive CLI Management**:
+**Usage Example**:
 
-| Key | Action |
-| :---: | :--- |
-| ↑ / ↓ | Navigate task list |
-| Enter | View task details |
-| n | Create new task |
-| d | Delete selected task |
-| e | Enable/disable task |
-| r | Execute immediately |
-| q | Quit management |
+```
+User: Remind me to check emails every morning at 9
 
-#### Session Title: Smart Naming, Out of the Box
+Agent: Okay, I'll create a scheduled task...
+       [Invokes create_cron_task tool]
+       ✅ Scheduled task created
+       - Trigger: Daily at 09:00
+       - Task: Remind to check emails
+       - Next run: Tomorrow 09:00
+```
 
-The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
+#### Heartbeat Service: Self-Wakeup, Proactive Check
 
-|         Method         | Description                                                        | Example                                  |
-| :---------------------: | :----------------------------------------------------------------- | :--------------------------------------- |
-| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion"    |
-| **Agent Modify** | Tell Agent "Change session title to XXX"                           | Agent calls tool to modify automatically |
-| **Manual Rename** | Press `r` key in session manager to rename                       | User manually enters new title           |
+The heartbeat service enables the Agent to periodically "wake up" and check for pending tasks, achieving true autonomous operation.
 
-This design lets users **manage sessions without technical details**—whether automatic or manual.
+```mermaid
+flowchart LR
+    classDef trigger fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef action fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    Timer[Timer<br/>Default 30 min]:::trigger --> |Wakeup| Check[Check HEARTBEAT.md]:::decision
+    Check --> |Has Tasks| LLM[LLM Decision]:::decision
+    LLM --> |run| Execute[Execute Task]:::action
+    LLM --> |skip| Wait[Continue Waiting]:::trigger
+```
+
+**Core Features**:
+
+| Feature | Description |
+| :--- | :--- |
+| **Self-Wakeup** | Agent proactively checks without user trigger |
+| **LLM Decision** | LLM intelligently decides whether to execute tasks |
+| **Flexible Config** | Customizable check interval (default 30 minutes) |
+| **Session Bound** | Starts and stops with chat session |
+
+**Workflow**:
+
+1. Agent automatically starts heartbeat service during conversation
+2. Periodically checks `HEARTBEAT.md` file at specified intervals
+3. If content exists, LLM decides whether to execute
+4. LLM returns `run` to execute, `skip` to wait for next check
+
+**Usage Example**:
+
+```
+User: Monitor stock price for me, notify when it drops below 100
+
+Agent: Okay, I'll record this task in HEARTBEAT.md...
+       The heartbeat service will periodically check the stock price
+       You'll be notified when the condition is met
+```
 
 ### 3. Memory Self-Management: Agentic RAG + Weighted RRF Hybrid Retrieval
 
@@ -424,33 +500,62 @@ flowchart TB
     classDef serviceLayer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef storageLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    MM[MemoryManager<br/>remember/recall/forget]:::businessLayer
+    subgraph Business [Business Layer]
+        MM[MemoryManager<br/>remember/recall/forget]:::businessLayer
+    end
 
-    RS[RetrievalService<br/>Hybrid Retrieval + RRF]:::serviceLayer
-    CS[ClassificationService<br/>Auto Classification]:::serviceLayer
-    IS[ImportanceScorer<br/>Importance Scoring]:::serviceLayer
-    ES[EmbeddingService<br/>FastEmbed Local]:::serviceLayer
+    subgraph Services [Service Layer]
+        RS[RetrievalService<br/>Hybrid Retrieval + RRF]:::serviceLayer
+        CS[ClassificationService<br/>Auto Classification]:::serviceLayer
+        IS[ImportanceScorer<br/>Importance Scoring]:::serviceLayer
+        ES[EmbeddingService<br/>FastEmbed Local]:::serviceLayer
+    end
 
-    SQLite[(SQLiteStore<br/>Source of Truth<br/>Precise Query)]:::storageLayer
-    Vector[(VectorStore<br/>ChromaDB<br/>Semantic Search)]:::storageLayer
-    DS[DataSyncManager<br/>Incremental Sync]:::storageLayer
+    subgraph Storage [Dual-Layer Storage]
+        direction TB
+        subgraph Layer1 [Layer 1: Structured Storage]
+            SQLite[(SQLiteStore<br/>Source of Truth · Precise Query)]:::storageLayer
+        end
+        subgraph Layer2 [Layer 2: Vector Storage]
+            Vector[(VectorStore<br/>ChromaDB · Semantic Search)]:::storageLayer
+        end
+        DS[DataSyncManager<br/>Incremental Sync]:::storageLayer
+    end
 
-    MM --> RS & CS & IS
-    RS --> SQLite & Vector
+    MM --> RS
+    MM --> CS
+    MM --> IS
+    
+    RS --> SQLite
+    RS --> Vector
+    RS --> |RRF Fusion| Result[Retrieval Result]
+    
     CS --> SQLite
     IS --> SQLite
     ES --> Vector
     
-    SQLite <--> DS <--> Vector
+    SQLite <--> DS
+    DS <--> Vector
 ```
 
 #### Hybrid Retrieval Strategy
 
-FinchBot uses **Weighted RRF (Weighted Reciprocal Rank Fusion)** strategy:
+FinchBot uses **Weighted RRF (Weighted Reciprocal Rank Fusion)** strategy, a core advantage of Agentic RAG.
+
+**Why Weighted RRF?**
+
+| Advantage | Description |
+| :--- | :--- |
+| **Normalization-Free** | Calculates based on rank position only, no need to understand vector or BM25 score distributions |
+| **Outlier-Resistant** | Insensitive to anomalous results from single retrievers, more stable |
+| **Consensus-First** | Rewards documents recognized by multiple retrievers, not single outliers |
+| **Controllable Weights** | Dynamically adjust keyword/semantic retrieval weights by query type |
+
+**Query Type Adaptive Weights**:
 
 ```python
 class QueryType(StrEnum):
-    """Query type determines retrieval weights"""
+    """Query type determines retrieval weights (keyword weight / semantic weight)"""
     KEYWORD_ONLY = "keyword_only"      # Pure keyword (1.0/0.0)
     SEMANTIC_ONLY = "semantic_only"    # Pure semantic (0.0/1.0)
     FACTUAL = "factual"                # Factual (0.8/0.2)
@@ -459,9 +564,39 @@ class QueryType(StrEnum):
     AMBIGUOUS = "ambiguous"            # Ambiguous (0.3/0.7)
 ```
 
+**RRF Formula**:
+
+```
+RRF(d) = Σ (weight_r / (k + rank_r(d)))
+
+Where:
+- d is a document
+- k is a smoothing constant (typically 60)
+- rank_r(d) is the rank of document d in retriever r
+- weight_r is the weight for retriever r
+```
+
+**Core Advantages of Agentic RAG**:
+
+Traditional RAG uses fixed retrieval strategies, while Agentic RAG enables agents to:
+
+1. **Autonomous Decision** — Choose appropriate retrieval weights based on query content
+2. **Dynamic Adjustment** — Factual queries favor keywords, conceptual queries favor semantics
+3. **Iterative Validation** — If results are unsatisfactory, adjust strategy and retry
+4. **Explainability** — Each retrieval decision has clear weight-based justification
+
 ### 4. Behavior Self-Evolution: Dynamic Prompt System
 
-FinchBot's prompt system uses **file system + modular assembly** design.
+FinchBot's prompt system uses **file system + modular assembly** design, enabling both agents and users to autonomously modify behavior.
+
+#### Why Dynamic Prompts?
+
+| Traditional Approach | FinchBot Approach |
+| :--- | :--- |
+| Prompts hardcoded in source | Prompts stored in file system |
+| Changes require redeployment | Changes take effect on next conversation |
+| Users cannot customize | Users can customize by editing files |
+| Agent cannot adjust its behavior | Agent can autonomously optimize prompts |
 
 #### Bootstrap File System
 
@@ -470,21 +605,30 @@ FinchBot's prompt system uses **file system + modular assembly** design.
 ├── config.json              # Main configuration file
 └── workspace/
     ├── bootstrap/           # Bootstrap files directory
-    │   ├── SYSTEM.md        # Role definition
-    │   ├── MEMORY_GUIDE.md  # Memory usage guide
-    │   ├── SOUL.md          # Personality settings
-    │   └── AGENT_CONFIG.md  # Agent configuration
+    │   ├── SYSTEM.md        # Role definition (identity, duties, constraints)
+    │   ├── MEMORY_GUIDE.md  # Memory usage guide (when to store/retrieve)
+    │   ├── SOUL.md          # Personality settings (tone, style)
+    │   └── AGENT_CONFIG.md  # Agent configuration (model params, behavior)
     ├── config/              # Configuration directory
     │   └── mcp.json         # MCP server configuration
     ├── generated/           # Auto-generated files
-    │   ├── TOOLS.md         # Tool documentation
-    │   └── CAPABILITIES.md  # Capabilities info
+    │   ├── TOOLS.md         # Tool documentation (auto-generated)
+    │   └── CAPABILITIES.md  # Capabilities info (auto-generated)
     ├── skills/              # Custom skills
     ├── memory/              # Memory storage
     └── sessions/            # Session data
 ```
 
-#### Prompt Loading Flow
+**Bootstrap Files Explained**:
+
+| File | Purpose | Example Content |
+| :--- | :--- | :--- |
+| `SYSTEM.md` | Define Agent's identity and duties | "You are an intelligent assistant skilled at..." |
+| `MEMORY_GUIDE.md` | Guide Agent on memory usage | "User preferences should be stored in long-term memory..." |
+| `SOUL.md` | Define Agent's personality | "Your responses should be concise and friendly..." |
+| `AGENT_CONFIG.md` | Agent behavior configuration | Default language, response style, etc. |
+
+#### Prompt Building Flow
 
 ```mermaid
 flowchart TD
@@ -493,33 +637,106 @@ flowchart TD
     classDef file fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
     classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
 
-    A([Agent Startup]):::startEnd --> B[Load Bootstrap Files]:::process
+    A([Agent Startup]):::startEnd --> B[ContextBuilder<br/>Context Builder]:::process
     
-    B --> C[bootstrap/SYSTEM.md]:::file
-    B --> D[bootstrap/MEMORY_GUIDE.md]:::file
-    B --> E[bootstrap/SOUL.md]:::file
-    B --> F[bootstrap/AGENT_CONFIG.md]:::file
+    B --> C[Load Bootstrap Files]:::file
+    C --> D[SYSTEM.md]:::file
+    C --> E[MEMORY_GUIDE.md]:::file
+    C --> F[SOUL.md]:::file
+    C --> G[AGENT_CONFIG.md]:::file
 
-    C --> G[Assemble Prompt]:::process
-    D --> G
-    E --> G
-    F --> G
+    B --> H[Load Always-on Skills]:::process
+    H --> I[SkillsLoader<br/>Skill Loader]:::process
+    
+    B --> J[Generate Capabilities]:::process
+    J --> K[CapabilitiesBuilder<br/>Capability Builder]:::process
+    K --> L[CAPABILITIES.md]:::file
 
-    G --> H[Load Always-on Skills]:::process
-    H --> I[Build Skill Summary XML]:::process
-    I --> J[Generate Tool Docs TOOLS.md]:::process
-    J --> K[Generate Capabilities CAPABILITIES.md]:::process
-    K --> L[Inject Runtime Info]:::process
-    L --> M[Complete System Prompt]:::output
+    D & E & F & G --> M[Assemble Prompt]:::process
+    I --> M
+    L --> M
+    
+    M --> N[Inject Runtime Info<br/>Time/Platform/Python Version]:::process
+    N --> O[Complete System Prompt]:::output
 
-    M --> N([Send to LLM]):::startEnd
+    O --> P([Send to LLM]):::startEnd
 ```
+
+#### Auto-Generated Capabilities
+
+`CapabilitiesBuilder` automatically generates capability descriptions, letting the Agent "know" its abilities:
+
+```mermaid
+flowchart LR
+    classDef config fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef build fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    MCP[MCP Config]:::config --> Builder[CapabilitiesBuilder]:::build
+    Tools[Tool List]:::config --> Builder
+    Channels[Channel Config]:::config --> Builder
+
+    Builder --> Cap[CAPABILITIES.md<br/>Capability Info]:::output
+    Builder --> Guide[Extension Guide<br/>How to Add MCP/Skills]:::output
+```
+
+**Generated CAPABILITIES.md Contains**:
+
+1. **MCP Server Status** — Configured servers list, enabled/disabled state
+2. **MCP Tool List** — Available tools grouped by server
+3. **Channel Configuration** — LangBot connection status
+4. **Extension Guide** — How to add new MCP servers and skills
 
 #### Hot Reload Mechanism
 
-- **User Customizable**: Customize Agent behavior through Bootstrap file system
-- **Agent Adjustable**: Agent can optimize its own prompts based on interaction feedback
-- **Immediate Effect**: Modified prompts auto-load on next conversation, no restart needed
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as File System
+    participant C as ContextBuilder
+    participant A as Agent
+
+    U->>F: Edit SYSTEM.md
+    Note over F: File modification time updated
+    
+    U->>A: Send new message
+    A->>C: Build system prompt
+    C->>C: Check file modification time
+    Note over C: File updated detected
+    C->>F: Reload Bootstrap
+    C->>A: Return new prompt
+    A-->>U: Respond with new behavior
+```
+
+**Core Features**:
+
+| Feature | Description |
+| :--- | :--- |
+| **User Customizable** | Edit Bootstrap files to customize Agent behavior |
+| **Agent Adjustable** | Agent can modify its own prompts via `write_file` tool |
+| **Immediate Effect** | Changes auto-load on next conversation, no restart needed |
+| **Smart Caching** | File modification time-based caching, avoids redundant builds |
+
+#### Usage Examples
+
+**User Customizing Agent Personality**:
+
+```bash
+# Edit SOUL.md file
+echo "You are a witty assistant who likes to use metaphors to explain complex concepts." > ~/.finchbot/workspace/bootstrap/SOUL.md
+
+# Takes effect on next conversation
+```
+
+**Agent Self-Optimizing Prompts**:
+
+```
+User: Your responses are too verbose, be more concise
+
+Agent: Okay, I'll adjust my response style.
+       [Calls write_file tool to update SOUL.md]
+       ✅ Updated my behavior configuration, I'll be more concise now.
+```
 
 ### 5. Channel System: Multi-Platform Messaging
 
@@ -564,52 +781,6 @@ uvx langbot
 ```
 
 For more details, see [LangBot Documentation](https://docs.langbot.app).
-
-### 6. LangChain v1.2 Architecture Practice
-
-FinchBot is built on **LangChain v1.2** and **LangGraph v1.0**, using the latest Agent architecture.
-
-```python
-from langchain.agents import create_agent
-from langgraph.checkpoint.sqlite import SqliteSaver
-
-def create_finch_agent(
-    model: BaseChatModel,
-    workspace: Path,
-    tools: Sequence[BaseTool] | None = None,
-    use_persistent: bool = True,
-) -> tuple[CompiledStateGraph, SqliteSaver | MemorySaver]:
-
-    # 1. Initialize checkpoint (persistent state)
-    if use_persistent:
-        checkpointer = SqliteSaver.from_conn_string(str(db_path))
-    else:
-        checkpointer = MemorySaver()
-
-    # 2. Build system prompt
-    system_prompt = build_system_prompt(workspace)
-
-    # 3. Create Agent (using LangChain official API)
-    agent = create_agent(
-        model=model,
-        tools=list(tools) if tools else None,
-        system_prompt=system_prompt,
-        checkpointer=checkpointer,
-    )
-
-    return agent, checkpointer
-```
-
-#### Supported LLM Providers
-
-| Provider | Models                      | Features                  |
-| :-------: | :-------------------------- | :------------------------ |
-|  OpenAI  | GPT-5, GPT-5.2, O3-mini     | Best overall capability   |
-| Anthropic | Claude Sonnet 4.5, Opus 4.6 | High safety, long context |
-| DeepSeek | DeepSeek Chat, Reasoner     | Chinese, cost-effective   |
-|  Gemini  | Gemini 2.5 Flash            | Google's latest           |
-|   Groq   | Llama 4 Scout/Maverick      | Ultra-fast inference      |
-| Moonshot | Kimi K1.5/K2.5              | Long context, Chinese     |
 
 ---
 
@@ -678,30 +849,63 @@ That's it! These four commands cover the complete workflow:
 
 ### Docker Deployment
 
-FinchBot provides official Docker support for easy deployment:
+FinchBot provides complete Docker support, suitable for production deployment:
+
+```mermaid
+flowchart LR
+    classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef action fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    A[Clone Repo]:::step --> B[Configure .env]:::step
+    B --> C[docker-compose up]:::action
+    C --> D[finchbot chat]:::action
+```
+
+**Quick Deploy**:
 
 ```bash
-# Clone repository
+# 1. Clone repository
 git clone https://github.com/xt765/finchbot.git
 cd finchbot
 
-# Create .env file with your API keys
+# 2. Configure environment
 cp .env.example .env
 # Edit .env and add your API keys
 
-# Build and run
+# 3. Start service
 docker-compose up -d
 
-# Access the Web interface
-# http://localhost:8000
+# 4. Enter container to use
+docker exec -it finchbot finchbot chat
+```
+
+**Docker Compose Configuration**:
+
+```yaml
+services:
+  finchbot:
+    build: .
+    volumes:
+      - finchbot-data:/root/.finchbot  # Persistent workspace
+      - model-cache:/root/.cache        # Model cache
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+volumes:
+  finchbot-data:
+  model-cache:
 ```
 
 | Feature | Description |
-| :-----: | :---------- |
-| **One-command Deploy** | `docker-compose up -d` |
-| **Persistent Storage** | Workspace and model cache via volumes |
-| **Health Check** | Built-in container health monitoring |
+| :--- | :--- |
+| **One-command Deploy** | `docker-compose up -d` quick start |
+| **Data Persistence** | Workspace and model cache via volumes |
+| **Interactive Terminal** | Use `docker exec` to enter container |
 | **Multi-arch Support** | Works on x86_64 and ARM64 |
+| **Environment Isolation** | Manage sensitive config via .env file |
 
 ### Alternative: Environment Variables
 
@@ -729,29 +933,6 @@ finchbot -vv chat
 ```bash
 # For memory system semantic search (optional but recommended)
 uv run finchbot models download
-```
-
-### Create Custom Skill
-
-```bash
-# Create skill directory
-mkdir -p ~/.finchbot/workspace/skills/my-skill
-
-# Create skill file
-cat > ~/.finchbot/workspace/skills/my-skill/SKILL.md << 'EOF'
----
-name: my-skill
-description: My custom skill
-metadata:
-  finchbot:
-    emoji: ✨
-    always: false
----
-
-# My Custom Skill
-
-When user requests XXX, I should...
-EOF
 ```
 
 ---
