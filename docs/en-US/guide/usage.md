@@ -2,7 +2,7 @@
 
 FinchBot provides a rich Command Line Interface (CLI) for interacting with the agent. This document details all available commands and interaction modes.
 
-## Quick Start: Three Commands
+## Quick Start: Four Commands
 
 ```bash
 # Step 1: Configure API keys and default model
@@ -13,9 +13,12 @@ uv run finchbot sessions
 
 # Step 3: Start chatting
 uv run finchbot chat
+
+# Step 4: Manage scheduled tasks
+uv run finchbot cron
 ```
 
-These three commands cover FinchBot's core workflow:
+These four commands cover FinchBot's core workflow:
 
 ```mermaid
 flowchart LR
@@ -23,6 +26,7 @@ flowchart LR
 
     A["1. finchbot config<br/>Configure API Keys"]:::step --> B["2. finchbot sessions<br/>Manage Sessions"]:::step
     B --> C["3. finchbot chat<br/>Start Chatting"]:::step
+    C --> D["4. finchbot cron<br/>Scheduled Tasks"]:::step
 ```
 
 | Command | Function | Description |
@@ -30,6 +34,7 @@ flowchart LR
 | `finchbot config` | Interactive configuration | Configure LLM providers, API keys, default model, web search, etc. |
 | `finchbot sessions` | Session management | Full-screen interface to create, rename, delete sessions, view history |
 | `finchbot chat` | Start conversation | Launch interactive chat, auto-loads the last active session |
+| `finchbot cron` | Scheduled tasks | Interactive scheduled task manager with keyboard navigation |
 
 ---
 
@@ -384,7 +389,119 @@ flowchart TB
 
 ---
 
-## 7. Bootstrap File System
+## 7. Scheduled Task Management
+
+FinchBot provides an interactive scheduled task management interface for creating, editing, deleting, and executing scheduled tasks.
+
+### Enter Task Manager
+
+```bash
+finchbot cron
+```
+
+### Interactive Interface
+
+After launching, a full-screen task management interface will be displayed:
+
+| Key | Action | Description |
+| :--- | :--- | :--- |
+| ↑ / ↓ | Navigate | Move through task list |
+| Enter | Details | View task details |
+| n | New | Create new scheduled task |
+| d | Delete | Delete selected task |
+| e | Toggle | Enable/disable task |
+| r | Run | Execute immediately |
+| q | Quit | Exit management interface |
+
+### Cron Expressions
+
+FinchBot uses standard 5-field Cron expressions: `minute hour day month weekday`
+
+| Field | Range | Description |
+| :---: | :---: | :--- |
+| Minute | 0-59 | Execution minute |
+| Hour | 0-23 | Execution hour |
+| Day | 1-31 | Day of month |
+| Month | 1-12 | Month |
+| Weekday | 0-6 | Day of week (0=Sunday) |
+
+**Common Expression Examples**:
+
+| Expression | Description |
+| :--- | :--- |
+| `0 9 * * *` | Daily at 9:00 AM |
+| `0 */2 * * *` | Every 2 hours |
+| `30 18 * * 1-5` | Weekdays at 6:30 PM |
+| `0 0 1 * *` | First day of month at midnight |
+| `0 9,18 * * *` | Daily at 9:00 AM and 6:00 PM |
+
+### Use Cases
+
+Scheduled task functionality is suitable for:
+
+- **Periodic Reminders**: Daily email check reminders, weekly report reminders
+- **Scheduled Checks**: Regular system status checks, task progress monitoring
+- **Automated Tasks**: Scheduled data backup, log cleanup
+
+### Example
+
+```
+User: Remind me to check email every morning at 9
+
+Agent: Okay, I'll create a scheduled task...
+       [Calls create_cron tool]
+       ✅ Created scheduled task "Morning email reminder"
+       Schedule: Daily at 09:00
+       Content: Please check today's email
+```
+
+---
+
+## 8. Background Tasks (Subagent)
+
+FinchBot supports background execution of long-running tasks using a **three-tool pattern**:
+
+### Tool Chain
+
+| Tool | Function |
+| :--- | :--- |
+| `start_background_task` | Start background task |
+| `check_task_status` | Check task status |
+| `get_task_result` | Get task result |
+| `cancel_task` | Cancel task |
+
+### Task States
+
+| State | Description |
+| :--- | :--- |
+| `pending` | Waiting to execute |
+| `running` | Currently executing |
+| `completed` | Execution completed |
+| `failed` | Execution failed |
+| `cancelled` | Cancelled |
+
+### Use Cases
+
+- **Long Research Tasks**: Analyzing multiple documents, searching large amounts of information
+- **Batch Data Processing**: Processing large numbers of files or data
+- **Complex Code Generation**: Generating large amounts of code or configuration
+
+### Example
+
+```
+User: Help me analyze these 100 GitHub repositories
+
+Agent: This is a long-running task, I'll start a background task...
+       [Calls start_background_task]
+       ✅ Background task started (ID: analysis-001)
+       
+       You can continue the conversation, the task will run in the background.
+       I'll notify you when it's complete.
+```
+
+---
+
+## 9. Bootstrap File System
 
 FinchBot uses an editable Bootstrap file system to define Agent behavior. These files are located in the workspace's `bootstrap/` directory and can be edited at any time.
 
@@ -470,7 +587,7 @@ finchbot chat -vv
 
 ---
 
-## 9. Command Reference
+## 10. Command Reference
 
 | Command | Description |
 | :--- | :--- |
@@ -480,12 +597,13 @@ finchbot chat -vv
 | `finchbot chat -w <dir>` | Use specified workspace |
 | `finchbot sessions` | Open session manager |
 | `finchbot config` | Open configuration manager |
+| `finchbot cron` | Open scheduled task manager |
 | `finchbot models download` | Download embedding models |
 | `finchbot version` | Show version information |
 
 ---
 
-## 10. Chat Commands Reference
+## 11. Chat Commands Reference
 
 | Command | Description |
 | :--- | :--- |

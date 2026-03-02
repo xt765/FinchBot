@@ -122,7 +122,7 @@ MCP Features:
 
 ### Command Line Interface
 
-FinchBot provides a fully functional CLI — three commands to get started:
+FinchBot provides a fully functional CLI — four commands to get started:
 
 ```bash
 # Step 1: Configure API Key and default model
@@ -133,6 +133,9 @@ uv run finchbot sessions
 
 # Step 3: Start chatting
 uv run finchbot chat
+
+# Step 4: Manage scheduled tasks
+uv run finchbot cron
 ```
 
 |          Feature          | Description                                                                         |
@@ -140,6 +143,8 @@ uv run finchbot chat
 | **Environment Variables** | All configurations can be set via env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) |
 |    **i18n Support**     | Built-in Chinese/English support, auto-detects system language                    |
 |    **Auto Fallback**    | Web search auto-fallback: Tavily → Brave → DuckDuckGo                             |
+| **Scheduled Tasks** | Interactive Cron manager with keyboard navigation                                       |
+| **Background Tasks** | Three-tool pattern for async execution of long-running tasks                            |
 
 ---
 
@@ -754,6 +759,178 @@ docker exec -it finchbot finchbot chat
 |   **Thread Safe**     | Tool registry uses single lock mode, thread-safe                           |
 | **Multi-Platform**    | Via LangBot supports QQ, WeChat, Feishu, DingTalk, Discord, Telegram, Slack and 12+ platforms |
 | **MCP Support**       | Via official langchain-mcp-adapters supporting stdio and HTTP transports |
+| **Agent Autonomy** | Agent can self-execute tasks, self-create plans, self-extend capabilities |
+| **Background Tasks** | Three-tool pattern for async execution of long-running tasks |
+| **Scheduled Tasks** | Cron expression based scheduling with interactive CLI management |
+| **Heartbeat Service** | Background monitoring and automatic task triggering |
+
+---
+
+## 4. Agent Autonomy Architecture
+
+**Core Philosophy**: FinchBot is designed to give agents **true autonomy**—not just responding to user requests, but self-deciding, self-executing, and self-extending.
+
+### Autonomy Pyramid
+
+```mermaid
+graph BT
+    classDef level1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef level2 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef level3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef level4 fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    L1[Response Layer<br/>Respond to User]:::level1
+    L2[Execution Layer<br/>Self-Execute Tasks]:::level2
+    L3[Planning Layer<br/>Self-Create Plans]:::level3
+    L4[Extension Layer<br/>Self-Extend Capabilities]:::level4
+
+    L1 --> L2 --> L3 --> L4
+```
+
+| Layer | Capability | Implementation | User Value |
+|:---:|:---|:---|:---|
+| **Response Layer** | Respond to user requests | Dialog system + Tool calls | Basic interaction |
+| **Execution Layer** | Self-execute tasks | Background task system | Non-blocking dialog |
+| **Planning Layer** | Self-create plans | Scheduled tasks + Heartbeat | Automated execution |
+| **Extension Layer** | Self-extend capabilities | MCP config + Skill creation | Infinite extension |
+
+### Autonomy Comparison
+
+| Capability | Traditional Agent | FinchBot Autonomous Agent |
+|:---|:---|:---|
+| **Task Execution** | User-triggered, blocking wait | Agent self-starts background tasks |
+| **Task Scheduling** | User manually sets | Agent self-creates scheduled tasks |
+| **Self-Monitoring** | None | Heartbeat service self-checks status |
+| **Capability Extension** | Developer writes code | Agent self-configures MCP |
+| **Behavior Definition** | Hardcoded prompts | Agent self-creates skills |
+
+### Background Task System (Subagent)
+
+FinchBot implements an advanced background task system using a **three-tool pattern** that allows agents to asynchronously execute long-running tasks.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Agent
+    participant BG as Background Task System
+    participant S as Subagent
+
+    U->>A: Execute long task
+    A->>BG: start_background_task
+    BG->>S: Create independent Agent
+    BG-->>A: Return job_id
+    A-->>U: Task started (ID: xxx)
+    
+    Note over U,A: User continues dialog...
+    
+    U->>A: Other questions
+    A-->>U: Normal response
+    
+    U->>A: Task progress?
+    A->>BG: check_task_status
+    BG-->>A: running
+    A-->>U: Still executing...
+    
+    S-->>BG: Task complete
+    U->>A: Get result
+    A->>BG: get_task_result
+    BG-->>A: Return result
+    A-->>U: Task result display
+```
+
+| Tool | Function | Agent Autonomy |
+|:---|:---|:---|
+| `start_background_task` | Start background task | Agent self-determines if background execution needed |
+| `check_task_status` | Check task status | Agent self-decides when to check |
+| `get_task_result` | Get task result | Agent self-decides when to get result |
+| `cancel_task` | Cancel task | Agent self-decides whether to cancel |
+
+### Scheduled Task System (Cron)
+
+FinchBot provides a complete scheduled task solution supporting both **CLI interactive management** and **tool calls**.
+
+**Cron Expression Examples**:
+
+| Expression | Description |
+|:---|:---|
+| `0 9 * * *` | Daily at 9:00 AM |
+| `0 */2 * * *` | Every 2 hours |
+| `30 18 * * 1-5` | Weekdays at 6:30 PM |
+| `0 0 1 * *` | First day of month at midnight |
+
+**Interactive Interface**:
+
+| Key | Action |
+|:---:|:---|
+| ↑ / ↓ | Navigate task list |
+| Enter | View task details |
+| n | Create new task |
+| d | Delete selected task |
+| e | Enable/disable task |
+| r | Execute immediately |
+| q | Quit management |
+
+### Heartbeat Service
+
+The heartbeat service is FinchBot's background monitoring service, implementing automated task triggering through periodic reading of the `HEARTBEAT.md` file.
+
+```mermaid
+flowchart LR
+    classDef heartbeat fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef cron fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef background fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef notify fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    H[HeartbeatService]:::heartbeat
+    C[CronService]:::cron
+    B[BackgroundTasks]:::background
+    N[Notification System]:::notify
+
+    H --> |Trigger execution| C
+    H --> |Check status| B
+    H --> |Send reminder| N
+```
+
+### MCP Self-Configuration
+
+**Core Philosophy**: Enable agents to autonomously configure MCP servers, dynamically extending their tool capabilities.
+
+```mermaid
+flowchart TB
+    classDef need fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef config fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef tool fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef use fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+
+    Need[Agent Discovers Need<br/>"I need database capability"]:::need
+    Search[Search Available MCP Servers]:::config
+    Config[configure_mcp<br/>Self-Configure]:::config
+    Load[Dynamically Load New Tools]:::tool
+    Use[Agent Uses New Tools]:::use
+
+    Need --> Search --> Config --> Load --> Use
+```
+
+**Agent Self-Extension Example**:
+
+```
+User: Help me analyze this SQLite database
+
+Agent thinks:
+1. Current tool check: No database operation tools
+2. Capability gap: Need SQLite operation capability
+3. Solution: Configure SQLite MCP server
+
+Agent acts:
+1. Call configure_mcp(action="add", server_name="sqlite", ...)
+2. Call refresh_capabilities() to refresh capability description
+3. New tools auto-loaded: query_sqlite, list_tables, ...
+
+Agent uses new capability:
+1. Call list_tables() to view schema
+2. Call query_sqlite("SELECT * FROM users LIMIT 10")
+3. Return to user: Database analysis results...
+```
 
 ---
 

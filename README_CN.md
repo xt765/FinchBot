@@ -715,7 +715,7 @@ uv sync --extra dev
 
 </details>
 
-### 最佳实践：三步上手
+### 最佳实践：四步上手
 
 ```bash
 # 第一步：配置 API 密钥和默认模型
@@ -726,13 +726,17 @@ uv run finchbot sessions
 
 # 第三步：开始对话
 uv run finchbot chat
+
+# 第四步：管理定时任务
+uv run finchbot cron
 ```
 
-就这么简单！这三个命令覆盖了完整的工作流程：
+就这么简单！这四个命令覆盖了完整的工作流程：
 
 - `finchbot config` — 交互式配置 LLM 提供商、API 密钥和设置
 - `finchbot sessions` — 全屏会话管理器，创建、重命名、删除会话
 - `finchbot chat` — 开始或继续交互式对话
+- `finchbot cron` — 交互式定时任务管理器，支持键盘导航
 
 ### Docker 部署
 
@@ -874,6 +878,10 @@ EOF
 |  **并发安全**  | 工具注册使用双重检查锁定模式，线程安全                      |
 | **多平台支持** | 通过 LangBot 支持 QQ、微信、飞书、钉钉、Discord、Telegram、Slack 等 12+ 平台 |
 | **MCP 支持** | 通过官方 langchain-mcp-adapters 支持 stdio 和 HTTP 传输 |
+| **智能体自主性** | 智能体可自主执行任务、自主创建计划、自主扩展能力 |
+| **后台任务** | 三工具模式异步执行长时间任务 |
+| **定时任务** | 基于 Cron 表达式的调度，支持交互式 CLI 管理 |
+| **心跳服务** | 后台监控与自动任务触发 |
 
 ---
 

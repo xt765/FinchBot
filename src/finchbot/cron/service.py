@@ -241,21 +241,22 @@ class CronService:
             schedule: cron 表达式
 
         Returns:
-            ISO 格式的时间字符串
+            ISO 格式的时间字符串（UTC）
         """
-        cron = croniter(schedule, datetime.now(timezone.utc))
-        next_dt = cron.get_next(datetime)
-        return next_dt.isoformat()
+        now_local = datetime.now().astimezone()
+        cron = croniter(schedule, now_local)
+        next_dt_local = cron.get_next(datetime)
+        return next_dt_local.astimezone(timezone.utc).isoformat()
 
     def _recompute_next_runs(self) -> None:
         """重新计算所有任务的下次执行时间."""
-        now = datetime.now(timezone.utc)
+        now_local = datetime.now().astimezone()
         for job in self._jobs.values():
             if job.enabled:
                 try:
-                    cron = croniter(job.schedule, now)
-                    next_dt = cron.get_next(datetime)
-                    job.next_run_date = next_dt.isoformat()
+                    cron = croniter(job.schedule, now_local)
+                    next_dt_local = cron.get_next(datetime)
+                    job.next_run_date = next_dt_local.astimezone(timezone.utc).isoformat()
                 except Exception:
                     pass
 

@@ -6,6 +6,19 @@
 
 1. [整体架构](#1-整体架构)
 2. [核心组件](#2-核心组件)
+   - [2.1 Agent 核心](#21-agent-核心)
+   - [2.2 技能系统](#22-技能系统)
+   - [2.3 记忆系统](#23-记忆系统)
+   - [2.4 工具生态](#24-工具生态)
+   - [2.5 通道系统](#25-通道系统)
+   - [2.6 动态提示词系统](#26-动态提示词系统)
+   - [2.7 I18n 系统](#27-i18n-系统国际化)
+   - [2.8 配置系统](#28-配置系统)
+   - [2.9 智能体自主性架构](#29-智能体自主性架构)
+   - [2.10 后台任务系统](#210-后台任务系统-subagent)
+   - [2.11 定时任务系统](#211-定时任务系统-cron)
+   - [2.12 心跳服务](#212-心跳服务-heartbeat)
+   - [2.13 MCP 自主配置](#213-mcp-自主配置)
 3. [数据流](#3-数据流)
 4. [设计原则](#4-设计原则)
 5. [扩展点](#5-扩展点)
@@ -67,6 +80,18 @@ finchbot/
 │   ├── context.py     # ContextBuilder 提示词组装
 │   ├── capabilities.py # CapabilitiesBuilder 能力构建
 │   └── skills.py      # SkillsLoader Markdown 技能加载
+├── background/         # 后台任务系统
+│   ├── __init__.py
+│   ├── store.py       # JobStore 任务存储
+│   └── tools.py       # 后台任务工具
+├── cron/               # 定时任务系统
+│   ├── __init__.py
+│   ├── service.py     # CronService 调度服务
+│   ├── selector.py    # CronSelector 交互式 UI
+│   └── tools.py       # 定时任务工具
+├── heartbeat/          # 心跳服务
+│   ├── __init__.py
+│   └── service.py     # HeartbeatService 后台服务
 ├── channels/           # 多平台消息（通过 LangBot）
 │   ├── base.py        # BaseChannel 抽象基类
 │   ├── bus.py         # MessageBus 异步路由器
@@ -113,6 +138,8 @@ finchbot/
 │   ├── shell.py
 │   ├── web.py
 │   ├── session_title.py
+│   ├── background.py  # 后台任务工具
+│   ├── cron.py        # 定时任务工具
 │   └── search/
 └── utils/              # 工具函数
     ├── cache.py
@@ -753,6 +780,400 @@ class MCPConfig(BaseModel):
 请使用 LangBot 的 WebUI 配置各平台：https://langbot.app
 
 此配置保留用于兼容性，后续版本将移除。
+
+---
+
+### 2.9 智能体自主性架构
+
+**核心理念**: FinchBot 的设计目标是让智能体具备**真正的自主性**——不仅能响应用户请求，更能自主决策、自主执行、自主扩展。
+
+#### 自主性金字塔
+
+```mermaid
+graph BT
+    classDef level1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef level2 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef level3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef level4 fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    L1[响应层<br/>响应用户请求]:::level1
+    L2[执行层<br/>自主执行任务]:::level2
+    L3[规划层<br/>自主设定计划]:::level3
+    L4[扩展层<br/>自主扩展能力]:::level4
+
+    L1 --> L2 --> L3 --> L4
+```
+
+| 层级 | 能力 | 实现机制 | 用户价值 |
+|:---:|:---|:---|:---|
+| **响应层** | 响应用户请求 | 对话系统 + 工具调用 | 基础交互 |
+| **执行层** | 自主执行任务 | 后台任务系统 | 不阻塞对话 |
+| **规划层** | 自主设定计划 | 定时任务 + 心跳服务 | 自动化执行 |
+| **扩展层** | 自主扩展能力 | MCP 配置 + 技能创建 | 无限扩展 |
+
+#### 自主性架构图
+
+```mermaid
+flowchart TB
+    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#4a148c;
+    classDef auto fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef extend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+
+    Agent[🤖 智能体<br/>自主决策中心]:::core
+
+    subgraph Auto [自主执行能力]
+        BG[后台任务<br/>自主启动长时间任务]:::auto
+        Cron[定时任务<br/>自主设定执行计划]:::auto
+        Heartbeat[心跳服务<br/>自主监控与触发]:::auto
+    end
+
+    subgraph Extend [自我扩展能力]
+        MCP[MCP 配置<br/>自主扩展工具能力]:::extend
+        Skills[技能创建<br/>自主定义行为边界]:::extend
+    end
+
+    Agent --> Auto
+    Agent --> Extend
+
+    BG <--> |任务状态| Heartbeat
+    Cron <--> |到期触发| Heartbeat
+    MCP --> |新工具| Agent
+```
+
+#### 自主性对比
+
+| 能力 | 传统 Agent | FinchBot 自主 Agent |
+|:---|:---|:---|
+| **任务执行** | 用户触发，阻塞等待 | 智能体自主启动后台任务 |
+| **任务调度** | 用户手动设置 | 智能体自主创建定时任务 |
+| **自我监控** | 无 | 心跳服务自主检查状态 |
+| **能力扩展** | 开发者编写代码 | 智能体自主配置 MCP |
+| **行为定义** | 硬编码提示词 | 智能体自主创建技能 |
+
+---
+
+### 2.10 后台任务系统 (Subagent)
+
+**实现位置**：`src/finchbot/background/`
+
+FinchBot 实现了先进的后台任务系统，采用**三工具模式**让 Agent 能够异步执行长时间任务。
+
+#### 为什么需要后台任务？
+
+| 场景 | 传统方式 | 后台任务方案 |
+|:---:|:---|:---|
+| **长时间研究** | 阻塞对话，用户等待 | 后台执行，继续对话 |
+| **批量处理** | 超时失败 | 异步处理，状态追踪 |
+| **代码生成** | 单线程阻塞 | 并发执行，提高效率 |
+
+#### 三工具模式
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant A as 智能体
+    participant BG as 后台任务系统
+    participant S as Subagent
+
+    U->>A: 执行长时间任务
+    A->>BG: start_background_task
+    BG->>S: 创建独立 Agent
+    BG-->>A: 返回 job_id
+    A-->>U: 任务已启动 (ID: xxx)
+    
+    Note over U,A: 用户继续对话...
+    
+    U->>A: 其他问题
+    A-->>U: 正常响应
+    
+    U->>A: 任务进度如何？
+    A->>BG: check_task_status
+    BG-->>A: running (50%)
+    A-->>U: 正在执行中...
+    
+    S-->>BG: 任务完成
+    U->>A: 获取结果
+    A->>BG: get_task_result
+    BG-->>A: 返回结果
+    A-->>U: 任务结果展示
+```
+
+#### 核心组件
+
+| 组件 | 文件 | 功能 |
+|:---|:---|:---|
+| **JobStore** | `store.py` | 内存存储任务状态 |
+| **BackgroundTools** | `tools.py` | 四个工具实现 |
+| **Subagent** | Agent 实例 | 独立执行任务 |
+
+#### 任务状态流转
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: start_background_task
+    pending --> running: 任务开始执行
+    running --> completed: 执行成功
+    running --> failed: 执行失败
+    running --> cancelled: cancel_task
+    completed --> [*]
+    failed --> [*]
+    cancelled --> [*]
+```
+
+#### 后台任务工具
+
+| 工具 | 功能 | 智能体自主性 |
+|:---|:---|:---|
+| `start_background_task` | 启动后台任务 | 智能体自主判断是否需要后台执行 |
+| `check_task_status` | 检查任务状态 | 智能体自主决定何时检查 |
+| `get_task_result` | 获取任务结果 | 智能体自主决定何时获取结果 |
+| `cancel_task` | 取消任务 | 智能体自主决定是否取消 |
+
+---
+
+### 2.11 定时任务系统 (Cron)
+
+**实现位置**：`src/finchbot/cron/`
+
+FinchBot 提供了完整的定时任务解决方案，支持 **CLI 交互式管理** 和 **工具调用** 两种方式。
+
+#### 系统架构
+
+```mermaid
+flowchart TB
+    classDef cli fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef service fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph CLI [CLI 交互]
+        Command[finchbot cron]:::cli
+        Selector[CronSelector<br/>键盘导航]:::cli
+    end
+
+    subgraph Service [服务层]
+        CronService[CronService<br/>croniter 调度引擎]:::service
+        Storage[(cron_jobs.json)]:::service
+    end
+
+    subgraph Tools [工具层]
+        Create[create_cron]:::tool
+        List[list_crons]:::tool
+        Delete[delete_cron]:::tool
+        Toggle[toggle_cron]:::tool
+    end
+
+    Command --> Selector
+    Selector --> CronService
+    CronService --> Storage
+    Agent[智能体] --> Tools
+    Tools --> Storage
+```
+
+#### CronSelector 交互式界面
+
+| 按键 | 操作 | 说明 |
+|:---:|:---|:---|
+| ↑ / ↓ | 导航 | 在任务列表中移动 |
+| Enter | 详情 | 查看任务详细信息 |
+| n | 新建 | 创建新的定时任务 |
+| d | 删除 | 删除选中的任务 |
+| e | 切换 | 启用/禁用任务 |
+| r | 运行 | 立即执行一次 |
+| q | 退出 | 退出管理界面 |
+
+#### Cron 表达式支持
+
+使用 `croniter` 库解析标准 5 字段 Cron 表达式：
+
+| 字段 | 范围 | 说明 |
+|:---:|:---:|:---|
+| 分钟 | 0-59 | 执行的分钟 |
+| 小时 | 0-23 | 执行的小时 |
+| 日期 | 1-31 | 月份中的日期 |
+| 月份 | 1-12 | 月份 |
+| 星期 | 0-6 | 星期几 (0=周日) |
+
+**常用表达式示例**：
+
+| 表达式 | 说明 |
+|:---|:---|
+| `0 9 * * *` | 每天上午 9:00 |
+| `0 */2 * * *` | 每 2 小时 |
+| `30 18 * * 1-5` | 工作日下午 6:30 |
+| `0 0 1 * *` | 每月 1 日零点 |
+| `0 9,18 * * *` | 每天 9:00 和 18:00 |
+
+#### 定时任务工具
+
+| 工具 | 功能 | 智能体自主性 |
+|:---|:---|:---|
+| `create_cron` | 创建定时任务 | 智能体自主解析时间表达式并创建 |
+| `list_crons` | 列出所有任务 | 智能体自主查看当前任务 |
+| `delete_cron` | 删除任务 | 智能体自主决定删除不需要的任务 |
+| `toggle_cron` | 启用/禁用任务 | 智能体自主调整任务状态 |
+
+---
+
+### 2.12 心跳服务 (Heartbeat)
+
+**实现位置**：`src/finchbot/heartbeat/`
+
+心跳服务是 FinchBot 的后台监控服务，通过周期性读取 `HEARTBEAT.md` 文件来实现自动化任务触发。
+
+#### 工作原理
+
+```mermaid
+sequenceDiagram
+    participant S as HeartbeatService
+    participant F as HEARTBEAT.md
+    participant L as LLM
+    participant A as 动作执行
+
+    loop 每隔 N 秒
+        S->>F: 读取文件内容
+        F-->>S: 返回任务指令
+        S->>L: 分析指令内容
+        L-->>S: 决策执行动作
+        alt 需要执行
+            S->>A: 执行动作
+            A-->>S: 返回结果
+        end
+    end
+```
+
+#### HEARTBEAT.md 文件格式
+
+```markdown
+# 心跳任务
+
+## 待办事项
+- [ ] 检查定时任务是否需要执行
+- [ ] 检查后台任务状态
+- [ ] 提醒用户重要事项
+
+## 用户指令
+- 每天 9 点提醒我查看邮件
+- 当后台任务完成时通知我
+```
+
+#### 支持的动作类型
+
+| 动作 | 说明 |
+|:---|:---|
+| `check_cron` | 检查并执行到期的定时任务 |
+| `check_background` | 检查后台任务状态 |
+| `remind_user` | 向用户发送提醒 |
+| `custom_action` | 自定义动作 |
+
+#### 与其他组件的集成
+
+```mermaid
+flowchart LR
+    classDef heartbeat fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef cron fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef background fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef notify fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    H[HeartbeatService]:::heartbeat
+    C[CronService]:::cron
+    B[BackgroundTasks]:::background
+    N[通知系统]:::notify
+
+    H --> |触发执行| C
+    H --> |检查状态| B
+    H --> |发送提醒| N
+```
+
+---
+
+### 2.13 MCP 自主配置
+
+**核心理念**: 让智能体能够自主配置 MCP 服务器，动态扩展自己的工具能力。
+
+#### 自我扩展架构
+
+```mermaid
+flowchart TB
+    classDef need fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef config fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef tool fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef use fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+
+    Need[智能体发现需求<br/>"我需要数据库能力"]:::need
+    Search[搜索可用 MCP 服务器]:::config
+    Config[configure_mcp<br/>自主配置]:::config
+    Load[动态加载新工具]:::tool
+    Use[智能体使用新工具]:::use
+
+    Need --> Search --> Config --> Load --> Use
+```
+
+#### 智能体自主扩展示例
+
+```
+用户：帮我分析这个 SQLite 数据库
+
+智能体思考：
+1. 当前工具检查：没有数据库操作工具
+2. 能力缺口：需要 SQLite 操作能力
+3. 解决方案：配置 SQLite MCP 服务器
+
+智能体行动：
+1. 调用 configure_mcp(
+     action="add",
+     server_name="sqlite",
+     command="mcp-server-sqlite",
+     args=["--db-path", "/path/to/db"]
+   )
+2. 调用 refresh_capabilities() 刷新能力描述
+3. 新工具自动加载：query_sqlite, list_tables, ...
+
+智能体使用新能力：
+1. 调用 list_tables() 查看表结构
+2. 调用 query_sqlite("SELECT * FROM users LIMIT 10")
+3. 返回用户：数据库分析结果...
+```
+
+#### 支持的 MCP 操作
+
+| 操作 | 功能 | 智能体自主性 |
+|:---|:---|:---|
+| `add` | 添加新服务器 | 智能体自主发现需求并添加 |
+| `update` | 更新配置 | 智能体自主调整配置参数 |
+| `remove` | 删除服务器 | 智能体自主移除不需要的能力 |
+| `enable` | 启用服务器 | 智能体自主激活已配置的能力 |
+| `disable` | 禁用服务器 | 智能体自主暂时禁用能力 |
+| `list` | 列出所有服务器 | 智能体自主查看当前配置 |
+
+#### MCP 生态系统
+
+```mermaid
+flowchart TB
+    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef mcp fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    Agent[🤖 FinchBot 智能体]:::core
+
+    subgraph MCPServers [MCP 服务器生态]
+        Filesystem[Filesystem<br/>文件系统操作]:::mcp
+        GitHub[GitHub<br/>仓库管理]:::mcp
+        SQLite[SQLite<br/>数据库操作]:::mcp
+        Brave[Brave Search<br/>网页搜索]:::mcp
+        Puppeteer[Puppeteer<br/>浏览器自动化]:::mcp
+        Custom[自定义 MCP<br/>任意扩展]:::mcp
+    end
+
+    Agent --> |configure_mcp| MCPServers
+    MCPServers --> |动态工具| Agent
+```
+
+**智能体可以自主添加的 MCP 服务器**：
+- **Filesystem**: 文件系统操作
+- **GitHub**: 仓库管理、Issue、PR
+- **SQLite**: 数据库查询
+- **Brave Search**: 网页搜索
+- **Puppeteer**: 浏览器自动化
+- **自定义**: 任何遵循 MCP 协议的服务器
 
 ---
 

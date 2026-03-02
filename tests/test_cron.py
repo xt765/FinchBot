@@ -159,14 +159,15 @@ class TestCronService:
         next_run = service._compute_next_run("* * * * *")
         assert next_run is not None
 
-        # 每天早上 9 点
+        # 每天早上 9 点（本地时间）
         next_run = service._compute_next_run("0 9 * * *")
         assert next_run is not None
 
-        # 解析时间
+        # 解析时间（存储为 UTC，需转换为本地时间验证）
         dt = datetime.fromisoformat(next_run.replace("Z", "+00:00"))
-        assert dt.minute == 0
-        assert dt.hour == 9
+        local_dt = dt.astimezone()
+        assert local_dt.minute == 0
+        assert local_dt.hour == 9
 
 
 class TestCronJob:

@@ -6,6 +6,19 @@ This document provides an in-depth introduction to FinchBot's system architectur
 
 1. [Overall Architecture](#1-overall-architecture)
 2. [Core Components](#2-core-components)
+   - [2.1 Agent Core](#21-agent-core)
+   - [2.2 Skill System](#22-skill-system)
+   - [2.3 Memory System](#23-memory-system)
+   - [2.4 Tool Ecosystem](#24-tool-ecosystem)
+   - [2.5 Channel System](#25-channel-system)
+   - [2.6 Dynamic Prompt System](#26-dynamic-prompt-system)
+   - [2.7 I18n System](#27-i18n-system-internationalization)
+   - [2.8 Configuration System](#28-configuration-system)
+   - [2.9 Agent Autonomy Architecture](#29-agent-autonomy-architecture)
+   - [2.10 Background Task System](#210-background-task-system-subagent)
+   - [2.11 Scheduled Task System](#211-scheduled-task-system-cron)
+   - [2.12 Heartbeat Service](#212-heartbeat-service)
+   - [2.13 MCP Self-Configuration](#213-mcp-self-configuration)
 3. [Data Flow](#3-data-flow)
 4. [Design Principles](#4-design-principles)
 5. [Extension Points](#5-extension-points)
@@ -67,6 +80,18 @@ finchbot/
 │   ├── context.py     # ContextBuilder for prompt assembly
 │   ├── capabilities.py # CapabilitiesBuilder for capability info
 │   └── skills.py      # SkillsLoader for Markdown skills
+├── background/         # Background Task System
+│   ├── __init__.py
+│   ├── store.py       # JobStore task storage
+│   └── tools.py       # Background task tools
+├── cron/               # Scheduled Task System
+│   ├── __init__.py
+│   ├── service.py     # CronService scheduling service
+│   ├── selector.py    # CronSelector interactive UI
+│   └── tools.py       # Scheduled task tools
+├── heartbeat/          # Heartbeat Service
+│   ├── __init__.py
+│   └── service.py     # HeartbeatService background service
 ├── channels/           # Multi-Platform Messaging (via LangBot)
 │   ├── base.py        # BaseChannel abstract class
 │   ├── bus.py         # MessageBus async router
@@ -113,6 +138,8 @@ finchbot/
 │   ├── shell.py
 │   ├── web.py
 │   ├── session_title.py
+│   ├── background.py  # Background task tools
+│   ├── cron.py        # Scheduled task tools
 │   └── search/
 └── utils/              # Utility Functions
     ├── cache.py
@@ -739,6 +766,400 @@ Channel functionality has been migrated to the LangBot platform. LangBot support
 Please use LangBot's WebUI to configure platforms: https://langbot.app
 
 This configuration is retained for compatibility and will be removed in future versions.
+
+---
+
+### 2.9 Agent Autonomy Architecture
+
+**Core Philosophy**: FinchBot is designed to give agents **true autonomy**—not just responding to user requests, but self-deciding, self-executing, and self-extending.
+
+#### Autonomy Pyramid
+
+```mermaid
+graph BT
+    classDef level1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef level2 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef level3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef level4 fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    L1[Response Layer<br/>Respond to User]:::level1
+    L2[Execution Layer<br/>Self-Execute Tasks]:::level2
+    L3[Planning Layer<br/>Self-Create Plans]:::level3
+    L4[Extension Layer<br/>Self-Extend Capabilities]:::level4
+
+    L1 --> L2 --> L3 --> L4
+```
+
+| Layer | Capability | Implementation | User Value |
+|:---:|:---|:---|:---|
+| **Response Layer** | Respond to user requests | Dialog system + Tool calls | Basic interaction |
+| **Execution Layer** | Self-execute tasks | Background task system | Non-blocking dialog |
+| **Planning Layer** | Self-create plans | Scheduled tasks + Heartbeat | Automated execution |
+| **Extension Layer** | Self-extend capabilities | MCP config + Skill creation | Infinite extension |
+
+#### Autonomy Architecture Diagram
+
+```mermaid
+flowchart TB
+    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#4a148c;
+    classDef auto fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef extend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+
+    Agent[🤖 Agent<br/>Autonomy Center]:::core
+
+    subgraph Auto [Self-Execution Capabilities]
+        BG[Background Tasks<br/>Self-start Long Tasks]:::auto
+        Cron[Scheduled Tasks<br/>Self-set Execution Plans]:::auto
+        Heartbeat[Heartbeat Service<br/>Self-monitor & Trigger]:::auto
+    end
+
+    subgraph Extend [Self-Extension Capabilities]
+        MCP[MCP Config<br/>Self-extend Tool Capabilities]:::extend
+        Skills[Skill Creation<br/>Self-define Behavior Boundaries]:::extend
+    end
+
+    Agent --> Auto
+    Agent --> Extend
+
+    BG <--> |Task Status| Heartbeat
+    Cron <--> |Due Trigger| Heartbeat
+    MCP --> |New Tools| Agent
+```
+
+#### Autonomy Comparison
+
+| Capability | Traditional Agent | FinchBot Autonomous Agent |
+|:---|:---|:---|
+| **Task Execution** | User-triggered, blocking wait | Agent self-starts background tasks |
+| **Task Scheduling** | User manually sets | Agent self-creates scheduled tasks |
+| **Self-Monitoring** | None | Heartbeat service self-checks status |
+| **Capability Extension** | Developer writes code | Agent self-configures MCP |
+| **Behavior Definition** | Hardcoded prompts | Agent self-creates skills |
+
+---
+
+### 2.10 Background Task System (Subagent)
+
+**Implementation**: `src/finchbot/background/`
+
+FinchBot implements an advanced background task system using a **three-tool pattern** that allows agents to asynchronously execute long-running tasks.
+
+#### Why Background Tasks?
+
+| Scenario | Traditional Approach | Background Task Solution |
+|:---:|:---|:---|
+| **Long Research** | Blocks dialog, user waits | Background execution, continue dialog |
+| **Batch Processing** | Timeout failure | Async processing, status tracking |
+| **Code Generation** | Single-threaded blocking | Concurrent execution, improved efficiency |
+
+#### Three-Tool Pattern
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Agent
+    participant BG as Background Task System
+    participant S as Subagent
+
+    U->>A: Execute long task
+    A->>BG: start_background_task
+    BG->>S: Create independent Agent
+    BG-->>A: Return job_id
+    A-->>U: Task started (ID: xxx)
+    
+    Note over U,A: User continues dialog...
+    
+    U->>A: Other questions
+    A-->>U: Normal response
+    
+    U->>A: Task progress?
+    A->>BG: check_task_status
+    BG-->>A: running (50%)
+    A-->>U: Still executing...
+    
+    S-->>BG: Task complete
+    U->>A: Get result
+    A->>BG: get_task_result
+    BG-->>A: Return result
+    A-->>U: Task result display
+```
+
+#### Core Components
+
+| Component | File | Function |
+|:---|:---|:---|
+| **JobStore** | `store.py` | In-memory task status storage |
+| **BackgroundTools** | `tools.py` | Four tool implementations |
+| **Subagent** | Agent instance | Independent task execution |
+
+#### Task State Flow
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: start_background_task
+    pending --> running: Task starts execution
+    running --> completed: Execution success
+    running --> failed: Execution failure
+    running --> cancelled: cancel_task
+    completed --> [*]
+    failed --> [*]
+    cancelled --> [*]
+```
+
+#### Background Task Tools
+
+| Tool | Function | Agent Autonomy |
+|:---|:---|:---|
+| `start_background_task` | Start background task | Agent self-determines if background execution needed |
+| `check_task_status` | Check task status | Agent self-decides when to check |
+| `get_task_result` | Get task result | Agent self-decides when to get result |
+| `cancel_task` | Cancel task | Agent self-decides whether to cancel |
+
+---
+
+### 2.11 Scheduled Task System (Cron)
+
+**Implementation**: `src/finchbot/cron/`
+
+FinchBot provides a complete scheduled task solution supporting both **CLI interactive management** and **tool calls**.
+
+#### System Architecture
+
+```mermaid
+flowchart TB
+    classDef cli fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+    classDef service fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef tool fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    subgraph CLI [CLI Interaction]
+        Command[finchbot cron]:::cli
+        Selector[CronSelector<br/>Keyboard Navigation]:::cli
+    end
+
+    subgraph Service [Service Layer]
+        CronService[CronService<br/>croniter Scheduling Engine]:::service
+        Storage[(cron_jobs.json)]:::service
+    end
+
+    subgraph Tools [Tool Layer]
+        Create[create_cron]:::tool
+        List[list_crons]:::tool
+        Delete[delete_cron]:::tool
+        Toggle[toggle_cron]:::tool
+    end
+
+    Command --> Selector
+    Selector --> CronService
+    CronService --> Storage
+    Agent[Agent] --> Tools
+    Tools --> Storage
+```
+
+#### CronSelector Interactive Interface
+
+| Key | Action | Description |
+|:---:|:---|:---|
+| ↑ / ↓ | Navigate | Move through task list |
+| Enter | Details | View task details |
+| n | New | Create new scheduled task |
+| d | Delete | Delete selected task |
+| e | Toggle | Enable/disable task |
+| r | Run | Execute immediately |
+| q | Quit | Exit management interface |
+
+#### Cron Expression Support
+
+Uses `croniter` library to parse standard 5-field Cron expressions:
+
+| Field | Range | Description |
+|:---:|:---:|:---|
+| Minute | 0-59 | Execution minute |
+| Hour | 0-23 | Execution hour |
+| Day | 1-31 | Day of month |
+| Month | 1-12 | Month |
+| Weekday | 0-6 | Day of week (0=Sunday) |
+
+**Common Expression Examples**:
+
+| Expression | Description |
+|:---|:---|
+| `0 9 * * *` | Daily at 9:00 AM |
+| `0 */2 * * *` | Every 2 hours |
+| `30 18 * * 1-5` | Weekdays at 6:30 PM |
+| `0 0 1 * *` | First day of month at midnight |
+| `0 9,18 * * *` | Daily at 9:00 AM and 6:00 PM |
+
+#### Scheduled Task Tools
+
+| Tool | Function | Agent Autonomy |
+|:---|:---|:---|
+| `create_cron` | Create scheduled task | Agent self-parses time expressions and creates |
+| `list_crons` | List all tasks | Agent self-views current tasks |
+| `delete_cron` | Delete task | Agent self-decides to remove unneeded tasks |
+| `toggle_cron` | Enable/disable task | Agent self-adjusts task status |
+
+---
+
+### 2.12 Heartbeat Service
+
+**Implementation**: `src/finchbot/heartbeat/`
+
+The heartbeat service is FinchBot's background monitoring service, implementing automated task triggering through periodic reading of the `HEARTBEAT.md` file.
+
+#### How It Works
+
+```mermaid
+sequenceDiagram
+    participant S as HeartbeatService
+    participant F as HEARTBEAT.md
+    participant L as LLM
+    participant A as Action Execution
+
+    loop Every N seconds
+        S->>F: Read file content
+        F-->>S: Return task instructions
+        S->>L: Analyze content
+        L-->>S: Decision on action
+        alt Need to execute
+            S->>A: Execute action
+            A-->>S: Return result
+        end
+    end
+```
+
+#### HEARTBEAT.md File Format
+
+```markdown
+# Heartbeat Tasks
+
+## To-Do Items
+- [ ] Check if scheduled tasks need execution
+- [ ] Check background task status
+- [ ] Remind user of important items
+
+## User Instructions
+- Remind me to check email every day at 9
+- Notify me when background task completes
+```
+
+#### Supported Action Types
+
+| Action | Description |
+|:---|:---|
+| `check_cron` | Check and execute due scheduled tasks |
+| `check_background` | Check background task status |
+| `remind_user` | Send reminder to user |
+| `custom_action` | Custom action |
+
+#### Integration with Other Components
+
+```mermaid
+flowchart LR
+    classDef heartbeat fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef cron fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef background fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef notify fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+
+    H[HeartbeatService]:::heartbeat
+    C[CronService]:::cron
+    B[BackgroundTasks]:::background
+    N[Notification System]:::notify
+
+    H --> |Trigger execution| C
+    H --> |Check status| B
+    H --> |Send reminder| N
+```
+
+---
+
+### 2.13 MCP Self-Configuration
+
+**Core Philosophy**: Enable agents to autonomously configure MCP servers, dynamically extending their tool capabilities.
+
+#### Self-Extension Architecture
+
+```mermaid
+flowchart TB
+    classDef need fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef config fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef tool fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef use fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+
+    Need[Agent Discovers Need<br/>"I need database capability"]:::need
+    Search[Search Available MCP Servers]:::config
+    Config[configure_mcp<br/>Self-Configure]:::config
+    Load[Dynamically Load New Tools]:::tool
+    Use[Agent Uses New Tools]:::use
+
+    Need --> Search --> Config --> Load --> Use
+```
+
+#### Agent Self-Extension Example
+
+```
+User: Help me analyze this SQLite database
+
+Agent thinks:
+1. Current tool check: No database operation tools
+2. Capability gap: Need SQLite operation capability
+3. Solution: Configure SQLite MCP server
+
+Agent acts:
+1. Call configure_mcp(
+     action="add",
+     server_name="sqlite",
+     command="mcp-server-sqlite",
+     args=["--db-path", "/path/to/db"]
+   )
+2. Call refresh_capabilities() to refresh capability description
+3. New tools auto-loaded: query_sqlite, list_tables, ...
+
+Agent uses new capability:
+1. Call list_tables() to view schema
+2. Call query_sqlite("SELECT * FROM users LIMIT 10")
+3. Return to user: Database analysis results...
+```
+
+#### Supported MCP Operations
+
+| Operation | Function | Agent Autonomy |
+|:---|:---|:---|
+| `add` | Add new server | Agent self-discovers need and adds |
+| `update` | Update configuration | Agent self-adjusts config parameters |
+| `remove` | Remove server | Agent self-removes unneeded capabilities |
+| `enable` | Enable server | Agent self-activates configured capabilities |
+| `disable` | Disable server | Agent self-temporarily disables capabilities |
+| `list` | List all servers | Agent self-views current configuration |
+
+#### MCP Ecosystem
+
+```mermaid
+flowchart TB
+    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef mcp fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+
+    Agent[🤖 FinchBot Agent]:::core
+
+    subgraph MCPServers [MCP Server Ecosystem]
+        Filesystem[Filesystem<br/>File System Operations]:::mcp
+        GitHub[GitHub<br/>Repository Management]:::mcp
+        SQLite[SQLite<br/>Database Operations]:::mcp
+        Brave[Brave Search<br/>Web Search]:::mcp
+        Puppeteer[Puppeteer<br/>Browser Automation]:::mcp
+        Custom[Custom MCP<br/>Any Extension]:::mcp
+    end
+
+    Agent --> |configure_mcp| MCPServers
+    MCPServers --> |Dynamic Tools| Agent
+```
+
+**MCP Servers Agent Can Self-Add**:
+- **Filesystem**: File system operations
+- **GitHub**: Repository management, Issues, PRs
+- **SQLite**: Database queries
+- **Brave Search**: Web search
+- **Puppeteer**: Browser automation
+- **Custom**: Any server following MCP protocol
 
 ---
 

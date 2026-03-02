@@ -216,8 +216,10 @@ class CronTaskUI:
                     schedule=schedule,
                     message=message,
                 )
-                cron = croniter(schedule, datetime.now(timezone.utc))
-                job.next_run_date = cron.get_next(datetime).isoformat()
+                now_local = datetime.now().astimezone()
+                cron = croniter(schedule, now_local)
+                next_dt_local = cron.get_next(datetime)
+                job.next_run_date = next_dt_local.astimezone(timezone.utc).isoformat()
                 self.cron_service._jobs[job.cron_id] = job
                 self.cron_service._save()
             except RuntimeError:
@@ -265,8 +267,10 @@ class CronTaskUI:
             if new_enabled:
                 from croniter import croniter
 
-                cron = croniter(job.schedule, datetime.now(timezone.utc))
-                job.next_run_date = cron.get_next(datetime).isoformat()
+                now_local = datetime.now().astimezone()
+                cron = croniter(job.schedule, now_local)
+                next_dt_local = cron.get_next(datetime)
+                job.next_run_date = next_dt_local.astimezone(timezone.utc).isoformat()
             self.cron_service._save()
         except RuntimeError:
             asyncio.run(self.cron_service.toggle(job.cron_id, new_enabled))
@@ -293,8 +297,10 @@ class CronTaskUI:
             job.last_run_date = datetime.now(timezone.utc).isoformat()
             from croniter import croniter
 
-            cron = croniter(job.schedule, datetime.now(timezone.utc))
-            job.next_run_date = cron.get_next(datetime).isoformat()
+            now_local = datetime.now().astimezone()
+            cron = croniter(job.schedule, now_local)
+            next_dt_local = cron.get_next(datetime)
+            job.next_run_date = next_dt_local.astimezone(timezone.utc).isoformat()
             self.cron_service._save()
             console.print(f"[green]{t('cron.actions.run_success', name=job.name)}[/green]")
         except RuntimeError:

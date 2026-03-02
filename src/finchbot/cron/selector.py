@@ -214,7 +214,7 @@ class CronSelector:
             f"[dim]{t('cron.detail.message')}:[/] {job.message}\n"
             f"[dim]{t('cron.detail.next_run')}:[/] {next_run}\n"
             f"[dim]{t('cron.detail.last_run')}:[/] {last_run or '-'}\n"
-            f"[dim]{t('cron.detail.run_count')}:[/] {job.run_count} 次\n"
+            f"[dim]{t('cron.detail.run_count')}:[/] {job.run_count} {t('cron.detail.times')}\n"
             f"[dim]{t('cron.detail.status')}:[/] {'✅ ' + t('cron.status.enabled') if job.enabled else '❌ ' + t('cron.status.disabled')}\n"
             f"[dim]{t('cron.detail.created_at')}:[/] {created_at}"
         )
@@ -297,8 +297,10 @@ class CronSelector:
                     schedule=schedule,
                     message=message,
                 )
-                cron = croniter(schedule, datetime.now(timezone.utc))
-                new_job.next_run_date = cron.get_next(datetime).isoformat()
+                now_local = datetime.now().astimezone()
+                cron = croniter(schedule, now_local)
+                next_dt_local = cron.get_next(datetime)
+                new_job.next_run_date = next_dt_local.astimezone(timezone.utc).isoformat()
                 self.service._jobs[new_job.cron_id] = new_job
                 self.service._save()
                 console.print(f"[green]{t('cron.actions.create_success', name=name)}[/green]")
@@ -337,8 +339,10 @@ class CronSelector:
         if new_enabled:
             from croniter import croniter
 
-            cron = croniter(job.schedule, datetime.now(timezone.utc))
-            job.next_run_date = cron.get_next(datetime).isoformat()
+            now_local = datetime.now().astimezone()
+            cron = croniter(job.schedule, now_local)
+            next_dt_local = cron.get_next(datetime)
+            job.next_run_date = next_dt_local.astimezone(timezone.utc).isoformat()
 
         self.service._save()
 
@@ -359,8 +363,10 @@ class CronSelector:
 
         from croniter import croniter
 
-        cron = croniter(job.schedule, datetime.now(timezone.utc))
-        job.next_run_date = cron.get_next(datetime).isoformat()
+        now_local = datetime.now().astimezone()
+        cron = croniter(job.schedule, now_local)
+        next_dt_local = cron.get_next(datetime)
+        job.next_run_date = next_dt_local.astimezone(timezone.utc).isoformat()
 
         self.service._save()
         console.print(f"[green]{t('cron.actions.run_success', name=job.name)}[/green]")
@@ -396,19 +402,20 @@ class CronSelector:
             return "-"
 
     def _format_datetime(self, dt_str: str | None) -> str:
-        """格式化日期时间.
+        """格式化日期时间（UTC 转本地时间）.
 
         Args:
-            dt_str: ISO 格式的时间字符串
+            dt_str: ISO 格式的时间字符串（UTC）
 
         Returns:
-            格式化后的时间字符串
+            格式化后的本地时间字符串
         """
         if not dt_str:
             return "-"
         try:
             dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-            return dt.strftime("%Y-%m-%d %H:%M:%S")
+            local_dt = dt.astimezone()
+            return local_dt.strftime("%Y-%m-%d %H:%M:%S")
         except Exception:
             return "-"
 

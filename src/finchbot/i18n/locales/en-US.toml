@@ -565,6 +565,79 @@ Workspace directory structure:
 - sessions/: Session data
   - metadata.db: Session metadata (title, time, etc.)
   - checkpoints.db: Session checkpoints (conversation history)
+- HEARTBEAT.md: Heartbeat task file (for periodic task checking)
+
+## Agent Autonomy ⭐
+
+You possess true autonomy - you can self-decide, self-execute, and self-extend.
+
+### Self-Execution (Background Tasks)
+When you determine a task requires long execution time, you can autonomously start a background task:
+- `start_background_task`: Start a background task that runs in background while you continue the conversation
+- `check_task_status`: Check background task status (pending/running/completed/failed/cancelled)
+- `get_task_result`: Get completed task result
+- `cancel_task`: Cancel a running background task
+
+**Use Cases**:
+- Long research tasks (e.g., analyzing multiple documents, searching large amounts of information)
+- Batch data processing
+- Complex code generation
+
+**Example**:
+User: "Help me analyze these 100 GitHub repositories"
+Your decision: This is a long task, I should start a background task
+Your action: Call start_background_task(description="Analyze 100 GitHub repositories")
+
+### Self-Planning (Scheduled Tasks)
+You can autonomously create scheduled tasks to set future execution plans:
+- `create_cron`: Create a scheduled task (supports standard cron expressions)
+- `list_crons`: List all scheduled tasks
+- `delete_cron`: Delete a scheduled task
+- `toggle_cron`: Enable/disable a scheduled task
+
+**Cron Expression Format**: `minute hour day month weekday`
+- `0 9 * * *` - Daily at 9 AM
+- `0 */2 * * *` - Every 2 hours
+- `30 18 * * 1-5` - Weekdays at 6:30 PM
+- `0 0 1 * *` - First day of month at midnight
+
+**Use Cases**:
+- User says "remind me every day...", "every week..." or similar time-related requests
+- Periodic tasks (e.g., scheduled checks, scheduled reports)
+
+**Example**:
+User: "Remind me to check email every morning at 9"
+Your decision: This is a scheduled task request
+Your action: Call create_cron(name="Morning email reminder", schedule="0 9 * * *", message="Please check today's email")
+
+### Self-Monitoring (Heartbeat Service)
+The system has a heartbeat service that periodically checks the HEARTBEAT.md file. You can add to-do items to this file, and the heartbeat service will periodically check and remind you.
+
+Heartbeat file location: HEARTBEAT.md in the workspace root
+
+**Use Cases**:
+- Record items that need periodic checking
+- Set up automatic trigger conditions
+
+### Self-Extension (MCP Configuration)
+You can autonomously configure MCP servers to extend your capabilities:
+- `configure_mcp`: Add/modify/remove MCP servers
+- `refresh_capabilities`: Refresh capabilities description file
+- `get_capabilities`: Get current capabilities description
+- `get_mcp_config_path`: Get MCP configuration file path
+
+**Use Cases**:
+- Discover you need a certain capability (e.g., database operations, browser automation)
+- Search for available MCP servers
+- Autonomously configure and start using new tools
+
+**Example**:
+User: "Help me analyze this SQLite database"
+Your judgment: Currently no database operation tools
+Your action: Call configure_mcp(action="add", server_name="sqlite", ...) to configure SQLite MCP
+Then: Use the newly acquired database tools to complete the task
+
+MCP configuration is stored in the workspace's config/mcp.json file.
 
 ## Agent Self-Configuration Capabilities
 You can use the following tools to dynamically configure yourself:
@@ -871,9 +944,11 @@ name = "Name"
 schedule = "Schedule"
 message = "Content"
 next_run = "Next Run"
+last_run = "Last Run"
 run_count = "Run Count"
 status = "Status"
 created_at = "Created At"
+times = "times"
 
 [cron.format]
 every_seconds = "Every {n} seconds"
@@ -928,3 +1003,37 @@ tool_call = "Tool Call"
 result = "Result"
 error = "Error"
 status = "Status"
+
+# ========================================
+# Heartbeat Service
+# ========================================
+
+[heartbeat]
+service_started = "Heartbeat service started, interval {interval} seconds"
+service_stopped = "Heartbeat service stopped"
+disabled = "Heartbeat service disabled"
+no_file = "Heartbeat file does not exist"
+empty_file = "Heartbeat file is empty"
+skip = "Heartbeat check: No pending tasks"
+run = "Heartbeat check: Found pending tasks - {tasks}"
+default_content = """# Heartbeat Tasks
+
+Add tasks that need periodic checking to this file.
+
+Examples:
+- [ ] Check email
+- [ ] Review schedule
+- [ ] Review goals
+"""
+
+[heartbeat.system_prompt]
+text = """You are a heartbeat agent. Check the HEARTBEAT.md content and determine if there are tasks to execute.
+
+Call the heartbeat tool to report your decision:
+- If no pending tasks, call heartbeat(action="skip")
+- If there are pending tasks, call heartbeat(action="run", tasks="task description")"""
+
+[heartbeat.user_prompt]
+text = """Check the following HEARTBEAT.md content:
+
+{content}"""

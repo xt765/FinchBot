@@ -715,7 +715,7 @@ This includes: pytest, ruff, basedpyright
 
 </details>
 
-### Best Practice: Three Commands to Get Started
+### Best Practice: Four Commands to Get Started
 
 ```bash
 # Step 1: Configure API keys and default model
@@ -726,13 +726,17 @@ uv run finchbot sessions
 
 # Step 3: Start chatting
 uv run finchbot chat
+
+# Step 4: Manage scheduled tasks
+uv run finchbot cron
 ```
 
-That's it! These three commands cover the complete workflow:
+That's it! These four commands cover the complete workflow:
 
 - `finchbot config` — Interactive configuration for LLM providers, API keys, and settings
 - `finchbot sessions` — Full-screen session manager for creating, renaming, deleting sessions
 - `finchbot chat` — Start or continue an interactive conversation
+- `finchbot cron` — Interactive scheduled task manager with keyboard navigation
 
 ### Docker Deployment
 
@@ -874,6 +878,10 @@ Use [LangBot](https://github.com/langbot-app/LangBot) for multi-platform support
 |    **Thread Safe**    | Tool registration uses double-checked locking pattern                      |
 |   **Multi-Platform**   | Via LangBot: QQ, WeChat, Feishu, DingTalk, Discord, Telegram, Slack, etc.  |
 |   **MCP Support**   | Official langchain-mcp-adapters for stdio and HTTP transports              |
+| **Agent Autonomy** | Agent can self-execute tasks, self-create schedules, self-extend capabilities |
+| **Background Tasks** | Three-tool pattern for async execution of long-running tasks |
+| **Scheduled Tasks** | Cron expression based scheduling with interactive CLI management |
+| **Heartbeat Service** | Background monitoring and automatic task triggering |
 
 ---
 

@@ -93,6 +93,7 @@ chat_help = "與 FinchBot 對話"
 config_help = "管理 FinchBot 設定"
 sessions_help = "管理對話"
 models_help = "管理模型"
+cron_help = "管理定時任務"
 
 [cli.status]
 enabled = "已啟用"
@@ -488,6 +489,79 @@ system_md = """# FinchBot (雀翎)
 - sessions/: 會話資料
   - metadata.db: 會話元資料（標題、時間等）
   - checkpoints.db: 會話檢查點（對話歷史）
+- HEARTBEAT.md: 心跳任務檔案（用於週期性任務檢查）
+
+## Agent 自主能力 ⭐
+
+你具備真正的自主性，可以自主決策、自主執行、自主擴展。
+
+### 自主執行（後台任務）
+當你判斷任務需要長時間執行時，可以自主啟動後台任務：
+- `start_background_task`: 啟動後台任務，任務會在後台執行，你可以繼續目前對話
+- `check_task_status`: 檢查後台任務狀態（pending/running/completed/failed/cancelled）
+- `get_task_result`: 獲取已完成任務的結果
+- `cancel_task`: 取消正在執行的後台任務
+
+**使用場景**：
+- 長時間研究任務（如分析多個文件、搜尋大量資訊）
+- 批次資料處理
+- 複雜程式碼生成
+
+**範例**：
+使用者：「幫我分析這 100 個 GitHub 儲存庫」
+你的決策：這是一個長時間任務，我應該啟動後台任務
+你的行動：調用 start_background_task(description="分析 100 個 GitHub 儲存庫")
+
+### 自主規劃（定時任務）
+你可以自主建立定時任務，設定未來的執行計劃：
+- `create_cron`: 建立定時任務（支援標準 cron 表達式）
+- `list_crons`: 列出所有定時任務
+- `delete_cron`: 刪除定時任務
+- `toggle_cron`: 啟用/停用定時任務
+
+**Cron 表達式格式**：`分 時 日 月 週`
+- `0 9 * * *` - 每天上午 9 點
+- `0 */2 * * *` - 每 2 小時
+- `30 18 * * 1-5` - 工作日下午 6:30
+- `0 0 1 * *` - 每月 1 日零點
+
+**使用場景**：
+- 使用者說「每天提醒我...」、「每週...」等時間相關請求
+- 週期性任務（如定時檢查、定時報告）
+
+**範例**：
+使用者：「每天早上 9 點提醒我查看郵件」
+你的決策：這是一個定時任務請求
+你的行動：調用 create_cron(name="晨間郵件提醒", schedule="0 9 * * *", message="請查看今日郵件")
+
+### 自主監控（心跳服務）
+系統有心跳服務會定期檢查 HEARTBEAT.md 檔案。你可以在該檔案中新增待辦事項，心跳服務會定期檢查並提醒你。
+
+心跳檔案位置：工作區根目錄的 HEARTBEAT.md
+
+**使用場景**：
+- 記錄需要定期檢查的事項
+- 設定自動觸發條件
+
+### 自主擴展（MCP 配置）
+你可以自主配置 MCP 伺服器來擴展自己的能力：
+- `configure_mcp`: 新增/修改/刪除 MCP 伺服器
+- `refresh_capabilities`: 刷新能力描述檔案
+- `get_capabilities`: 取得目前能力描述
+- `get_mcp_config_path`: 取得 MCP 配置檔案路徑
+
+**使用場景**：
+- 發現需要某種能力（如資料庫操作、瀏覽器自動化）
+- 搜尋可用的 MCP 伺服器
+- 自主配置並開始使用新工具
+
+**範例**：
+使用者：「幫我分析這個 SQLite 資料庫」
+你的判斷：目前沒有資料庫操作工具
+你的行動：調用 configure_mcp(action="add", server_name="sqlite", ...) 配置 SQLite MCP
+然後：使用新獲得的資料庫工具完成任務
+
+MCP 配置儲存在工作區的 config/mcp.json 檔案中。
 
 ## Agent 自配置能力
 你可以使用以下工具動態配置自己：
@@ -698,3 +772,200 @@ custom = "自訂"
 # ========================================
 
 [memory.categories]
+
+# ========================================
+# 後台任務 (Background Tasks)
+# ========================================
+
+[background]
+task_started = "後台任務已啟動 (ID: {job_id})"
+job_not_found = "任務 {job_id} 不存在"
+job_not_completed = "任務 {job_id} 尚未完成，目前狀態: {status}"
+no_result = "無結果"
+status_report = "任務 {job_id} 狀態: {status}"
+status_with_result = "任務 {job_id} 狀態: {status}, 結果: {result}"
+status_with_error = "任務 {job_id} 狀態: {status}, 錯誤: {error}"
+cancel_success = "任務 {job_id} 已取消"
+cancel_failed = "任務 {job_id} 取消失敗"
+
+[tools.start_background_task]
+name = "start_background_task"
+description = "啟動一個後台任務。適用於長時間執行的任務，任務會在後台執行，你可以繼續目前對話。使用 check_task_status 檢查狀態，使用 get_task_result 獲取結果。"
+param_task_description = "任務描述，詳細說明要執行的任務"
+param_agent_type = "代理類型: default(預設), research(研究), writer(寫作)"
+
+[tools.check_task_status]
+name = "check_task_status"
+description = "檢查後台任務的狀態。返回任務的目前狀態（pending/running/completed/failed/cancelled）。"
+param_job_id = "任務 ID"
+
+[tools.get_task_result]
+name = "get_task_result"
+description = "獲取已完成任務的詳細結果。僅當任務狀態為 completed 時可用。"
+param_job_id = "任務 ID"
+
+[tools.cancel_task]
+name = "cancel_task"
+description = "取消正在執行的後台任務。"
+param_job_id = "任務 ID"
+
+# ========================================
+# 定時任務 (Cron Jobs)
+# ========================================
+
+[cron]
+title = "⏰ 定時任務"
+no_jobs = "暫無定時任務"
+service_started = "定時任務服務已啟動，共 {count} 個任務"
+service_stopped = "定時任務服務已停止"
+job_created = "定時任務已建立 (ID: {id}, 調度: {schedule})"
+job_deleted = "定時任務 {id} 已刪除"
+job_not_found = "定時任務 {id} 不存在"
+executing = "正在執行定時任務: {name} (ID: {id})"
+execute_success = "定時任務執行成功: {name}"
+execute_failed = "定時任務執行失敗: {name} - {error}"
+
+[cron.columns]
+id = "ID"
+name = "名稱"
+schedule = "調度"
+next_run = "下次執行"
+status = "狀態"
+message = "任務內容"
+
+[cron.status]
+enabled = "已啟用"
+disabled = "已停用"
+pending = "待執行"
+running = "執行中"
+completed = "已完成"
+failed = "失敗"
+cancelled = "已取消"
+
+[cron.help]
+navigate = "導航"
+detail = "詳情"
+n_new = "新建"
+d_delete = "刪除"
+e_toggle = "啟用/停用"
+r_run = "立即執行"
+q_quit = "退出"
+any_key_back = "按任意鍵返回"
+
+[cron.input]
+name = "任務名稱:"
+schedule = "時間表達式（如 '0 9 * * *' 表示每天早上9點）:"
+message = "任務內容:"
+
+[cron.actions]
+create_first = "建立第一個任務"
+create_success = "任務 '{name}' 建立成功"
+create_failed = "建立失敗: {error}"
+confirm_delete = "確定刪除任務 '{name}'?"
+delete_success = "任務 '{name}' 已刪除"
+toggle_success = "任務 '{name}' 已{status}"
+running = "正在執行 '{name}'..."
+run_success = "任務 '{name}' 執行完成"
+run_failed = "執行失敗: {error}"
+quit = "已退出任務管理"
+
+[cron.detail]
+title = "📋 任務詳情"
+id = "ID"
+name = "名稱"
+schedule = "調度"
+message = "內容"
+next_run = "下次執行"
+last_run = "上次執行"
+run_count = "執行次數"
+status = "狀態"
+created_at = "建立時間"
+times = "次"
+
+[cron.format]
+every_seconds = "每 {n} 秒"
+every_minutes = "每 {n} 分鐘"
+every_hours = "每 {n} 小時"
+every_days = "每 {n} 天"
+overdue = "已過期"
+in_seconds = "{n} 秒後"
+in_minutes = "{n} 分鐘後"
+in_hours = "{n} 小時後"
+in_days = "{n} 天後"
+
+[tools.create_cron]
+name = "create_cron"
+description = "建立一個定時任務。支援標準 cron 表達式。例如: '0 9 * * *' 表示每天早上9點，'0 */2 * * *' 表示每2小時。"
+param_name = "任務名稱"
+param_schedule = "Cron 表達式（5位：分 時 日 月 週）"
+param_message = "任務內容"
+param_input = "可選的輸入資料（JSON 格式）"
+
+[tools.list_crons]
+name = "list_crons"
+description = "列出所有定時任務。"
+param_include_disabled = "是否包含已停用的任務"
+
+[tools.delete_cron]
+name = "delete_cron"
+description = "刪除指定的定時任務。"
+param_cron_id = "任務 ID"
+
+[tools.toggle_cron]
+name = "toggle_cron"
+description = "啟用或停用定時任務。"
+param_cron_id = "任務 ID"
+param_enabled = "是否啟用（true/false）"
+
+# ========================================
+# 進度輸出 (Progress Streaming)
+# ========================================
+
+[progress]
+tool_call = "調用 {tool}"
+tools_used = "🔧 工具調用"
+thinking = "思考中..."
+generating = "生成回應..."
+completed = "完成"
+error = "錯誤"
+
+[progress.types]
+thinking = "思考"
+tool_call = "工具調用"
+result = "結果"
+error = "錯誤"
+status = "狀態"
+
+# ========================================
+# 心跳服務 (Heartbeat Service)
+# ========================================
+
+[heartbeat]
+service_started = "心跳服務已啟動，間隔 {interval} 秒"
+service_stopped = "心跳服務已停止"
+disabled = "心跳服務已停用"
+no_file = "心跳檔案不存在"
+empty_file = "心跳檔案為空"
+skip = "心跳檢查: 無待處理任務"
+run = "心跳檢查: 發現待處理任務 - {tasks}"
+default_content = """# 心跳任務
+
+在此檔案中新增需要定期檢查的任務。
+
+例如:
+- [ ] 檢查郵件
+- [ ] 查看日程
+- [ ] 回顧目標
+"""
+
+[heartbeat.system_prompt]
+text = """你是一個心跳代理。檢查 HEARTBEAT.md 的內容，判斷是否有需要執行的任務。
+
+調用 heartbeat 工具報告你的決定：
+- 如果沒有待處理任務，調用 heartbeat(action="skip")
+- 如果有待處理任務，調用 heartbeat(action="run", tasks="任務描述")"""
+
+[heartbeat.user_prompt]
+text = """檢查以下 HEARTBEAT.md 內容：
+
+{content}"""
