@@ -500,6 +500,7 @@ async def _stream_ai_response(
     runnable_config: RunnableConfig,
     console: Console,
     render_markdown: bool,
+    show_progress: bool = True,
 ) -> list[BaseMessage]:
     """流式输出 AI 响应，并显示详细的工具调用信息.
 
@@ -509,6 +510,7 @@ async def _stream_ai_response(
         runnable_config: 运行配置.
         console: Rich 控制台.
         render_markdown: 是否渲染 Markdown.
+        show_progress: 是否显示进度提示.
 
     Returns:
         完整的消息列表.
@@ -521,6 +523,7 @@ async def _stream_ai_response(
     pending_tool_calls: list[dict] = []
     last_render_time: float = 0.0
     render_interval = 0.1
+    tool_call_count = 0
 
     def _render_ai_content(content: str) -> None:
         if content.strip():
@@ -542,6 +545,11 @@ async def _stream_ai_response(
             border_style="green",
             padding=(0, 1),
         )
+
+    def _show_progress_hint(text: str) -> None:
+        """显示进度提示."""
+        if show_progress:
+            console.print(f"  [dim]↳ {text}[/dim]")
 
     with Live(
         Panel(Text(""), title="🐦 FinchBot", border_style="green"),
@@ -588,13 +596,24 @@ async def _stream_ai_response(
                                         )
                                     )
                                 for tc in msg.tool_calls:
+                                    tool_name = tc.get("name") or "unknown"
+                                    tool_args = tc.get("args", {})
                                     pending_tool_calls.append(
                                         {
-                                            "name": tc.get("name") or "unknown",
-                                            "args": tc.get("args", {}),
+                                            "name": tool_name,
+                                            "args": tool_args,
                                             "start_time": time.time(),
                                         }
                                     )
+                                    # 显示工具调用进度提示
+                                    if show_progress:
+                                        tool_call_count += 1
+                                        args_hint = ""
+                                        if tool_args:
+                                            first_arg = next(iter(tool_args.values()), "")
+                                            if isinstance(first_arg, str) and len(first_arg) < 30:
+                                                args_hint = f'("{first_arg}")'
+                                        _show_progress_hint(f"{tool_name}{args_hint}")
                             elif hasattr(msg, "name") and msg.name:
                                 tool_name = msg.name
                                 for i, call_info in enumerate(pending_tool_calls):
@@ -622,6 +641,10 @@ async def _stream_ai_response(
         console.print("[yellow]No content generated[/yellow]")
     else:
         console.print(_create_content_panel(full_content))
+
+    # 显示工具调用统计
+    if show_progress and tool_call_count > 0:
+        console.print(f"  [dim]🔧 {tool_call_count} 个工具调用[/dim]")
 
     return all_messages
 

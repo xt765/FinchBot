@@ -93,6 +93,7 @@ chat_help = "Chat with FinchBot"
 config_help = "Manage FinchBot configuration"
 sessions_help = "Manage sessions"
 models_help = "Manage models"
+cron_help = "Manage scheduled tasks"
 
 [cli.status]
 enabled = "Enabled"

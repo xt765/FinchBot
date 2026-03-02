@@ -151,5 +151,20 @@ def models_download() -> None:
         raise typer.Exit(1)
 
 
+cron_app = typer.Typer(help=t("cli.commands.cron_help"))
+app.add_typer(cron_app, name="cron")
+
+
+@cron_app.callback(invoke_without_command=True)
+def cron_callback(ctx: typer.Context) -> None:
+    """定时任务管理（交互式界面）."""
+    if ctx.invoked_subcommand is None:
+        from finchbot.cron.selector import CronSelector
+
+        ws_path = get_default_workspace()
+        selector = CronSelector(ws_path)
+        selector.interactive_manage()
+
+
 if __name__ == "__main__":
     app()

@@ -95,6 +95,7 @@ chat_help = "与 FinchBot 对话"
 config_help = "管理 FinchBot 配置"
 sessions_help = "管理会话"
 models_help = "管理模型"
+cron_help = "管理定时任务"
 
 [cli.status]
 enabled = "已启用"
@@ -870,3 +871,37 @@ tool_call = "工具调用"
 result = "结果"
 error = "错误"
 status = "状态"
+
+# ========================================
+# 心跳服务 (Heartbeat Service)
+# ========================================
+
+[heartbeat]
+service_started = "心跳服务已启动，间隔 {interval} 秒"
+service_stopped = "心跳服务已停止"
+disabled = "心跳服务已禁用"
+no_file = "心跳文件不存在"
+empty_file = "心跳文件为空"
+skip = "心跳检查: 无待处理任务"
+run = "心跳检查: 发现待处理任务 - {tasks}"
+default_content = """# 心跳任务
+
+在此文件中添加需要定期检查的任务。
+
+例如:
+- [ ] 检查邮件
+- [ ] 查看日程
+- [ ] 回顾目标
+"""
+
+[heartbeat.system_prompt]
+text = """你是一个心跳代理。检查 HEARTBEAT.md 的内容，判断是否有需要执行的任务。
+
+调用 heartbeat 工具报告你的决定：
+- 如果没有待处理任务，调用 heartbeat(action="skip")
+- 如果有待处理任务，调用 heartbeat(action="run", tasks="任务描述")"""
+
+[heartbeat.user_prompt]
+text = """检查以下 HEARTBEAT.md 内容：
+
+{content}"""
