@@ -188,6 +188,23 @@ sequenceDiagram
 
 FinchBot provides a three-layer capability extension mechanism, allowing agents to self-extend when hitting capability boundaries.
 
+#### Three-Layer Extension Mechanism
+
+```mermaid
+flowchart LR
+    classDef layer1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef layer2 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef layer3 fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#f57f17;
+
+    L1[Layer 1<br/>Built-in Tools<br/>Ready to Use]:::layer1 --> L2[Layer 2<br/>MCP Config<br/>Agent Self-Config]:::layer2 --> L3[Layer 3<br/>Skill Creation<br/>Agent Self-Create]:::layer3
+```
+
+| Layer | Method | Autonomy | Description |
+|:---:|:---|:---:|:---|
+| Layer 1 | Built-in Tools | Ready to use | 24 built-in tools, no configuration needed |
+| Layer 2 | MCP Config | Agent self-config | Dynamically add external capabilities via `configure_mcp` |
+| Layer 3 | Skill Creation | Agent self-create | Create new skills via `skill-creator` |
+
 #### Built-in Tools
 
 |      Category      | Tool              | Function                      |
@@ -217,19 +234,9 @@ FinchBot provides a three-layer capability extension mechanism, allowing agents 
 |                    | `toggle_cron`   | Enable/disable scheduled task |
 |                    | `run_cron_now`  | Execute scheduled task now   |
 
-#### Session Title: Smart Naming, Out of the Box
+##### Web Search
 
-The `session_title` tool embodies FinchBot's out-of-the-box philosophy:
-
-|         Method         | Description                                                        | Example                                  |
-| :---------------------: | :----------------------------------------------------------------- | :--------------------------------------- |
-| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion"    |
-| **Agent Modify** | Tell Agent "Change session title to XXX"                           | Agent calls tool to modify automatically |
-| **Manual Rename** | Press `r` key in session manager to rename                       | User manually enters new title           |
-
-This design lets users **manage sessions without technical details**—whether automatic or manual.
-
-#### Web Search: Three-Engine Fallback Design
+`web_search` tool uses a three-engine fallback design, ensuring it always works:
 
 ```mermaid
 flowchart TD
@@ -260,13 +267,15 @@ flowchart TD
 |    2    | **Brave Search** |   Required   | Large free tier, privacy-friendly       |
 |    3    |  **DuckDuckGo**  | Not required | Always available, zero config           |
 
-**How it works**:
+##### Session Management
 
-1. If `TAVILY_API_KEY` is set → Use Tavily (best quality)
-2. Else if `BRAVE_API_KEY` is set → Use Brave Search
-3. Else → Use DuckDuckGo (no API key needed, always works)
+`session_title` tool makes session naming smart:
 
-This design ensures **web search works out of the box** even without any API key configuration!
+|         Method         | Description                                                        | Example                                  |
+| :---------------------: | :----------------------------------------------------------------- | :--------------------------------------- |
+| **Auto Generate** | After 2-3 turns, AI automatically generates title based on content | "Python Async Programming Discussion"    |
+| **Agent Modify** | Tell Agent "Change session title to XXX"                           | Agent calls tool to modify automatically |
+| **Manual Rename** | Press `r` key in session manager to rename                       | User manually enters new title           |
 
 #### MCP Configuration
 
@@ -281,9 +290,7 @@ Agents can autonomously manage MCP servers through the `configure_mcp` tool:
 | `disable` | Temporarily disable MCP server |
 | `list` | List all configured servers |
 
-**Dynamic Prompt Updates**:
-
-When MCP configuration changes, the Agent can refresh capability descriptions through `refresh_capabilities`, ensuring the system prompt always reflects current capabilities.
+**Dynamic Capability Updates**:
 
 ```mermaid
 flowchart LR
@@ -323,7 +330,7 @@ skills/
     └── SKILL.md
 ```
 
-#### Core Design Highlights
+#### Design Highlights
 
 |            Feature            | Description                                       |
 | :---------------------------: | :------------------------------------------------ |
@@ -333,9 +340,44 @@ skills/
 | **Cache Invalidation** | Smart caching based on file modification time     |
 | **Progressive Loading** | Always-on skills first, others on demand          |
 
-### 2. Task Self-Scheduling: Background Tasks + Scheduled Tasks
+### 2. Task Self-Scheduling: Background Tasks + Scheduled Tasks + Heartbeat Service
 
-#### Background Task System
+FinchBot implements a three-layer task scheduling mechanism, enabling agents to autonomously execute, plan, and monitor tasks.
+
+#### Three-Layer Scheduling Mechanism
+
+```mermaid
+flowchart TB
+    classDef layer1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef layer2 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+    classDef layer3 fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#f57f17;
+
+    subgraph L3["Monitor Layer - Heartbeat Service"]
+        H1[Self-Wakeup] ~~~ H2[Periodic Check] ~~~ H3[Proactive Notify]
+    end
+
+    subgraph L2["Planning Layer - Scheduled Tasks"]
+        C1[Cron Schedule] ~~~ C2[Periodic Execute] ~~~ C3[Auto Retry]
+    end
+
+    subgraph L1["Execution Layer - Background Tasks"]
+        B1[Async Execute] ~~~ B2[Non-Blocking] ~~~ B3[Result Fetch]
+    end
+
+    L3 --> L2 --> L1
+
+    style L1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    style L2 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    style L3 fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#f57f17
+```
+
+| Layer | Function | Features | Use Case |
+|:---:|:---|:---|:---|
+| Execution Layer | Background Tasks | Async execution, non-blocking dialog | Long-running tasks |
+| Planning Layer | Scheduled Tasks | Periodic execution, automated running | Regular reminders, scheduled reports |
+| Monitor Layer | Heartbeat Service | Proactive check, self-wakeup | Condition monitoring, status tracking |
+
+#### Background Tasks
 
 FinchBot implements a **four-tool pattern** for asynchronous task execution:
 
@@ -376,9 +418,9 @@ sequenceDiagram
     A-->>U: Task result display
 ```
 
-#### Scheduled Task System
+#### Scheduled Tasks
 
-FinchBot's scheduled task system enables agents to autonomously create and manage periodic tasks for true automation.
+FinchBot's scheduled task system enables agents to autonomously create and manage periodic tasks:
 
 ```mermaid
 flowchart LR
@@ -401,7 +443,7 @@ flowchart LR
 | **Auto Retry** | Automatic retry on failure for reliability |
 | **Status Tracking** | Execution history for audit and debugging |
 
-**Common Cron Expression Examples**:
+**Common Cron Expressions**:
 
 | Expression | Description |
 | :--- | :--- |
@@ -417,14 +459,14 @@ flowchart LR
 User: Remind me to check emails every morning at 9
 
 Agent: Okay, I'll create a scheduled task...
-       [Invokes create_cron_task tool]
+       [Invokes create_cron tool]
        ✅ Scheduled task created
        - Trigger: Daily at 09:00
        - Task: Remind to check emails
        - Next run: Tomorrow 09:00
 ```
 
-#### Heartbeat Service: Self-Wakeup, Proactive Check
+#### Heartbeat Service
 
 The heartbeat service enables the Agent to periodically "wake up" and check for pending tasks, achieving true autonomous operation.
 
@@ -468,9 +510,9 @@ Agent: Okay, I'll record this task in HEARTBEAT.md...
 
 ### 3. Memory Self-Management: Agentic RAG + Weighted RRF Hybrid Retrieval
 
-FinchBot implements an advanced **dual-layer memory architecture** that solves LLM context window limits and long-term forgetting issues.
+FinchBot implements an advanced dual-layer memory architecture, enabling agents to autonomously remember, retrieve, and forget.
 
-#### Why Agentic RAG?
+#### Agentic RAG Advantages
 
 |          Dimension          | Traditional RAG         | Agentic RAG (FinchBot)                       |
 | :--------------------------: | :---------------------- | :------------------------------------------- |
@@ -479,6 +521,31 @@ FinchBot implements an advanced **dual-layer memory architecture** that solves L
 | **Memory Management** | Passive storage         | Active remember/recall/forget                |
 |   **Classification**   | None                    | Auto-classification + importance scoring     |
 |  **Update Mechanism**  | Full rebuild            | Incremental sync                             |
+
+#### Memory Tools
+
+Agents can autonomously manage memory through three core tools:
+
+| Tool | Function | Use Case |
+| :--- | :--- | :--- |
+| `remember` | Proactively store memories | User preferences, important info, context |
+| `recall` | Retrieve memories | Find historical info, recall context |
+| `forget` | Delete/archive memories | Expired info, wrong memories, privacy cleanup |
+
+**Usage Example**:
+
+```
+User: Remember I prefer to communicate in Chinese
+
+Agent: Okay, I'll remember this preference.
+       [Invokes remember tool]
+       ✅ Stored: User preference - Language: Chinese
+
+User: What language preference did I mention?
+
+Agent: [Invokes recall tool]
+       You told me you prefer to communicate in Chinese.
+```
 
 #### Dual-Layer Storage Architecture
 
@@ -528,9 +595,7 @@ flowchart TB
 
 #### Hybrid Retrieval Strategy
 
-FinchBot uses **Weighted RRF (Weighted Reciprocal Rank Fusion)** strategy, a core advantage of Agentic RAG.
-
-**Why Weighted RRF?**
+FinchBot uses **Weighted RRF (Weighted Reciprocal Rank Fusion)** strategy:
 
 | Advantage | Description |
 | :--- | :--- |
@@ -564,20 +629,20 @@ Where:
 - weight_r is the weight for retriever r
 ```
 
-**Core Advantages of Agentic RAG**:
+#### Design Highlights
 
-Traditional RAG uses fixed retrieval strategies, while Agentic RAG enables agents to:
-
-1. **Autonomous Decision** — Choose appropriate retrieval weights based on query content
-2. **Dynamic Adjustment** — Factual queries favor keywords, conceptual queries favor semantics
-3. **Iterative Validation** — If results are unsatisfactory, adjust strategy and retry
-4. **Explainability** — Each retrieval decision has clear weight-based justification
+| Feature | Description |
+| :--- | :--- |
+| **Autonomous Decision** | Agent selects appropriate retrieval weights based on query content |
+| **Dynamic Adjustment** | Factual queries favor keywords, conceptual queries favor semantics |
+| **Iterative Validation** | If results are unsatisfactory, adjust strategy and retry |
+| **Explainability** | Each retrieval decision has clear weight-based justification |
 
 ### 4. Behavior Self-Evolution: Dynamic Prompt System
 
-FinchBot's prompt system uses **file system + modular assembly** design, enabling both agents and users to autonomously modify behavior.
+FinchBot's prompt system uses file system + modular assembly design, enabling both agents and users to autonomously modify behavior.
 
-#### Why Dynamic Prompts?
+#### Dynamic Prompt Advantages
 
 | Traditional Approach | FinchBot Approach |
 | :--- | :--- |
@@ -728,7 +793,9 @@ Agent: Okay, I'll adjust my response style.
 
 ### 5. Channel System: Multi-Platform Messaging
 
-FinchBot integrates with [LangBot](https://github.com/langbot-app/LangBot) for production-grade multi-platform messaging.
+FinchBot integrates with LangBot for production-grade multi-platform messaging.
+
+#### LangBot Integration
 
 **Why LangBot?**
 - 15k+ GitHub Stars, actively maintained
@@ -757,8 +824,6 @@ flowchart LR
 
     LangBot <--> Platforms
 ```
-
-#### Quick Start with LangBot
 
 ```bash
 # Install LangBot
@@ -797,12 +862,10 @@ cd finchbot
 uv sync
 ```
 
-> **Note**: The embedding model (~95MB) will be automatically downloaded to the local cache when you run the application for the first time (e.g., `finchbot chat`). No manual intervention required.
+> **Note**: The embedding model (~95MB) will be automatically downloaded to the local cache when you run the application for the first time.
 
 <details>
 <summary>Development Installation</summary>
-
-For development, install with dev dependencies:
 
 ```bash
 uv sync --extra dev
@@ -812,44 +875,30 @@ This includes: pytest, ruff, basedpyright
 
 </details>
 
-### Best Practice: Four Commands to Get Started
+### Basic Usage
 
 ```bash
-# Step 1: Configure API keys and default model
+# Step 1: Configure API keys
 uv run finchbot config
 
-# Step 2: Manage your sessions
-uv run finchbot sessions
-
-# Step 3: Start chatting
+# Step 2: Start chatting
 uv run finchbot chat
+
+# Step 3: Manage sessions
+uv run finchbot sessions
 
 # Step 4: Manage scheduled tasks
 uv run finchbot cron
 ```
 
-That's it! These four commands cover the complete workflow:
-
-- `finchbot config` — Interactive configuration for LLM providers, API keys, and settings
-- `finchbot sessions` — Full-screen session manager for creating, renaming, deleting sessions
-- `finchbot chat` — Start or continue an interactive conversation
-- `finchbot cron` — Interactive scheduled task manager with keyboard navigation
+| Command | Function |
+| :--- | :--- |
+| `finchbot config` | Interactive configuration for LLM providers, API keys |
+| `finchbot chat` | Start or continue an interactive conversation |
+| `finchbot sessions` | Full-screen session manager |
+| `finchbot cron` | Scheduled task manager |
 
 ### Docker Deployment
-
-FinchBot provides complete Docker support, suitable for production deployment:
-
-```mermaid
-flowchart LR
-    classDef step fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
-    classDef action fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
-
-    A[Clone Repo]:::step --> B[Configure .env]:::step
-    B --> C[docker-compose up]:::action
-    C --> D[finchbot chat]:::action
-```
-
-**Quick Deploy**:
 
 ```bash
 # 1. Clone repository
@@ -867,60 +916,24 @@ docker-compose up -d
 docker exec -it finchbot finchbot chat
 ```
 
-**Docker Compose Configuration**:
-
-```yaml
-services:
-  finchbot:
-    build: .
-    volumes:
-      - finchbot-data:/root/.finchbot  # Persistent workspace
-      - model-cache:/root/.cache        # Model cache
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-
-volumes:
-  finchbot-data:
-  model-cache:
-```
-
-| Feature | Description |
-| :--- | :--- |
-| **One-command Deploy** | `docker-compose up -d` quick start |
-| **Data Persistence** | Workspace and model cache via volumes |
-| **Interactive Terminal** | Use `docker exec` to enter container |
-| **Multi-arch Support** | Works on x86_64 and ARM64 |
-| **Environment Isolation** | Manage sensitive config via .env file |
-
-### Alternative: Environment Variables
+### Environment Variables
 
 ```bash
-# Or set environment variables directly
+# Method 1: Set directly
 export OPENAI_API_KEY="your-api-key"
 uv run finchbot chat
+
+# Method 2: Use .env file
+cp .env.example .env
+# Edit .env and add your API keys
 ```
 
-### Log Level Control
+### Log Level
 
 ```bash
-# Default: Show WARNING and above logs
-finchbot chat
-
-# Show INFO and above logs
-finchbot -v chat
-
-# Show DEBUG and above logs (debug mode)
-finchbot -vv chat
-```
-
-### Optional: Download Local Embedding Model
-
-```bash
-# For memory system semantic search (optional but recommended)
-uv run finchbot models download
+finchbot chat          # Default: WARNING and above
+finchbot -v chat       # INFO and above
+finchbot -vv chat      # DEBUG and above (debug mode)
 ```
 
 ---
@@ -935,55 +948,31 @@ uv run finchbot models download
 |  Data Validation  | Pydantic          |    v2    |
 |   Vector Storage   | ChromaDB          |  0.5.0+  |
 |  Local Embedding  | FastEmbed         |  0.4.0+  |
-| Search Enhancement | BM25              |  0.2.2+  |
 |   CLI Framework   | Typer             | 0.23.0+ |
 |     Rich Text     | Rich              | 14.3.0+ |
 |      Logging      | Loguru            |  0.7.3+  |
-|   Configuration   | Pydantic Settings | 2.12.0+ |
-|    Web Backend    | FastAPI           | 0.115.0+ |
-|    Web Frontend    | React + Vite      |  Latest  |
 
 ---
 
 ## Extension Guide
 
-### Adding New Tools
+### Adding Tools
 
-Inherit `FinchTool` base class, implement `_run()` method, then register with `ToolRegistry`.
+**Built-in Tools**: Inherit `FinchTool` base class, implement `_run()` method, register with `ToolRegistry`.
 
-### Adding MCP Tools
+**MCP Tools**: Configure MCP servers in `finchbot config`, or edit `~/.finchbot/workspace/config/mcp.json`.
 
-Configure MCP servers in `finchbot config` or directly in the config file. MCP tools are automatically loaded via `langchain-mcp-adapters`.
+### Adding Skills
 
-### Adding New Skills
+Create a `SKILL.md` file in `~/.finchbot/workspace/skills/{skill-name}/`, or let Agent create via `skill-creator`.
 
-Create a `SKILL.md` file in `~/.finchbot/workspace/skills/{skill-name}/`.
-
-### Adding New LLM Providers
+### Adding LLM Providers
 
 Add a new Provider class in `providers/factory.py`.
 
-### Adding New Languages
+### Multi-Platform Support
 
-Add a new `.toml` file under `i18n/locales/`.
-
-### Multi-Platform Messaging
-
-Use [LangBot](https://github.com/langbot-app/LangBot) for multi-platform support. See the [LangBot Documentation](https://docs.langbot.app) for details.
-
----
-
-## Key Advantages
-
-| Capability Self-Extension | Task Self-Scheduling | Memory Self-Management | Behavior Self-Evolution |
-|:---:|:---:|:---:|:---:|
-| Built-in Tools + MCP Config + Skill Creation | Background Tasks + Scheduled Tasks | Agentic RAG + Weighted RRF | Dynamic Prompts + Hot Reload |
-| Agent self-extends when hitting boundaries | Agent self-sets background/scheduled tasks | Agent self-remembers, retrieves, forgets | Both Agent and users can modify prompts |
-
-| Safe Autonomy | Privacy First | Production Ready | Multi-Platform |
-|:---:|:---:|:---:|:---:|
-| File ops restricted to workspace | FastEmbed local vector generation | Double-checked locking + auto-retry | Via LangBot: 12+ platforms |
-| Dangerous shell commands blocked | No cloud data upload | Timeout control mechanisms | QQ/WeChat/Feishu/DingTalk/Discord/Telegram/Slack |
+Use [LangBot](https://github.com/langbot-app/LangBot) for multi-platform messaging support, see [LangBot Documentation](https://docs.langbot.app).
 
 ---
 
@@ -1002,9 +991,3 @@ Contributions are welcome! Please read the [Contributing Guide](docs/en-US/contr
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
----
-
-## Star History
-
-If this project is helpful to you, please give it a Star ⭐️
