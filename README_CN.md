@@ -23,7 +23,7 @@
   </a>
   <img src="https://img.shields.io/badge/Gitee-官方推荐-red?style=flat-square&logo=gitee&logoColor=white" alt="Gitee Recommended">
   <a href="https://gitcode.com/xt765/FinchBot">
-    <img src="https://img.shields.io/badge/AtomGit-FinchBot-orange?style=flat-square&logo=git" alt="GitCode">
+    <img src="https://img.shields.io/badge/G-Star-孵化项目-silver?style=flat-square&logo=gitcode" alt="GitCode">
   </a>
 </p>
 
