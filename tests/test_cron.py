@@ -28,7 +28,7 @@ class TestCronService:
         service = CronService(temp_workspace / "data")
         await service.start()
         yield service
-        service.stop()
+        await service.stop()
 
     @pytest.mark.asyncio
     async def test_create_cron_job(self, cron_service: CronService) -> None:
@@ -196,7 +196,7 @@ class TestCronService:
             message="Should persist",
         )
         job_id = job.id
-        service1.stop()
+        await service1.stop()
 
         service2 = CronService(temp_workspace / "data")
         await service2.start()
@@ -205,7 +205,7 @@ class TestCronService:
         assert loaded_job is not None
         assert loaded_job.name == "Persistent Job"
 
-        service2.stop()
+        await service2.stop()
 
     @pytest.mark.asyncio
     async def test_job_status_tracking(self, cron_service: CronService) -> None:

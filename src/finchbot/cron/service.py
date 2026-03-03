@@ -228,7 +228,7 @@ class CronService:
         job_count = len(self._store.jobs) if self._store else 0
         logger.info(t("cron.service_started", count=job_count))
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """停止服务."""
         self._running = False
         if self._timer_task:

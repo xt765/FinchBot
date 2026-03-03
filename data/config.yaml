@@ -1,0 +1,77 @@
+admins: []
+api:
+    port: 5300
+    webhook_prefix: http://127.0.0.1:5300
+command:
+    enable: true
+    prefix:
+    - '!'
+    - ！
+    privilege: {}
+concurrency:
+    pipeline: 20
+    session: 1
+database:
+    postgresql:
+        database: postgres
+        host: 127.0.0.1
+        password: postgres
+        port: 5432
+        user: postgres
+    sqlite:
+        path: data/langbot.db
+    use: sqlite
+plugin:
+    display_plugin_debug_url: ws://localhost:5401/plugin/debug/ws
+    enable: true
+    enable_marketplace: true
+    runtime_ws_url: ws://langbot_plugin_runtime:5400/control/ws
+proxy:
+    http: ''
+    https: ''
+space:
+    disable_models_service: false
+    disable_telemetry: false
+    models_gateway_api_url: https://api.langbot.cloud/v1
+    oauth_authorize_url: https://space.langbot.app/auth/authorize
+    url: https://space.langbot.app
+storage:
+    s3:
+        access_key_id: ''
+        bucket: langbot-storage
+        endpoint_url: ''
+        region: us-east-1
+        secret_access_key: ''
+    use: local
+system:
+    allow_modify_login_info: true
+    jwt:
+        expire: 604800
+        secret: 3ad631bed50287287f8c2d43b15a63b3
+    recovery_key: 9BAB6F
+vdb:
+    milvus:
+        db_name: ''
+        token: ''
+        uri: http://127.0.0.1:19530
+    pgvector:
+        database: langbot
+        host: 127.0.0.1
+        password: postgres
+        port: 5433
+        user: postgres
+    qdrant:
+        api_key: ''
+        host: localhost
+        port: 6333
+        url: ''
+    seekdb:
+        database: langbot
+        host: localhost
+        mode: embedded
+        password: ''
+        path: ./data/seekdb
+        port: 2881
+        tenant: ''
+        user: root
+    use: chroma
