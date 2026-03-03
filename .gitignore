@@ -87,3 +87,9 @@ workspace_test/
 
 # 工作区目录
 finchbot_workspace/
+
+# 运行时数据目录（含敏感配置）
+data/config.yaml
+data/labels/
+data/metadata/
+data/*.db
