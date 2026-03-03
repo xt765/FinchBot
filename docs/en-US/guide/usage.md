@@ -2,7 +2,7 @@
 
 FinchBot provides a rich Command Line Interface (CLI) for interacting with the agent. This document details all available commands and interaction modes.
 
-## Quick Start: Four Commands
+## Quick Start: Five Commands
 
 ```bash
 # Step 1: Configure API keys and default model
@@ -16,9 +16,12 @@ uv run finchbot chat
 
 # Step 4: Manage scheduled tasks
 uv run finchbot cron
+
+# Step 5: Start Webhook server (for LangBot integration)
+uv run finchbot webhook --port 8000
 ```
 
-These four commands cover FinchBot's core workflow:
+These five commands cover FinchBot's core workflow:
 
 ```mermaid
 flowchart LR
@@ -27,6 +30,7 @@ flowchart LR
     A["1. finchbot config<br/>Configure API Keys"]:::step --> B["2. finchbot sessions<br/>Manage Sessions"]:::step
     B --> C["3. finchbot chat<br/>Start Chatting"]:::step
     C --> D["4. finchbot cron<br/>Scheduled Tasks"]:::step
+    D --> E["5. finchbot webhook<br/>LangBot Integration"]:::step
 ```
 
 | Command | Function | Description |
@@ -35,6 +39,7 @@ flowchart LR
 | `finchbot sessions` | Session management | Full-screen interface to create, rename, delete sessions, view history |
 | `finchbot chat` | Start conversation | Launch interactive chat, auto-loads the last active session |
 | `finchbot cron` | Scheduled tasks | Interactive scheduled task manager with keyboard navigation |
+| `finchbot webhook` | Webhook server | Start FastAPI server for LangBot integration |
 
 ---
 
@@ -676,8 +681,84 @@ finchbot chat -vv
 | `finchbot sessions` | Open session manager |
 | `finchbot config` | Open configuration manager |
 | `finchbot cron` | Open scheduled task manager |
+| `finchbot webhook` | Start Webhook server |
+| `finchbot webhook --port 9000` | Start Webhook on specific port |
 | `finchbot models download` | Download embedding models |
 | `finchbot version` | Show version information |
+
+---
+
+## 11. LangBot Integration
+
+FinchBot includes a built-in FastAPI Webhook server for integration with LangBot platform, enabling multi-platform messaging support.
+
+### Quick Start
+
+```bash
+# Terminal 1: Start FinchBot Webhook Server
+uv run finchbot webhook --port 8000
+
+# Terminal 2: Start LangBot
+uvx langbot
+
+# Access LangBot WebUI at http://localhost:5300
+# Configure your platform and set webhook URL:
+# http://localhost:8000/webhook
+```
+
+### Webhook Server Options
+
+| Option | Description | Default |
+| :--- | :--- | :--- |
+| `--host` | Listen address | `0.0.0.0` |
+| `--port` | Listen port | `8000` |
+
+### Supported Platforms
+
+Through LangBot, FinchBot supports **12+ platforms**:
+
+- QQ
+- WeChat / WeCom
+- Feishu
+- DingTalk
+- Discord
+- Telegram
+- Slack
+- LINE
+- KOOK
+- Satori
+
+### Workflow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant P as Platform
+    participant L as LangBot
+    participant W as Webhook
+    participant A as FinchBot
+
+    U->>P: Send message
+    P->>L: Platform adapter
+    L->>W: POST /webhook
+    W->>A: Process message
+    A-->>W: AI response
+    W-->>L: Return response
+    L->>P: Send reply
+    P->>U: Display response
+```
+
+### Configuration
+
+Configure Webhook in LangBot WebUI:
+
+1. Go to "Platform Configuration" page
+2. Add "Webhook" adapter
+3. Set Webhook URL: `http://localhost:8000/webhook`
+4. Save and enable
+
+For more details, see [LangBot Documentation](https://docs.langbot.app).
 
 ---
 

@@ -2,7 +2,7 @@
 
 FinchBot 提供了丰富的命令行界面（CLI）用于与 Agent 交互。本文档详细介绍所有可用命令和交互模式。
 
-## 快速开始：四步上手
+## 快速开始：五步上手
 
 ```bash
 # 第一步：配置 API Key 和默认模型
@@ -16,9 +16,12 @@ uv run finchbot chat
 
 # 第四步：管理定时任务
 uv run finchbot cron
+
+# 第五步：启动 Webhook 服务器（用于 LangBot 集成）
+uv run finchbot webhook --port 8000
 ```
 
-这四个命令覆盖了 FinchBot 的核心工作流：
+这五个命令覆盖了 FinchBot 的核心工作流：
 
 ```mermaid
 flowchart LR
@@ -27,6 +30,7 @@ flowchart LR
     A["1. finchbot config<br/>配置 API Key"]:::step --> B["2. finchbot sessions<br/>管理会话"]:::step
     B --> C["3. finchbot chat<br/>开始聊天"]:::step
     C --> D["4. finchbot cron<br/>定时任务"]:::step
+    D --> E["5. finchbot webhook<br/>LangBot 集成"]:::step
 ```
 
 | 命令 | 功能 | 说明 |
@@ -35,6 +39,7 @@ flowchart LR
 | `finchbot sessions` | 会话管理 | 全屏界面，创建、重命名、删除会话，查看历史 |
 | `finchbot chat` | 开始对话 | 启动交互式聊天，自动加载上次活动会话 |
 | `finchbot cron` | 定时任务 | 交互式管理定时任务，支持键盘导航 |
+| `finchbot webhook` | Webhook 服务器 | 启动 FastAPI 服务器，用于 LangBot 集成 |
 
 ---
 
@@ -676,8 +681,84 @@ finchbot chat -vv
 | `finchbot sessions` | 打开会话管理器 |
 | `finchbot config` | 打开配置管理器 |
 | `finchbot cron` | 打开定时任务管理器 |
+| `finchbot webhook` | 启动 Webhook 服务器 |
+| `finchbot webhook --port 9000` | 指定端口启动 Webhook |
 | `finchbot models download` | 下载嵌入模型 |
 | `finchbot version` | 显示版本信息 |
+
+---
+
+## 11. LangBot 集成
+
+FinchBot 内置 FastAPI Webhook 服务器，可与 LangBot 平台集成，实现多平台消息支持。
+
+### 快速开始
+
+```bash
+# 终端 1：启动 FinchBot Webhook 服务器
+uv run finchbot webhook --port 8000
+
+# 终端 2：启动 LangBot
+uvx langbot
+
+# 访问 LangBot WebUI http://localhost:5300
+# 配置你的平台并设置 Webhook URL：
+# http://localhost:8000/webhook
+```
+
+### Webhook 服务器选项
+
+| 选项 | 说明 | 默认值 |
+| :--- | :--- | :--- |
+| `--host` | 监听地址 | `0.0.0.0` |
+| `--port` | 监听端口 | `8000` |
+
+### 支持的平台
+
+通过 LangBot，FinchBot 支持 **12+ 平台**：
+
+- QQ
+- 微信 / 企业微信
+- 飞书
+- 钉钉
+- Discord
+- Telegram
+- Slack
+- LINE
+- KOOK
+- Satori
+
+### 工作流程
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant P as 平台
+    participant L as LangBot
+    participant W as Webhook
+    participant A as FinchBot
+
+    U->>P: 发送消息
+    P->>L: 平台适配器
+    L->>W: POST /webhook
+    W->>A: 处理消息
+    A-->>W: AI 响应
+    W-->>L: 返回响应
+    L->>P: 发送回复
+    P->>U: 显示响应
+```
+
+### 配置说明
+
+在 LangBot WebUI 中配置 Webhook：
+
+1. 进入「平台配置」页面
+2. 添加「Webhook」适配器
+3. 设置 Webhook URL：`http://localhost:8000/webhook`
+4. 保存配置并启用
+
+更多详情请参阅 [LangBot 文档](https://docs.langbot.app)。
 
 ---
 

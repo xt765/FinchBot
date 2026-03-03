@@ -202,6 +202,7 @@ finchbot/
          base.py       # BaseChannel
          bus.py        # MessageBus
          manager.py    # ChannelManager
+         webhook_server.py # Webhook 服务器 (FastAPI)
      cli/               # 命令行界面
          chat_session.py
          config_manager.py

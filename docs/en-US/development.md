@@ -201,9 +201,10 @@ finchbot/
        registry.py   # ToolRegistry
        *.py          # Tool implementations
     channels/          # Multi-platform messaging
-       base.py       # BaseChannel
-       bus.py        # MessageBus
-       manager.py    # ChannelManager
+        base.py       # BaseChannel
+        bus.py        # MessageBus
+        manager.py    # ChannelManager
+        webhook_server.py # Webhook Server (FastAPI)
     cli/               # Command line interface
        chat_session.py
        config_manager.py

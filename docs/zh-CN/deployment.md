@@ -211,6 +211,7 @@ flowchart TB
     classDef appLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef dataLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef langbot fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef webhook fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#f57f17;
 
     subgraph Users [用户层]
         U[用户]:::userLayer
@@ -225,6 +226,10 @@ flowchart TB
         Telegram[Telegram]:::langbot
     end
 
+    subgraph Webhook [Webhook 服务]
+        WH[Webhook Server<br/>FastAPI]:::webhook
+    end
+
     subgraph App [应用层]
         Agent[FinchBot Agent<br/>LangGraph]:::appLayer
         MCP[MCP 工具<br/>langchain-mcp-adapters]:::appLayer
@@ -237,9 +242,60 @@ flowchart TB
     end
 
     U --> QQ & WeChat & Feishu & DingTalk & Discord & Telegram
-    QQ & WeChat & Feishu & DingTalk & Discord & Telegram --> Agent
+    QQ & WeChat & Feishu & DingTalk & Discord & Telegram --> WH
+    WH --> Agent
     Agent --> MCP
     Agent --> PG & Vector & Redis
+```
+
+### LangBot + Webhook 部署
+
+生产环境推荐使用 LangBot + FinchBot Webhook 架构：
+
+```bash
+# 终端 1：启动 FinchBot Webhook 服务器
+uv run finchbot webhook --host 0.0.0.0 --port 8000
+
+# 终端 2：启动 LangBot
+uvx langbot
+
+# 在 LangBot WebUI 中配置：
+# - 平台适配器（QQ/微信/飞书等）
+# - Webhook URL: http://your-server:8000/webhook
+```
+
+#### Docker Compose 完整部署
+
+```yaml
+services:
+  finchbot-webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finchbot-webhook
+    command: ["finchbot", "webhook", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+    volumes:
+      - finchbot_workspace:/root/.finchbot/workspace
+    restart: unless-stopped
+
+  langbot:
+    image: langbot/langbot:latest
+    container_name: langbot
+    ports:
+      - "5300:5300"
+    volumes:
+      - langbot_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  finchbot_workspace:
+  langbot_data:
 ```
 
 ### 数据库升级

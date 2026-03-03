@@ -566,11 +566,38 @@ flowchart TD
 ### LangBot 快速开始
 
 ```bash
-# 安装 LangBot
+# 终端 1：启动 FinchBot Webhook 服务器
+uv run finchbot webhook --port 8000
+
+# 终端 2：启动 LangBot
 uvx langbot
 
-# 访问 WebUI http://localhost:5300
-# 配置你的平台并连接到 FinchBot
+# 访问 LangBot WebUI http://localhost:5300
+# 配置你的平台并设置 Webhook URL：
+# http://localhost:8000/webhook
+```
+
+### Webhook 配置
+
+FinchBot 内置 FastAPI Webhook 服务器，用于接收 LangBot 的消息。
+
+| 配置项 | 说明 | 默认值 |
+| :--- | :--- | :--- |
+| `langbot_url` | LangBot API URL | `http://localhost:5300` |
+| `langbot_api_key` | LangBot API Key | - |
+| `langbot_webhook_path` | Webhook 端点路径 | `/webhook` |
+
+### Webhook 服务器启动选项
+
+```bash
+# 使用默认端口 8000
+uv run finchbot webhook
+
+# 指定端口
+uv run finchbot webhook --port 9000
+
+# 指定主机和端口
+uv run finchbot webhook --host 127.0.0.1 --port 8000
 ```
 
 ### 保留配置（兼容性）

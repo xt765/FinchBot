@@ -1676,3 +1676,140 @@ reporter.report_error("文件不存在")
 | `result` | 执行结果 |
 | `error` | 错误信息 |
 | `status` | 通用状态 |
+
+---
+
+## 16. Webhook 服务器模块 (`finchbot.channels.webhook_server`)
+
+### 16.1 `WebhookServer`
+
+FastAPI Webhook 服务器，用于接收 LangBot 的消息并返回 AI 响应。
+
+```python
+class WebhookServer:
+    def __init__(
+        self,
+        config: Config,
+        workspace: Path,
+        host: str = "0.0.0.0",
+        port: int = 8000,
+    ): ...
+    
+    async def start(self) -> None: ...
+    
+    async def stop(self) -> None: ...
+```
+
+**参数**：
+- `config`: 配置对象
+- `workspace`: 工作区路径
+- `host`: 监听地址（默认 `0.0.0.0`）
+- `port`: 监听端口（默认 8000）
+
+---
+
+### 16.2 Webhook 请求模型
+
+#### `WebhookRequest`
+
+```python
+class WebhookRequest(BaseModel):
+    """Webhook 请求模型"""
+    event: str                    # 事件类型
+    user_id: str                  # 用户 ID
+    session_id: str | None = None # 会话 ID
+    message: str                  # 消息内容
+    platform: str = "unknown"     # 平台标识
+    metadata: dict = {}           # 附加元数据
+```
+
+#### `WebhookResponse`
+
+```python
+class WebhookResponse(BaseModel):
+    """Webhook 响应模型"""
+    success: bool                 # 是否成功
+    response: str | None = None   # AI 响应内容
+    error: str | None = None      # 错误信息
+    session_id: str | None = None # 会话 ID
+```
+
+---
+
+### 16.3 使用示例
+
+```python
+import asyncio
+from pathlib import Path
+from finchbot.channels.webhook_server import WebhookServer
+from finchbot.config import load_config
+
+async def main():
+    config = load_config()
+    workspace = Path.home() / ".finchbot" / "workspace"
+    
+    server = WebhookServer(
+        config=config,
+        workspace=workspace,
+        host="0.0.0.0",
+        port=8000,
+    )
+    
+    # 启动服务器
+    await server.start()
+    
+    # 服务器运行中...
+    # 访问 http://localhost:8000/docs 查看 API 文档
+    
+    # 停止服务器
+    await server.stop()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+### 16.4 CLI 启动
+
+```bash
+# 使用默认端口 8000
+uv run finchbot webhook
+
+# 指定端口
+uv run finchbot webhook --port 9000
+
+# 指定主机和端口
+uv run finchbot webhook --host 127.0.0.1 --port 8000
+```
+
+---
+
+### 16.5 API 端点
+
+| 端点 | 方法 | 说明 |
+|:---|:---:|:---|
+| `/webhook` | POST | 接收 LangBot 消息 |
+| `/health` | GET | 健康检查 |
+| `/docs` | GET | API 文档（Swagger UI） |
+
+---
+
+### 16.6 与 LangBot 集成
+
+1. 启动 FinchBot Webhook 服务器：
+   ```bash
+   uv run finchbot webhook --port 8000
+   ```
+
+2. 启动 LangBot：
+   ```bash
+   uvx langbot
+   ```
+
+3. 在 LangBot WebUI 中配置 Webhook URL：
+   ```
+   http://localhost:8000/webhook
+   ```
+
+4. 配置平台（QQ、微信、飞书等），消息将通过 Webhook 转发到 FinchBot。

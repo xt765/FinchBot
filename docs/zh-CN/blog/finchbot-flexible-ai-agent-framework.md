@@ -130,10 +130,15 @@ graph TB
     classDef coreLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef taskLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
     classDef infraLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef channelLayer fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#f57f17;
 
     subgraph UI [用户交互层]
         CLI[CLI 界面]:::uiLayer
-        Channels[多平台通道<br/>Discord/钉钉/飞书/微信/邮件]:::uiLayer
+    end
+
+    subgraph LangBot [LangBot 平台层]
+        Webhook[Webhook 服务器<br/>FastAPI]:::channelLayer
+        LB[LangBot<br/>12+ 平台]:::channelLayer
     end
 
     subgraph Core [Agent 核心层]
@@ -141,11 +146,13 @@ graph TB
         Context[ContextBuilder<br/>上下文构建]:::coreLayer
         Tools[ToolRegistry<br/>24 内置工具 + MCP]:::coreLayer
         Memory[MemoryManager<br/>双层记忆]:::coreLayer
+        Streaming[ProgressReporter<br/>实时进度]:::coreLayer
     end
 
     subgraph Task [任务系统层]
         SubagentMgr[SubagentManager<br/>独立 Agent 循环<br/>最多 15 次迭代]:::taskLayer
         CronSvc[CronService<br/>at/every/cron 三种模式<br/>IANA 时区支持]:::taskLayer
+        Heartbeat[HeartbeatService<br/>定期检查]:::taskLayer
     end
 
     subgraph Infra [基础设施层]
@@ -154,13 +161,16 @@ graph TB
     end
 
     CLI --> Agent
-    Channels --> Agent
+    LB <--> Webhook
+    Webhook --> Agent
 
     Agent --> Context
     Agent <--> Tools
     Agent <--> Memory
-    Agent --> SubagentMgr
-    Agent --> CronSvc
+    Agent --> Streaming
+    Agent <--> SubagentMgr
+    Agent <--> CronSvc
+    Agent <--> Heartbeat
 
     Memory --> Storage
     Agent --> LLM
@@ -878,12 +888,45 @@ flowchart LR
     LangBot <--> Platforms
 ```
 
+#### Webhook 集成流程
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant P as 平台<br/>(QQ/微信等)
+    participant L as LangBot
+    participant W as Webhook<br/>FastAPI
+    participant A as FinchBot<br/>Agent
+    participant M as 记忆
+
+    U->>P: 发送消息
+    P->>L: 平台适配器
+    L->>W: POST /webhook
+    W->>W: 解析事件
+    W->>A: 创建/获取 Agent
+    A->>M: 召回上下文
+    M-->>A: 返回记忆
+    A->>A: LLM 推理
+    A->>M: 存储新记忆
+    A-->>W: 响应文本
+    W-->>L: WebhookResponse
+    L->>P: 发送回复
+    P->>U: 显示响应
+```
+
+#### 快速开始
+
 ```bash
-# 安装 LangBot
+# 终端 1：启动 FinchBot Webhook 服务器
+uv run finchbot webhook --port 8000
+
+# 终端 2：启动 LangBot
 uvx langbot
 
-# 访问 WebUI http://localhost:5300
-# 配置你的平台并连接到 FinchBot
+# 访问 LangBot WebUI http://localhost:5300
+# 配置你的平台并设置 Webhook URL：
+# http://localhost:8000/webhook
 ```
 
 更多详情请参阅 [LangBot 文档](https://docs.langbot.app)。

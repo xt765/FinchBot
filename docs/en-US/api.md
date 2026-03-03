@@ -1672,3 +1672,140 @@ reporter.report_error("File not found")
 | `result` | Execution result |
 | `error` | Error information |
 | `status` | General status |
+
+---
+
+## 16. Webhook Server Module (`finchbot.channels.webhook_server`)
+
+### 16.1 `WebhookServer`
+
+FastAPI Webhook server for receiving LangBot messages and returning AI responses.
+
+```python
+class WebhookServer:
+    def __init__(
+        self,
+        config: Config,
+        workspace: Path,
+        host: str = "0.0.0.0",
+        port: int = 8000,
+    ): ...
+    
+    async def start(self) -> None: ...
+    
+    async def stop(self) -> None: ...
+```
+
+**Parameters**:
+- `config`: Configuration object
+- `workspace`: Workspace path
+- `host`: Listen address (default `0.0.0.0`)
+- `port`: Listen port (default 8000)
+
+---
+
+### 16.2 Webhook Request Models
+
+#### `WebhookRequest`
+
+```python
+class WebhookRequest(BaseModel):
+    """Webhook request model"""
+    event: str                    # Event type
+    user_id: str                  # User ID
+    session_id: str | None = None # Session ID
+    message: str                  # Message content
+    platform: str = "unknown"     # Platform identifier
+    metadata: dict = {}           # Additional metadata
+```
+
+#### `WebhookResponse`
+
+```python
+class WebhookResponse(BaseModel):
+    """Webhook response model"""
+    success: bool                 # Success status
+    response: str | None = None   # AI response content
+    error: str | None = None      # Error message
+    session_id: str | None = None # Session ID
+```
+
+---
+
+### 16.3 Usage Example
+
+```python
+import asyncio
+from pathlib import Path
+from finchbot.channels.webhook_server import WebhookServer
+from finchbot.config import load_config
+
+async def main():
+    config = load_config()
+    workspace = Path.home() / ".finchbot" / "workspace"
+    
+    server = WebhookServer(
+        config=config,
+        workspace=workspace,
+        host="0.0.0.0",
+        port=8000,
+    )
+    
+    # Start server
+    await server.start()
+    
+    # Server running...
+    # Visit http://localhost:8000/docs for API documentation
+    
+    # Stop server
+    await server.stop()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+### 16.4 CLI Startup
+
+```bash
+# Use default port 8000
+uv run finchbot webhook
+
+# Specify port
+uv run finchbot webhook --port 9000
+
+# Specify host and port
+uv run finchbot webhook --host 127.0.0.1 --port 8000
+```
+
+---
+
+### 16.5 API Endpoints
+
+| Endpoint | Method | Description |
+|:---|:---:|:---|
+| `/webhook` | POST | Receive LangBot messages |
+| `/health` | GET | Health check |
+| `/docs` | GET | API documentation (Swagger UI) |
+
+---
+
+### 16.6 Integration with LangBot
+
+1. Start FinchBot Webhook server:
+   ```bash
+   uv run finchbot webhook --port 8000
+   ```
+
+2. Start LangBot:
+   ```bash
+   uvx langbot
+   ```
+
+3. Configure Webhook URL in LangBot WebUI:
+   ```
+   http://localhost:8000/webhook
+   ```
+
+4. Configure platforms (QQ, WeChat, Feishu, etc.), messages will be forwarded to FinchBot via Webhook.

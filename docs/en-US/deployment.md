@@ -211,6 +211,7 @@ flowchart TB
     classDef appLayer fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef dataLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef langbot fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#7b1fa2;
+    classDef webhook fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#f57f17;
 
     subgraph Users [User Layer]
         U[User]:::userLayer
@@ -225,6 +226,10 @@ flowchart TB
         Telegram[Telegram]:::langbot
     end
 
+    subgraph Webhook [Webhook Service]
+        WH[Webhook Server<br/>FastAPI]:::webhook
+    end
+
     subgraph App [Application Layer]
         Agent[FinchBot Agent<br/>LangGraph]:::appLayer
         MCP[MCP Tools<br/>langchain-mcp-adapters]:::appLayer
@@ -237,9 +242,60 @@ flowchart TB
     end
 
     U --> QQ & WeChat & Feishu & DingTalk & Discord & Telegram
-    QQ & WeChat & Feishu & DingTalk & Discord & Telegram --> Agent
+    QQ & WeChat & Feishu & DingTalk & Discord & Telegram --> WH
+    WH --> Agent
     Agent --> MCP
     Agent --> PG & Vector & Redis
+```
+
+### LangBot + Webhook Deployment
+
+For production, we recommend using LangBot + FinchBot Webhook architecture:
+
+```bash
+# Terminal 1: Start FinchBot Webhook Server
+uv run finchbot webhook --host 0.0.0.0 --port 8000
+
+# Terminal 2: Start LangBot
+uvx langbot
+
+# Configure in LangBot WebUI:
+# - Platform adapters (QQ/WeChat/Feishu, etc.)
+# - Webhook URL: http://your-server:8000/webhook
+```
+
+#### Docker Compose Full Deployment
+
+```yaml
+services:
+  finchbot-webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finchbot-webhook
+    command: ["finchbot", "webhook", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+    volumes:
+      - finchbot_workspace:/root/.finchbot/workspace
+    restart: unless-stopped
+
+  langbot:
+    image: langbot/langbot:latest
+    container_name: langbot
+    ports:
+      - "5300:5300"
+    volumes:
+      - langbot_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  finchbot_workspace:
+  langbot_data:
 ```
 
 ### Database Upgrade
