@@ -22,8 +22,8 @@
     <img src="https://img.shields.io/badge/Gitee-FinchBot-red?style=flat-square&logo=gitee" alt="Gitee">
   </a>
   <img src="https://img.shields.io/badge/Gitee-官方推荐-red?style=flat-square&logo=gitee&logoColor=white" alt="Gitee Recommended">
-  <a href="https://gitcode.com/xt765/FinchBot">
-    <img src="https://img.shields.io/badge/G-Star-孵化项目-silver?style=flat-square&logo=gitcode" alt="GitCode">
+  <a href="https://atomgit.com/xt765/FinchBot">
+    <img src="https://img.shields.io/badge/AtomGit-G--Star_孵化项目-silver?logo=git&logoColor=white" alt="AtomGit">
   </a>
 </p>
 

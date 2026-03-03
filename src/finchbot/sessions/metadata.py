@@ -74,25 +74,11 @@ class SessionMetadataStore:
         self.db_path = self.workspace / SESSIONS_DIR / "metadata.db"
         self._init_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
-        """获取数据库连接.
-
-        配置 WAL 模式和超时时间，避免 database is locked 错误。
-
-        Returns:
-            SQLite连接对象。
-        """
-        conn = sqlite3.connect(str(self.db_path), timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=30000")
-        return conn
-
     def _init_db(self) -> None:
         """初始化数据库表."""
         (self.workspace / SESSIONS_DIR).mkdir(parents=True, exist_ok=True)
 
-        with self._get_connection() as conn:
+        with sqlite3.connect(str(self.db_path)) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS sessions (
                     session_id TEXT PRIMARY KEY,
@@ -135,7 +121,7 @@ class SessionMetadataStore:
             turn_count=turn_count,
         )
 
-        with self._get_connection() as conn:
+        with sqlite3.connect(str(self.db_path)) as conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO sessions
@@ -173,7 +159,7 @@ class SessionMetadataStore:
         """
         now = datetime.now().isoformat()
 
-        with self._get_connection() as conn:
+        with sqlite3.connect(str(self.db_path)) as conn:
             if turn_count is not None:
                 conn.execute(
                     "UPDATE sessions SET last_active = ?, turn_count = ? WHERE session_id = ?",
@@ -228,7 +214,7 @@ class SessionMetadataStore:
         Returns:
             会话元数据，如不存在则返回 None
         """
-        with self._get_connection() as conn:
+        with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,))
             row = cursor.fetchone()
 
@@ -250,7 +236,7 @@ class SessionMetadataStore:
         Returns:
             按最后活跃时间倒序排列的会话列表。
         """
-        with self._get_connection() as conn:
+        with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.execute(
                 """
                 SELECT * FROM sessions
