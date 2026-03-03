@@ -990,6 +990,7 @@ text = """检查以下 HEARTBEAT.md 内容：
 
 [channel]
 title = "📡 渠道管理（LangBot）"
+not_set = "未设置"
 
 [channel.columns]
 setting = "设置项"
@@ -1055,9 +1056,6 @@ langbot_config = "LangBot 配置步骤"
 step1 = "登录 LangBot WebUI"
 step2 = "进入「API Integration」→「Webhooks」"
 step3 = "创建新 Webhook，填入上述 URL"
-
-[channel.not_set]
-_not_set = "未设置"
 
 # ========================================
 # CLI Channel 命令

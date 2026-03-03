@@ -1047,6 +1047,7 @@ text = """Check the following HEARTBEAT.md content:
 
 [channel]
 title = "📡 Channel Management (LangBot)"
+not_set = "Not Set"
 
 [channel.columns]
 setting = "Setting"
@@ -1112,9 +1113,6 @@ langbot_config = "LangBot Configuration Steps"
 step1 = "Login to LangBot WebUI"
 step2 = "Go to 'API Integration' → 'Webhooks'"
 step3 = "Create new Webhook with the URL above"
-
-[channel.not_set]
-_not_set = "Not Set"
 
 # ========================================
 # CLI Channel Commands
