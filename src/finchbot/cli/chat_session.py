@@ -556,76 +556,38 @@ async def _stream_ai_response(
         refresh_per_second=10,
         transient=True,
     ) as live:
-        async for event in agent.astream(
-            input_data, config=runnable_config, stream_mode=["messages", "updates"]
-        ):
-            if isinstance(event, tuple) and len(event) == 2:
-                mode, data = event
-                if mode == "messages":
-                    if isinstance(data, tuple) and len(data) == 2:
-                        msg_chunk, metadata = data
-                        node_name = (
-                            metadata.get("langgraph_node", "") if isinstance(metadata, dict) else ""
-                        )
-                        if node_name == "model" or node_name == "agent":
-                            token = getattr(msg_chunk, "content", "") or ""
-                            if token:
-                                full_content += token
-                                current_time = time.time()
-                                if current_time - last_render_time > render_interval:
-                                    live.update(_create_content_panel(full_content))
-                                    last_render_time = current_time
-                elif mode == "updates" and isinstance(data, dict):
-                    for _node_name, node_data in data.items():
-                        if not isinstance(node_data, dict):
-                            continue
-                        messages = node_data.get("messages", [])
-                        if not messages:
-                            continue
-                        for msg in messages:
-                            if hasattr(msg, "tool_calls") and msg.tool_calls:
-                                if full_content.strip():
-                                    _render_ai_content(full_content)
-                                    full_content = ""
-                                    live.update(
-                                        Panel(
-                                            Text(""),
-                                            title="🐦 FinchBot",
-                                            border_style="green",
-                                        )
-                                    )
-                                for tc in msg.tool_calls:
-                                    tool_name = tc.get("name") or "unknown"
-                                    tool_args = tc.get("args", {})
-                                    pending_tool_calls.append(
-                                        {
-                                            "name": tool_name,
-                                            "args": tool_args,
-                                            "start_time": time.time(),
-                                        }
-                                    )
-                                    # 显示工具调用进度提示
-                                    if show_progress:
-                                        tool_call_count += 1
-                                        args_hint = ""
-                                        if tool_args:
-                                            first_arg = next(iter(tool_args.values()), "")
-                                            if isinstance(first_arg, str) and len(first_arg) < 30:
-                                                args_hint = f'("{first_arg}")'
-                                        _show_progress_hint(f"{tool_name}{args_hint}")
-                            elif hasattr(msg, "name") and msg.name:
-                                tool_name = msg.name
-                                for i, call_info in enumerate(pending_tool_calls):
-                                    if call_info["name"] == tool_name:
-                                        duration = time.time() - call_info["start_time"]
-                                        _display_tool_call_with_result(
-                                            call_info["name"],
-                                            call_info["args"],
-                                            str(msg.content),
-                                            duration,
-                                            console,
-                                        )
-                                        pending_tool_calls.pop(i)
+        try:
+            async for event in agent.astream(
+                input_data, config=runnable_config, stream_mode=["messages", "updates"]
+            ):
+                if isinstance(event, tuple) and len(event) == 2:
+                    mode, data = event
+                    if mode == "messages":
+                        if isinstance(data, tuple) and len(data) == 2:
+                            msg_chunk, metadata = data
+                            node_name = (
+                                metadata.get("langgraph_node", "") if isinstance(metadata, dict) else ""
+                            )
+                            if node_name == "model" or node_name == "agent":
+                                token = getattr(msg_chunk, "content", "") or ""
+                                if token:
+                                    full_content += token
+                                    current_time = time.time()
+                                    if current_time - last_render_time > render_interval:
+                                        live.update(_create_content_panel(full_content))
+                                        last_render_time = current_time
+                    elif mode == "updates" and isinstance(data, dict):
+                        for _node_name, node_data in data.items():
+                            if not isinstance(node_data, dict):
+                                continue
+                            messages = node_data.get("messages", [])
+                            if not messages:
+                                continue
+                            for msg in messages:
+                                if hasattr(msg, "tool_calls") and msg.tool_calls:
+                                    if full_content.strip():
+                                        _render_ai_content(full_content)
+                                        full_content = ""
                                         live.update(
                                             Panel(
                                                 Text(""),
@@ -633,8 +595,50 @@ async def _stream_ai_response(
                                                 border_style="green",
                                             )
                                         )
-                                        break
-                            all_messages.append(msg)
+                                    for tc in msg.tool_calls:
+                                        tool_name = tc.get("name") or "unknown"
+                                        tool_args = tc.get("args", {})
+                                        pending_tool_calls.append(
+                                            {
+                                                "name": tool_name,
+                                                "args": tool_args,
+                                                "start_time": time.time(),
+                                            }
+                                        )
+                                        # 显示工具调用进度提示
+                                        if show_progress:
+                                            tool_call_count += 1
+                                            args_hint = ""
+                                            if tool_args:
+                                                first_arg = next(iter(tool_args.values()), "")
+                                                if isinstance(first_arg, str) and len(first_arg) < 30:
+                                                    args_hint = f'("{first_arg}")'
+                                            _show_progress_hint(f"{tool_name}{args_hint}")
+                                elif hasattr(msg, "name") and msg.name:
+                                    tool_name = msg.name
+                                    for i, call_info in enumerate(pending_tool_calls):
+                                        if call_info["name"] == tool_name:
+                                            duration = time.time() - call_info["start_time"]
+                                            _display_tool_call_with_result(
+                                                call_info["name"],
+                                                call_info["args"],
+                                                str(msg.content),
+                                                duration,
+                                                console,
+                                            )
+                                            pending_tool_calls.pop(i)
+                                            live.update(
+                                                Panel(
+                                                    Text(""),
+                                                    title="🐦 FinchBot",
+                                                    border_style="green",
+                                                )
+                                            )
+                                            break
+                                all_messages.append(msg)
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            logger.info("Stream interrupted by user")
+            raise
 
     if not full_content:
         console.print("[yellow]No content generated[/yellow]")
@@ -656,12 +660,47 @@ def _run_chat_session(
     render_markdown: bool = True,
 ) -> None:
     """启动聊天会话（REPL 模式）."""
+    import signal
+
+    def signal_handler(signum, frame):
+        """处理 Ctrl+C 信号."""
+        raise KeyboardInterrupt
+
+    # 设置信号处理器
+    original_handler = signal.signal(signal.SIGINT, signal_handler)
+
+    loop = None
     try:
-        asyncio.run(
+        # 创建新的事件循环
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        loop.run_until_complete(
             _run_chat_session_async(session_id, model, workspace, first_message, render_markdown)
         )
     except KeyboardInterrupt:
         console.print(GOODBYE_MESSAGE)
+    except asyncio.CancelledError:
+        console.print(GOODBYE_MESSAGE)
+    finally:
+        # 清理事件循环
+        if loop is not None:
+            try:
+                # 取消所有待处理任务
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                
+                # 等待所有任务完成或取消
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            except Exception:
+                pass
+            finally:
+                loop.close()
+        
+        # 恢复原始信号处理器
+        signal.signal(signal.SIGINT, original_handler)
 
 
 async def _run_chat_session_async(
@@ -1028,6 +1067,8 @@ async def _run_chat_session_async(
                 all_messages = await _stream_ai_response(
                     agent, command, config, console, render_markdown
                 )
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                raise  # 让外层处理
             except Exception as stream_error:
                 logger.error(f"Stream error: {stream_error}")
                 console.print(f"[red]Error: {stream_error}[/red]")
@@ -1044,18 +1085,10 @@ async def _run_chat_session_async(
 
         except KeyboardInterrupt:
             logger.info("User interrupted with Ctrl+C")
-            try:
-                await _update_session_turn_count_async(session_store, session_id, agent, chat_model)
-            except Exception as e:
-                logger.debug(f"Error updating session turn count: {e}")
             console.print(GOODBYE_MESSAGE)
             break
         except EOFError:
             logger.info("User interrupted with EOF")
-            try:
-                await _update_session_turn_count_async(session_store, session_id, agent, chat_model)
-            except Exception as e:
-                logger.debug(f"Error updating session turn count: {e}")
             console.print(GOODBYE_MESSAGE)
             break
         except Exception as e:
@@ -1076,6 +1109,7 @@ async def _run_chat_session_async(
     # 关闭 checkpointer 连接
     if hasattr(checkpointer, "conn") and checkpointer.conn:
         try:
+            await asyncio.sleep(0.1)
             await checkpointer.conn.close()
             logger.debug("Checkpointer connection closed")
         except Exception as e:
