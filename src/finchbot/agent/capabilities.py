@@ -77,7 +77,11 @@ class CapabilitiesBuilder:
             lines.append(f"{t('capabilities.mcp.configured_servers')}\n")
 
             for name, server in self.config.mcp.servers.items():
-                status = t("capabilities.status.disabled") if server.disabled else t("capabilities.status.enabled")
+                status = (
+                    t("capabilities.status.disabled")
+                    if server.disabled
+                    else t("capabilities.status.enabled")
+                )
                 if server.url:
                     transport = "HTTP"
                 else:

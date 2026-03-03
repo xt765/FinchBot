@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from finchbot.config.schema import MCPServerConfig
 from finchbot.tools.config_tools import ConfigureMCPTool
 
 
@@ -178,9 +177,7 @@ class TestConfigureMCPTool:
 
         assert "not found" in result
 
-    def test_toggle_preserves_other_config(
-        self, tool: ConfigureMCPTool, temp_workspace: Path
-    ):
+    def test_toggle_preserves_other_config(self, tool: ConfigureMCPTool, temp_workspace: Path):
         """测试启用/禁用操作保留其他配置."""
         tool._run(
             action="add",

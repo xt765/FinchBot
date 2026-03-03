@@ -129,7 +129,7 @@ def init_workspace(workspace: Path, create_gitignore: bool = True) -> None:
         create_gitignore: 是否创建 .gitignore 文件.
     """
     workspace = Path(workspace).expanduser().resolve()
-    
+
     # 创建目录结构
     (workspace / CONFIG_DIR).mkdir(parents=True, exist_ok=True)
     (workspace / BOOTSTRAP_DIR).mkdir(parents=True, exist_ok=True)
@@ -137,12 +137,12 @@ def init_workspace(workspace: Path, create_gitignore: bool = True) -> None:
     (workspace / SKILLS_DIR).mkdir(parents=True, exist_ok=True)
     (workspace / MEMORY_DIR).mkdir(parents=True, exist_ok=True)
     (workspace / SESSIONS_DIR).mkdir(parents=True, exist_ok=True)
-    
+
     # 创建默认 MCP 配置
     mcp_path = get_mcp_config_path(workspace)
     if not mcp_path.exists():
         mcp_path.write_text('{"servers": {}}', encoding="utf-8")
-    
+
     # 创建 .gitignore
     if create_gitignore:
         gitignore_path = workspace / GITIGNORE_FILE
@@ -160,15 +160,15 @@ def is_workspace_initialized(workspace: Path) -> bool:
         是否已初始化。
     """
     workspace = Path(workspace).expanduser().resolve()
-    
+
     # 检查必要的目录是否存在
     required_dirs = [CONFIG_DIR, BOOTSTRAP_DIR, GENERATED_DIR, SKILLS_DIR]
     for dir_name in required_dirs:
         if not (workspace / dir_name).is_dir():
             return False
-    
+
     # 检查 MCP 配置文件是否存在
     if not get_mcp_config_path(workspace).exists():
         return False
-    
+
     return True

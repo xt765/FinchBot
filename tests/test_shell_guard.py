@@ -116,7 +116,9 @@ class TestExecToolGuard:
         tool = ExecTool(allow_patterns=[r"wttr\.in", r"open-meteo\.com"])
 
         assert tool._guard_command('curl -s "http://wttr.in/Beijing"', "/tmp") is None
-        assert tool._guard_command('curl -s "https://api.open-meteo.com/v1/forecast"', "/tmp") is None
+        assert (
+            tool._guard_command('curl -s "https://api.open-meteo.com/v1/forecast"', "/tmp") is None
+        )
 
     def test_allow_patterns_bypass_deny(self) -> None:
         """测试 allow_patterns 可以绕过 deny_patterns."""

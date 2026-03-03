@@ -1,13 +1,14 @@
 """心跳服务.
 
 定期唤醒 Agent 检查是否有待处理任务，通过 LLM 决定是否执行。
+支持结果通知回调。
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -50,11 +51,13 @@ class HeartbeatService:
 
     定期检查 HEARTBEAT.md 文件，通过 LLM 决定是否执行任务。
     作为后台服务运行，随 chat 会话启动和停止。
+    支持结果通知回调。
 
     Attributes:
         workspace: 工作目录
         model: LLM 模型
         on_execute: 执行回调
+        on_notify: 通知回调
         interval_s: 检查间隔（秒）
         enabled: 是否启用
     """
@@ -64,6 +67,7 @@ class HeartbeatService:
         workspace: Path,
         model: BaseChatModel,
         on_execute: Callable[[str], Coroutine[Any, Any, str]] | None = None,
+        on_notify: Callable[[str], Coroutine[Any, Any, None]] | None = None,
         interval_s: int = 1800,
         enabled: bool = True,
     ) -> None:
@@ -73,12 +77,14 @@ class HeartbeatService:
             workspace: 工作目录
             model: LLM 模型
             on_execute: 执行回调（接收任务描述，返回执行结果）
+            on_notify: 通知回调（接收执行结果，用于通知用户）
             interval_s: 检查间隔（秒），默认 30 分钟
             enabled: 是否启用
         """
         self.workspace = workspace
         self.model = model
         self.on_execute = on_execute
+        self.on_notify = on_notify
         self.interval_s = interval_s
         self.enabled = enabled
         self._running = False
@@ -95,6 +101,10 @@ class HeartbeatService:
         """启动心跳服务."""
         if not self.enabled:
             logger.info(t("heartbeat.disabled"))
+            return
+
+        if self._running:
+            logger.warning("Heartbeat already running")
             return
 
         self._running = True
@@ -185,6 +195,14 @@ class HeartbeatService:
                 try:
                     result = await self.on_execute(tasks)
                     logger.info(f"Heartbeat execution result: {result[:100]}...")
+
+                    if result and self.on_notify:
+                        try:
+                            await self.on_notify(result)
+                            logger.info("Heartbeat result notified")
+                        except Exception as e:
+                            logger.error(f"Heartbeat notify failed: {e}")
+
                 except Exception as e:
                     logger.error(f"Heartbeat execution failed: {e}")
         else:

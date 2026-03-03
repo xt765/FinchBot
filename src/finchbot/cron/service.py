@@ -1,148 +1,346 @@
 """定时任务调度服务.
 
-提供与 LangGraph Cloud Cron API 兼容的本地实现。
+参考 nanobot 设计，支持三种调度模式：
+- at: 一次性任务
+- every: 间隔任务
+- cron: cron 表达式（支持时区）
+
+特性：
+- 毫秒级时间戳精度
+- 时区支持
+- 任务状态跟踪
+- 外部文件修改检测
+- 消息投递支持
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Callable
-from datetime import UTC, datetime
+import uuid
+from collections.abc import Callable, Coroutine
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from croniter import croniter
 from loguru import logger
-from pydantic import BaseModel, Field
 
+from finchbot.cron.types import (
+    CronJob,
+    CronJobState,
+    CronPayload,
+    CronSchedule,
+    CronStore,
+    now_ms,
+)
 from finchbot.i18n import t
 
 if TYPE_CHECKING:
     pass
 
 
-class CronJob(BaseModel):
-    """定时任务."""
+def _compute_next_run(schedule: CronSchedule, now_ms_val: int) -> int | None:
+    """计算下次执行时间.
 
-    cron_id: str
-    name: str
-    schedule: str  # cron 表达式
-    message: str  # 任务内容
-    input: dict = Field(default_factory=dict)
-    enabled: bool = True
-    next_run_date: str | None = None
-    last_run_date: str | None = None
-    run_count: int = 0
-    metadata: dict = Field(default_factory=dict)
-    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    Args:
+        schedule: 调度配置
+        now_ms_val: 当前时间戳（毫秒）
+
+    Returns:
+        下次执行时间戳（毫秒），无效配置返回 None
+    """
+    if schedule.kind == "at":
+        return schedule.at_ms if schedule.at_ms and schedule.at_ms > now_ms_val else None
+
+    if schedule.kind == "every":
+        if not schedule.every_ms or schedule.every_ms <= 0:
+            return None
+        return now_ms_val + schedule.every_ms
+
+    if schedule.kind == "cron" and schedule.expr:
+        try:
+            from zoneinfo import ZoneInfo
+
+            from croniter import croniter
+
+            base_time = now_ms_val / 1000
+            tz = ZoneInfo(schedule.tz) if schedule.tz else datetime.now().astimezone().tzinfo
+            base_dt = datetime.fromtimestamp(base_time, tz=tz)
+            cron = croniter(schedule.expr, base_dt)
+            next_dt = cron.get_next(datetime)
+            return int(next_dt.timestamp() * 1000)
+        except Exception as e:
+            logger.error(f"Failed to compute next run for cron '{schedule.expr}': {e}")
+            return None
+
+    return None
 
 
 class CronService:
     """定时任务调度服务.
 
-    与 LangGraph Cloud Cron API 兼容的本地实现。
+    支持三种调度模式、时区、状态跟踪和消息投递。
 
     Attributes:
-        store_path: 存储路径
-        _jobs: 任务映射
+        store_path: 存储文件路径
+        on_job: 任务执行回调
+        on_deliver: 消息投递回调
+        _store: 任务存储
+        _last_mtime: 上次文件修改时间
         _timer_task: 定时器任务
-        _on_job: 任务回调
         _running: 是否运行中
     """
 
-    def __init__(self, store_path: Path) -> None:
+    def __init__(
+        self,
+        store_path: Path,
+        on_job: Callable[[CronJob], Coroutine[Any, Any, str | None]] | None = None,
+        on_deliver: Callable[[str, str, str], Coroutine[Any, Any, None]] | None = None,
+    ) -> None:
         """初始化服务.
 
         Args:
             store_path: 存储目录路径
+            on_job: 任务执行回调
+            on_deliver: 消息投递回调 (channel, target_id, message)
         """
         self.store_path = store_path / "cron" / "jobs.json"
-        self._jobs: dict[str, CronJob] = {}
+        self.on_job = on_job
+        self.on_deliver = on_deliver
+        self._store: CronStore | None = None
+        self._last_mtime: float = 0.0
         self._timer_task: asyncio.Task | None = None
-        self._on_job: Callable[[CronJob], Any] | None = None
         self._running = False
 
-    async def create(
-        self,
-        name: str,
-        schedule: str,
-        message: str,
-        input: dict | None = None,
-        metadata: dict | None = None,
-    ) -> CronJob:
-        """创建定时任务.
+    def _load_store(self) -> CronStore:
+        """加载任务存储.
 
-        与 LangGraph Cloud API 兼容。
-
-        Args:
-            name: 任务名称
-            schedule: cron 表达式
-            message: 任务内容
-            input: 输入数据（可选）
-            metadata: 元数据（可选）
+        如果文件被外部修改，自动重新加载。
 
         Returns:
-            创建的任务
+            任务存储对象
         """
-        import uuid
+        if self._store and self.store_path.exists():
+            mtime = self.store_path.stat().st_mtime
+            if mtime != self._last_mtime:
+                logger.info("Cron: jobs.json modified externally, reloading")
+                self._store = None
 
-        # 验证 cron 表达式
+        if self._store:
+            return self._store
+
+        if self.store_path.exists():
+            try:
+                data = json.loads(self.store_path.read_text(encoding="utf-8"))
+                jobs = []
+                for j in data.get("jobs", []):
+                    jobs.append(
+                        CronJob(
+                            id=j["id"],
+                            name=j["name"],
+                            enabled=j.get("enabled", True),
+                            schedule=CronSchedule(
+                                kind=j["schedule"]["kind"],
+                                at_ms=j["schedule"].get("atMs"),
+                                every_ms=j["schedule"].get("everyMs"),
+                                expr=j["schedule"].get("expr"),
+                                tz=j["schedule"].get("tz"),
+                            ),
+                            payload=CronPayload(
+                                kind=j["payload"].get("kind", "agent_turn"),
+                                message=j["payload"].get("message", ""),
+                                deliver=j["payload"].get("deliver", False),
+                                channel=j["payload"].get("channel"),
+                                to=j["payload"].get("to"),
+                            ),
+                            state=CronJobState(
+                                next_run_at_ms=j.get("state", {}).get("nextRunAtMs"),
+                                last_run_at_ms=j.get("state", {}).get("lastRunAtMs"),
+                                last_status=j.get("state", {}).get("lastStatus"),
+                                last_error=j.get("state", {}).get("lastError"),
+                            ),
+                            created_at_ms=j.get("createdAtMs", 0),
+                            updated_at_ms=j.get("updatedAtMs", 0),
+                            delete_after_run=j.get("deleteAfterRun", False),
+                        )
+                    )
+                self._store = CronStore(jobs=jobs)
+            except Exception as e:
+                logger.warning(f"Failed to load cron store: {e}")
+                self._store = CronStore()
+        else:
+            self._store = CronStore()
+
+        return self._store
+
+    def _save_store(self) -> None:
+        """保存任务存储到文件."""
+        if not self._store:
+            return
+
+        self.store_path.parent.mkdir(parents=True, exist_ok=True)
+
+        data = {
+            "version": self._store.version,
+            "jobs": [
+                {
+                    "id": j.id,
+                    "name": j.name,
+                    "enabled": j.enabled,
+                    "schedule": {
+                        "kind": j.schedule.kind,
+                        "atMs": j.schedule.at_ms,
+                        "everyMs": j.schedule.every_ms,
+                        "expr": j.schedule.expr,
+                        "tz": j.schedule.tz,
+                    },
+                    "payload": {
+                        "kind": j.payload.kind,
+                        "message": j.payload.message,
+                        "deliver": j.payload.deliver,
+                        "channel": j.payload.channel,
+                        "to": j.payload.to,
+                    },
+                    "state": {
+                        "nextRunAtMs": j.state.next_run_at_ms,
+                        "lastRunAtMs": j.state.last_run_at_ms,
+                        "lastStatus": j.state.last_status,
+                        "lastError": j.state.last_error,
+                    },
+                    "createdAtMs": j.created_at_ms,
+                    "updatedAtMs": j.updated_at_ms,
+                    "deleteAfterRun": j.delete_after_run,
+                }
+                for j in self._store.jobs
+            ],
+        }
+
+        self.store_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        self._last_mtime = self.store_path.stat().st_mtime
+
+    async def start(self) -> None:
+        """启动服务."""
+        self._running = True
+        self._load_store()
+        self._recompute_next_runs()
+        self._save_store()
+        self._arm_timer()
+        job_count = len(self._store.jobs) if self._store else 0
+        logger.info(t("cron.service_started", count=job_count))
+
+    def stop(self) -> None:
+        """停止服务."""
+        self._running = False
+        if self._timer_task:
+            self._timer_task.cancel()
+            self._timer_task = None
+        logger.info(t("cron.service_stopped"))
+
+    def _recompute_next_runs(self) -> None:
+        """重新计算所有启用任务的下次执行时间."""
+        if not self._store:
+            return
+        current_ms = now_ms()
+        for job in self._store.jobs:
+            if job.enabled:
+                job.state.next_run_at_ms = _compute_next_run(job.schedule, current_ms)
+
+    def _get_next_wake_ms(self) -> int | None:
+        """获取最近的下次执行时间.
+
+        Returns:
+            最近的执行时间戳，无任务返回 None
+        """
+        if not self._store:
+            return None
+        times = [
+            j.state.next_run_at_ms for j in self._store.jobs if j.enabled and j.state.next_run_at_ms
+        ]
+        return min(times) if times else None
+
+    def _arm_timer(self) -> None:
+        """设置定时器."""
+        if self._timer_task:
+            self._timer_task.cancel()
+
+        next_wake = self._get_next_wake_ms()
+        if not next_wake or not self._running:
+            return
+
+        delay_ms = max(0, next_wake - now_ms())
+        delay_s = delay_ms / 1000
+
+        async def tick() -> None:
+            await asyncio.sleep(delay_s)
+            if self._running:
+                await self._on_timer()
+
+        self._timer_task = asyncio.create_task(tick())
+
+    async def _on_timer(self) -> None:
+        """定时器回调 - 执行到期任务."""
+        if not self._store:
+            return
+
+        current_ms = now_ms()
+        due_jobs = [
+            j
+            for j in self._store.jobs
+            if j.enabled and j.state.next_run_at_ms and current_ms >= j.state.next_run_at_ms
+        ]
+
+        for job in due_jobs:
+            await self._execute_job(job)
+
+        self._save_store()
+        self._arm_timer()
+
+    async def _execute_job(self, job: CronJob) -> None:
+        """执行单个任务.
+
+        Args:
+            job: 任务对象
+        """
+        start_ms = now_ms()
+        logger.info(t("cron.executing", name=job.name, id=job.id))
+
+        response = None
         try:
-            croniter(schedule)
+            if self.on_job:
+                response = await self.on_job(job)
+
+            job.state.last_status = "ok"
+            job.state.last_error = None
+            logger.info(t("cron.execute_success", name=job.name))
+
         except Exception as e:
-            raise ValueError(f"Invalid cron expression: {schedule}") from e
+            job.state.last_status = "error"
+            job.state.last_error = str(e)
+            logger.error(t("cron.execute_failed", name=job.name, error=str(e)))
 
-        job = CronJob(
-            cron_id=str(uuid.uuid4())[:8],
-            name=name,
-            schedule=schedule,
-            message=message,
-            input=input or {},
-            metadata=metadata or {},
-        )
+        job.state.last_run_at_ms = start_ms
+        job.updated_at_ms = now_ms()
 
-        # 计算下次执行时间
-        job.next_run_date = self._compute_next_run(schedule)
+        if job.payload.deliver and job.payload.channel and job.payload.to:
+            if response and self.on_deliver:
+                try:
+                    await self.on_deliver(job.payload.channel, job.payload.to, response)
+                    logger.info(
+                        f"Cron job '{job.name}' result delivered to {job.payload.channel}:{job.payload.to}"
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to deliver cron job result: {e}")
 
-        self._jobs[job.cron_id] = job
-        self._save()
+        if job.schedule.kind == "at":
+            if job.delete_after_run:
+                self._store.jobs = [j for j in self._store.jobs if j.id != job.id]
+            else:
+                job.enabled = False
+                job.state.next_run_at_ms = None
+        else:
+            job.state.next_run_at_ms = _compute_next_run(job.schedule, now_ms())
 
-        # 重新设置定时器
-        if self._running:
-            self._arm_timer()
-
-        logger.info(t("cron.job_created", id=job.cron_id, schedule=schedule))
-        return job
-
-    async def delete(self, cron_id: str) -> bool:
-        """删除定时任务.
-
-        Args:
-            cron_id: 任务 ID
-
-        Returns:
-            是否成功删除
-        """
-        if cron_id in self._jobs:
-            del self._jobs[cron_id]
-            self._save()
-            logger.info(t("cron.job_deleted", id=cron_id))
-            return True
-        return False
-
-    async def get(self, cron_id: str) -> CronJob | None:
-        """获取单个任务.
-
-        Args:
-            cron_id: 任务 ID
-
-        Returns:
-            任务对象，不存在则返回 None
-        """
-        return self._jobs.get(cron_id)
-
-    async def list(self, include_disabled: bool = True) -> list[CronJob]:
+    def list_jobs(self, include_disabled: bool = False) -> list[CronJob]:
         """列出所有任务.
 
         Args:
@@ -151,195 +349,153 @@ class CronService:
         Returns:
             任务列表
         """
-        jobs = list(self._jobs.values())
-        if not include_disabled:
-            jobs = [j for j in jobs if j.enabled]
-        return sorted(jobs, key=lambda j: j.next_run_date or "")
+        store = self._load_store()
+        jobs = store.jobs if include_disabled else [j for j in store.jobs if j.enabled]
+        return sorted(jobs, key=lambda j: j.state.next_run_at_ms or float("inf"))
 
-    async def toggle(self, cron_id: str, enabled: bool) -> CronJob | None:
+    def add_job(
+        self,
+        name: str,
+        schedule: CronSchedule,
+        message: str,
+        deliver: bool = False,
+        channel: str | None = None,
+        to: str | None = None,
+        delete_after_run: bool = False,
+    ) -> CronJob:
+        """添加新任务.
+
+        Args:
+            name: 任务名称
+            schedule: 调度配置
+            message: 任务消息
+            deliver: 是否投递响应
+            channel: 投递渠道
+            to: 投递目标
+            delete_after_run: 执行后是否删除
+
+        Returns:
+            创建的任务对象
+        """
+        store = self._load_store()
+        schedule.validate()
+        current_ms = now_ms()
+
+        job = CronJob(
+            id=str(uuid.uuid4())[:8],
+            name=name,
+            enabled=True,
+            schedule=schedule,
+            payload=CronPayload(
+                kind="agent_turn",
+                message=message,
+                deliver=deliver,
+                channel=channel,
+                to=to,
+            ),
+            state=CronJobState(next_run_at_ms=_compute_next_run(schedule, current_ms)),
+            created_at_ms=current_ms,
+            updated_at_ms=current_ms,
+            delete_after_run=delete_after_run,
+        )
+
+        store.jobs.append(job)
+        self._save_store()
+        self._arm_timer()
+
+        logger.info(t("cron.job_created", id=job.id, schedule=schedule.expr or schedule.kind))
+        return job
+
+    def remove_job(self, job_id: str) -> bool:
+        """删除任务.
+
+        Args:
+            job_id: 任务 ID
+
+        Returns:
+            是否成功删除
+        """
+        store = self._load_store()
+        before = len(store.jobs)
+        store.jobs = [j for j in store.jobs if j.id != job_id]
+        removed = len(store.jobs) < before
+
+        if removed:
+            self._save_store()
+            self._arm_timer()
+            logger.info(t("cron.job_deleted", id=job_id))
+
+        return removed
+
+    def enable_job(self, job_id: str, enabled: bool = True) -> CronJob | None:
         """启用或禁用任务.
 
         Args:
-            cron_id: 任务 ID
+            job_id: 任务 ID
             enabled: 是否启用
 
         Returns:
-            更新后的任务，不存在则返回 None
+            更新后的任务，不存在返回 None
         """
-        job = self._jobs.get(cron_id)
-        if job:
-            job.enabled = enabled
-            if enabled:
-                job.next_run_date = self._compute_next_run(job.schedule)
-            self._save()
-        return job
-
-    async def run_now(self, cron_id: str) -> str | None:
-        """立即执行任务.
-
-        Args:
-            cron_id: 任务 ID
-
-        Returns:
-            执行结果，不存在则返回 None
-        """
-        job = self._jobs.get(cron_id)
-        if not job:
-            return None
-
-        logger.info(t("cron.executing", name=job.name, id=job.cron_id))
-
-        try:
-            if self._on_job:
-                result = await self._on_job(job)
-            else:
-                result = f"Executed: {job.message}"
-
-            job.run_count += 1
-            job.last_run_date = datetime.now(UTC).isoformat()
-            job.next_run_date = self._compute_next_run(job.schedule)
-            self._save()
-
-            logger.info(t("cron.execute_success", name=job.name))
-            return result
-
-        except Exception as e:
-            logger.error(t("cron.execute_failed", name=job.name, error=str(e)))
-            return f"Error: {e}"
-
-    def on_job(self, callback: Callable[[CronJob], Any]) -> None:
-        """设置任务回调.
-
-        Args:
-            callback: 回调函数
-        """
-        self._on_job = callback
-
-    async def start(self) -> None:
-        """启动服务."""
-        self._running = True
-        self._load()
-        self._recompute_next_runs()
-        self._save()
-        self._arm_timer()
-        logger.info(t("cron.service_started", count=len(self._jobs)))
-
-    async def stop(self) -> None:
-        """停止服务."""
-        self._running = False
-        if self._timer_task:
-            self._timer_task.cancel()
-            try:
-                await self._timer_task
-            except asyncio.CancelledError:
-                pass
-        logger.info(t("cron.service_stopped"))
-
-    def _compute_next_run(self, schedule: str) -> str:
-        """计算下次执行时间.
-
-        Args:
-            schedule: cron 表达式
-
-        Returns:
-            ISO 格式的时间字符串（UTC）
-        """
-        now_local = datetime.now().astimezone()
-        cron = croniter(schedule, now_local)
-        next_dt_local = cron.get_next(datetime)
-        return next_dt_local.astimezone(UTC).isoformat()
-
-    def _recompute_next_runs(self) -> None:
-        """重新计算所有任务的下次执行时间."""
-        now_local = datetime.now().astimezone()
-        for job in self._jobs.values():
-            if job.enabled:
-                try:
-                    cron = croniter(job.schedule, now_local)
-                    next_dt_local = cron.get_next(datetime)
-                    job.next_run_date = next_dt_local.astimezone(UTC).isoformat()
-                except Exception:
-                    pass
-
-    def _load(self) -> None:
-        """加载任务存储."""
-        if self.store_path.exists():
-            try:
-                with open(self.store_path, encoding="utf-8") as f:
-                    data = json.load(f)
-                self._jobs = {k: CronJob(**v) for k, v in data.items()}
-            except Exception as e:
-                logger.warning(f"Failed to load cron store: {e}")
-                self._jobs = {}
-
-    def _save(self) -> None:
-        """保存任务存储."""
-        self.store_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.store_path, "w", encoding="utf-8") as f:
-            json.dump(
-                {k: v.model_dump() for k, v in self._jobs.items()}, f, indent=2, ensure_ascii=False
-            )
-
-    def _arm_timer(self) -> None:
-        """设置定时器."""
-        if self._timer_task:
-            self._timer_task.cancel()
-            self._timer_task = None
-
-        # 找到最近的待执行任务
-        now = datetime.now(UTC)
-        enabled_jobs = [j for j in self._jobs.values() if j.enabled and j.next_run_date]
-
-        if not enabled_jobs:
-            return
-
-        next_job = min(enabled_jobs, key=lambda j: j.next_run_date or "")
-        next_run = datetime.fromisoformat(next_job.next_run_date.replace("Z", "+00:00"))
-        delay = (next_run - now).total_seconds()
-
-        if delay > 0:
-            self._timer_task = asyncio.create_task(self._timer_callback(delay))
-
-    async def _timer_callback(self, delay: float) -> None:
-        """定时器回调.
-
-        Args:
-            delay: 延迟秒数
-        """
-        try:
-            await asyncio.sleep(delay)
-
-            if not self._running:
-                return
-
-            now = datetime.now(UTC)
-
-            for job in list(self._jobs.values()):
-                if not job.enabled or not job.next_run_date:
-                    continue
-
-                next_run = datetime.fromisoformat(job.next_run_date.replace("Z", "+00:00"))
-                if next_run <= now:
-                    # 执行任务
-                    try:
-                        if self._on_job:
-                            await self._on_job(job)
-                        job.run_count += 1
-                        job.last_run_date = now.isoformat()
-                        logger.info(t("cron.execute_success", name=job.name))
-                    except Exception as e:
-                        logger.error(t("cron.execute_failed", name=job.name, error=str(e)))
-
-                    # 更新下次执行时间
-                    job.next_run_date = self._compute_next_run(job.schedule)
-
-            self._save()
-            self._arm_timer()
-
-        except asyncio.CancelledError:
-            pass
-        except Exception as e:
-            logger.error(f"Cron timer error: {e}")
-            # 尝试重新设置定时器
-            if self._running:
+        store = self._load_store()
+        for job in store.jobs:
+            if job.id == job_id:
+                job.enabled = enabled
+                job.updated_at_ms = now_ms()
+                if enabled:
+                    job.state.next_run_at_ms = _compute_next_run(job.schedule, now_ms())
+                else:
+                    job.state.next_run_at_ms = None
+                self._save_store()
                 self._arm_timer()
+                return job
+        return None
+
+    async def run_job(self, job_id: str, force: bool = False) -> bool:
+        """手动执行任务.
+
+        Args:
+            job_id: 任务 ID
+            force: 是否强制执行（忽略禁用状态）
+
+        Returns:
+            是否成功执行
+        """
+        store = self._load_store()
+        for job in store.jobs:
+            if job.id == job_id:
+                if not force and not job.enabled:
+                    return False
+                await self._execute_job(job)
+                self._save_store()
+                self._arm_timer()
+                return True
+        return False
+
+    def get_job(self, job_id: str) -> CronJob | None:
+        """获取单个任务.
+
+        Args:
+            job_id: 任务 ID
+
+        Returns:
+            任务对象，不存在返回 None
+        """
+        store = self._load_store()
+        for job in store.jobs:
+            if job.id == job_id:
+                return job
+        return None
+
+    def status(self) -> dict:
+        """获取服务状态.
+
+        Returns:
+            状态字典
+        """
+        store = self._load_store()
+        return {
+            "enabled": self._running,
+            "jobs": len(store.jobs),
+            "next_wake_at_ms": self._get_next_wake_ms(),
+        }

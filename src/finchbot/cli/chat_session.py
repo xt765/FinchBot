@@ -10,10 +10,10 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import typer
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from loguru import logger
@@ -753,12 +753,79 @@ async def _run_chat_session_async(
     console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
     console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
 
-    agent, checkpointer, tools = await AgentFactory.create_for_cli(
+    agent, checkpointer, tools, subagent_manager = await AgentFactory.create_for_cli(
         session_id=session_id,
         workspace=ws_path,
         model=chat_model,
         config=config_obj,
     )
+
+    config = {"configurable": {"thread_id": session_id}}
+
+    async def deliver_message(channel: str, target_id: str, message: str) -> None:
+        """消息投递回调.
+
+        将定时任务或子代理的结果注入到当前会话。
+
+        Args:
+            channel: 渠道标识
+            target_id: 目标 ID
+            message: 消息内容
+        """
+        try:
+            current_state = await agent.aget_state(config)
+            messages = list(current_state.values.get("messages", []))
+            messages.append(SystemMessage(content=f"[定时任务通知]\n{message}"))
+            agent.update_state(config, {"messages": messages})
+            console.print(
+                Panel(
+                    message,
+                    title="🔔 定时任务通知",
+                    border_style="yellow",
+                    padding=(0, 1),
+                )
+            )
+        except Exception as e:
+            logger.error(f"Failed to deliver message: {e}")
+
+    async def notify_result(session_key: str, label: str, result: str) -> None:
+        """子代理结果通知回调.
+
+        Args:
+            session_key: 会话标识
+            label: 任务标签
+            result: 执行结果
+        """
+        try:
+            current_state = await agent.aget_state(config)
+            messages = list(current_state.values.get("messages", []))
+            messages.append(SystemMessage(content=f"[后台任务完成: {label}]\n{result}"))
+            agent.update_state(config, {"messages": messages})
+            console.print(
+                Panel(
+                    result[:500] + ("..." if len(result) > 500 else ""),
+                    title=f"🔔 后台任务完成: {label}",
+                    border_style="green",
+                    padding=(0, 1),
+                )
+            )
+        except Exception as e:
+            logger.error(f"Failed to notify result: {e}")
+
+    from finchbot.agent.tools.cron import get_cron_service, set_cron_service
+    from finchbot.cron.service import CronService
+
+    cron_service = CronService(
+        ws_path / "data",
+        on_deliver=deliver_message,
+    )
+    set_cron_service(cron_service)
+    await cron_service.start()
+    logger.debug(f"CronService started for workspace: {ws_path}")
+
+    if subagent_manager:
+        subagent_manager.on_notify = notify_result
+        logger.debug("SubagentManager on_notify callback set")
 
     web_enabled = any(t.name == "web_search" for t in tools)
     web_status = (
@@ -766,8 +833,6 @@ async def _run_chat_session_async(
     )
     console.print(f"[dim]{web_status}[/dim]")
     console.print(f"[dim]{t('cli.chat.type_to_quit')}[/dim]\n")
-
-    config = {"configurable": {"thread_id": session_id}}
 
     # Try async get_state if available, else sync
     try:
@@ -974,7 +1039,14 @@ async def _run_chat_session_async(
             console.print(f"[red]{t('cli.rollback.error_showing').format(e)}[/red]")
             console.print(f"[dim]{t('cli.chat.check_logs')}[/dim]")
 
-    # 关闭 checkpointer 连接
+    # 清理资源
+    await cron_service.stop()
+    logger.debug("CronService stopped")
+
+    if subagent_manager:
+        cancelled = await subagent_manager.cancel_by_session(f"cli:{session_id}")
+        logger.debug(f"Cancelled {cancelled} subagent tasks for session {session_id}")
+
     if hasattr(checkpointer, "conn") and checkpointer.conn:
         try:
             await checkpointer.conn.close()

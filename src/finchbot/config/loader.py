@@ -177,6 +177,7 @@ def load_mcp_config(workspace: Path | None = None) -> dict[str, MCPServerConfig]
                     servers[name] = MCPServerConfig(**server_config)
             except Exception as e:
                 from loguru import logger
+
                 logger.warning(f"加载 MCP 配置失败: {e}")
 
     # 2. 加载环境变量（最高优先级，覆盖文件配置）
@@ -211,16 +212,12 @@ def save_mcp_config(
         servers: MCP 服务器配置字典.
         workspace: 工作区路径.
     """
-    from finchbot.workspace import get_mcp_config_path
 
     mcp_path = get_mcp_config_path(workspace)
     mcp_path.parent.mkdir(parents=True, exist_ok=True)
 
     data = {
-        "servers": {
-            name: server.model_dump(exclude_none=True)
-            for name, server in servers.items()
-        }
+        "servers": {name: server.model_dump(exclude_none=True) for name, server in servers.items()}
     }
 
     mcp_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")

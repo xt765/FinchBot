@@ -36,8 +36,7 @@ _tools_lock = threading.Lock()
 
 
 def _ensure_tools_registered(
-    workspace: Path | None = None,
-    tools: Sequence[BaseTool] | None = None
+    workspace: Path | None = None, tools: Sequence[BaseTool] | None = None
 ) -> None:
     """确保工具已注册到全局注册表（线程安全）.
 
@@ -52,6 +51,7 @@ def _ensure_tools_registered(
             return
 
         from finchbot.tools import get_global_registry
+
         registry = get_global_registry()
 
         # 获取工具列表
@@ -99,13 +99,12 @@ def _create_workspace_templates(workspace: Path) -> None:
     from finchbot.workspace import (
         BOOTSTRAP_DIR,
         CONFIG_DIR,
+        DEFAULT_GITIGNORE,
         GENERATED_DIR,
-        SKILLS_DIR,
+        GITIGNORE_FILE,
         MEMORY_DIR,
         SESSIONS_DIR,
-        BOOTSTRAP_FILES,
-        DEFAULT_GITIGNORE,
-        GITIGNORE_FILE,
+        SKILLS_DIR,
     )
 
     config = load_config()
@@ -203,6 +202,7 @@ def build_system_prompt(
     # 加载配置
     if config is None:
         from finchbot.config import load_config
+
         config = load_config()
 
     # 从工作区加载 MCP 配置（覆盖全局配置）
@@ -320,6 +320,7 @@ async def create_finch_agent(
     # Load config if not provided
     if config is None:
         from finchbot.config import load_config
+
         config = load_config()
 
     # Build system prompt with capabilities info

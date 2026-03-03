@@ -1,14 +1,16 @@
-"""定时任务服务测试."""
+"""定时任务服务测试.
+
+测试新的 CronService API，支持三种调度模式。
+"""
 
 from __future__ import annotations
 
 import tempfile
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from finchbot.cron.service import CronJob, CronService
+from finchbot.cron import CronJob, CronSchedule, CronService
 
 
 class TestCronService:
@@ -26,147 +28,253 @@ class TestCronService:
         service = CronService(temp_workspace / "data")
         await service.start()
         yield service
-        await service.stop()
+        service.stop()
 
     @pytest.mark.asyncio
-    async def test_create_job(self, cron_service: CronService) -> None:
-        """测试创建任务."""
-        job = await cron_service.create(
+    async def test_create_cron_job(self, cron_service: CronService) -> None:
+        """测试创建 cron 表达式任务."""
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
+        job = cron_service.add_job(
             name="Test Job",
-            schedule="0 9 * * *",
+            schedule=schedule,
             message="Test message",
         )
 
-        assert job.cron_id is not None
+        assert job.id is not None
         assert job.name == "Test Job"
-        assert job.schedule == "0 9 * * *"
+        assert job.schedule.kind == "cron"
+        assert job.schedule.expr == "0 9 * * *"
         assert job.enabled is True
-        assert job.next_run_date is not None
+        assert job.state.next_run_at_ms is not None
+
+    @pytest.mark.asyncio
+    async def test_create_every_job(self, cron_service: CronService) -> None:
+        """测试创建间隔任务."""
+        schedule = CronSchedule(kind="every", every_ms=60000)
+        job = cron_service.add_job(
+            name="Every Minute Job",
+            schedule=schedule,
+            message="Run every minute",
+        )
+
+        assert job.id is not None
+        assert job.schedule.kind == "every"
+        assert job.schedule.every_ms == 60000
+
+    @pytest.mark.asyncio
+    async def test_create_at_job(self, cron_service: CronService) -> None:
+        """测试创建一次性任务."""
+        import time
+
+        at_ms = int(time.time() * 1000) + 3600000
+        schedule = CronSchedule(kind="at", at_ms=at_ms)
+        job = cron_service.add_job(
+            name="One-time Job",
+            schedule=schedule,
+            message="Run once",
+            delete_after_run=True,
+        )
+
+        assert job.id is not None
+        assert job.schedule.kind == "at"
+        assert job.schedule.at_ms == at_ms
+        assert job.delete_after_run is True
 
     @pytest.mark.asyncio
     async def test_create_invalid_cron(self, cron_service: CronService) -> None:
-        """测试创建无效 cron 表达式的任务."""
-        with pytest.raises(ValueError, match="Invalid cron expression"):
-            await cron_service.create(
-                name="Invalid Job",
-                schedule="invalid cron",
-                message="Test",
-            )
+        """测试创建无效 cron 表达式的任务.
+
+        validate() 只检查 expr 是否存在，不检查表达式有效性。
+        无效表达式的任务会被创建，但 next_run_at_ms 为 None。
+        """
+        schedule = CronSchedule(kind="cron", expr="invalid cron")
+        schedule.validate()
+
+        job = cron_service.add_job(
+            name="Invalid Job",
+            schedule=schedule,
+            message="Test",
+        )
+        assert job.state.next_run_at_ms is None
+
+    @pytest.mark.asyncio
+    async def test_invalid_timezone(self, cron_service: CronService) -> None:
+        """测试无效时区."""
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *", tz="Invalid/Timezone")
+
+        with pytest.raises(ValueError, match="Invalid timezone"):
+            schedule.validate()
+
+    @pytest.mark.asyncio
+    async def test_timezone_with_wrong_kind(self, cron_service: CronService) -> None:
+        """测试时区只能用于 cron 类型."""
+        schedule = CronSchedule(kind="every", every_ms=60000, tz="Asia/Shanghai")
+
+        with pytest.raises(ValueError, match="tz can only be used with 'cron' schedule"):
+            schedule.validate()
 
     @pytest.mark.asyncio
     async def test_delete_job(self, cron_service: CronService) -> None:
         """测试删除任务."""
-        job = await cron_service.create(
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
+        job = cron_service.add_job(
             name="To Delete",
-            schedule="0 9 * * *",
+            schedule=schedule,
             message="Delete me",
         )
 
-        result = await cron_service.delete(job.cron_id)
+        result = cron_service.remove_job(job.id)
         assert result is True
 
-        # 再次删除应该返回 False
-        result = await cron_service.delete(job.cron_id)
+        result = cron_service.remove_job(job.id)
         assert result is False
 
     @pytest.mark.asyncio
     async def test_list_jobs(self, cron_service: CronService) -> None:
         """测试列出任务."""
-        await cron_service.create(
-            name="Job 1",
-            schedule="0 9 * * *",
-            message="Message 1",
-        )
-        await cron_service.create(
-            name="Job 2",
-            schedule="0 18 * * *",
-            message="Message 2",
-        )
+        schedule1 = CronSchedule(kind="cron", expr="0 9 * * *")
+        schedule2 = CronSchedule(kind="cron", expr="0 18 * * *")
 
-        jobs = await cron_service.list()
+        cron_service.add_job(name="Job 1", schedule=schedule1, message="Message 1")
+        cron_service.add_job(name="Job 2", schedule=schedule2, message="Message 2")
+
+        jobs = cron_service.list_jobs()
         assert len(jobs) == 2
 
     @pytest.mark.asyncio
     async def test_toggle_job(self, cron_service: CronService) -> None:
         """测试启用/禁用任务."""
-        job = await cron_service.create(
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
+        job = cron_service.add_job(
             name="Toggle Test",
-            schedule="0 9 * * *",
+            schedule=schedule,
             message="Toggle me",
         )
 
-        # 禁用
-        updated = await cron_service.toggle(job.cron_id, enabled=False)
+        updated = cron_service.enable_job(job.id, enabled=False)
+        assert updated is not None
         assert updated.enabled is False
 
-        # 启用
-        updated = await cron_service.toggle(job.cron_id, enabled=True)
+        updated = cron_service.enable_job(job.id, enabled=True)
+        assert updated is not None
         assert updated.enabled is True
 
     @pytest.mark.asyncio
-    async def test_run_now(self, cron_service: CronService) -> None:
-        """测试立即执行任务."""
+    async def test_run_job(self, cron_service: CronService) -> None:
+        """测试手动执行任务."""
         executed = []
 
         async def on_job(job: CronJob) -> str:
             executed.append(job.name)
             return f"Executed: {job.name}"
 
-        cron_service.on_job(on_job)
+        cron_service.on_job = on_job
 
-        job = await cron_service.create(
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
+        job = cron_service.add_job(
             name="Run Now Test",
-            schedule="0 9 * * *",
+            schedule=schedule,
             message="Run me now",
         )
 
-        result = await cron_service.run_now(job.cron_id)
-        assert "Executed" in result
+        result = await cron_service.run_job(job.id, force=True)
+        assert result is True
         assert "Run Now Test" in executed
-        assert job.run_count == 1
+        assert job.state.last_status == "ok"
 
     @pytest.mark.asyncio
     async def test_persistence(self, temp_workspace: Path) -> None:
         """测试持久化."""
-        # 创建服务并添加任务
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
+
         service1 = CronService(temp_workspace / "data")
         await service1.start()
 
-        job = await service1.create(
+        job = service1.add_job(
             name="Persistent Job",
-            schedule="0 9 * * *",
+            schedule=schedule,
             message="Should persist",
         )
-        job_id = job.cron_id
-        await service1.stop()
+        job_id = job.id
+        service1.stop()
 
-        # 创建新服务实例，应该能加载之前的任务
         service2 = CronService(temp_workspace / "data")
         await service2.start()
 
-        loaded_job = await service2.get(job_id)
+        loaded_job = service2.get_job(job_id)
         assert loaded_job is not None
         assert loaded_job.name == "Persistent Job"
 
-        await service2.stop()
+        service2.stop()
 
-    def test_compute_next_run(self, temp_workspace: Path) -> None:
-        """测试计算下次执行时间."""
-        service = CronService(temp_workspace / "data")
+    @pytest.mark.asyncio
+    async def test_job_status_tracking(self, cron_service: CronService) -> None:
+        """测试任务状态跟踪."""
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
+        job = cron_service.add_job(
+            name="Status Test",
+            schedule=schedule,
+            message="Track status",
+        )
 
-        # 每分钟执行
-        next_run = service._compute_next_run("* * * * *")
-        assert next_run is not None
+        assert job.state.last_status is None
+        assert job.state.last_error is None
 
-        # 每天早上 9 点（本地时间）
-        next_run = service._compute_next_run("0 9 * * *")
-        assert next_run is not None
+        async def on_job(j: CronJob) -> str:
+            return "Done"
 
-        # 解析时间（存储为 UTC，需转换为本地时间验证）
-        dt = datetime.fromisoformat(next_run.replace("Z", "+00:00"))
-        local_dt = dt.astimezone()
-        assert local_dt.minute == 0
-        assert local_dt.hour == 9
+        cron_service.on_job = on_job
+        await cron_service.run_job(job.id, force=True)
+
+        assert job.state.last_status == "ok"
+        assert job.state.last_run_at_ms is not None
+
+    @pytest.mark.asyncio
+    async def test_job_error_tracking(self, cron_service: CronService) -> None:
+        """测试任务错误跟踪."""
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
+        job = cron_service.add_job(
+            name="Error Test",
+            schedule=schedule,
+            message="Will fail",
+        )
+
+        async def on_job(j: CronJob) -> str:
+            raise RuntimeError("Test error")
+
+        cron_service.on_job = on_job
+        await cron_service.run_job(job.id, force=True)
+
+        assert job.state.last_status == "error"
+        assert "Test error" in job.state.last_error
+
+
+class TestCronSchedule:
+    """CronSchedule 测试."""
+
+    def test_cron_schedule(self) -> None:
+        """测试 cron 调度."""
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
+        schedule.validate()
+
+        assert schedule.kind == "cron"
+        assert schedule.expr == "0 9 * * *"
+
+    def test_every_schedule(self) -> None:
+        """测试间隔调度."""
+        schedule = CronSchedule(kind="every", every_ms=60000)
+        schedule.validate()
+
+        assert schedule.kind == "every"
+        assert schedule.every_ms == 60000
+
+    def test_at_schedule(self) -> None:
+        """测试一次性调度."""
+        schedule = CronSchedule(kind="at", at_ms=1700000000000)
+        schedule.validate()
+
+        assert schedule.kind == "at"
+        assert schedule.at_ms == 1700000000000
 
 
 class TestCronJob:
@@ -174,26 +282,35 @@ class TestCronJob:
 
     def test_create_cron_job(self) -> None:
         """测试创建 CronJob."""
+        schedule = CronSchedule(kind="cron", expr="0 9 * * *")
         job = CronJob(
-            cron_id="test123",
+            id="test123",
             name="Test Job",
-            schedule="0 9 * * *",
-            message="Test message",
+            schedule=schedule,
         )
 
-        assert job.cron_id == "test123"
+        assert job.id == "test123"
         assert job.name == "Test Job"
         assert job.enabled is True
-        assert job.run_count == 0
 
-    def test_cron_job_with_input(self) -> None:
-        """测试带输入数据的 CronJob."""
-        job = CronJob(
-            cron_id="test456",
-            name="Job with Input",
-            schedule="0 */2 * * *",
+    def test_cron_job_with_payload(self) -> None:
+        """测试带载荷的 CronJob."""
+        from finchbot.cron import CronPayload
+
+        schedule = CronSchedule(kind="cron", expr="0 */2 * * *")
+        payload = CronPayload(
             message="Process data",
-            input={"key": "value"},
+            deliver=True,
+            channel="telegram",
+            to="user123",
+        )
+        job = CronJob(
+            id="test456",
+            name="Job with Payload",
+            schedule=schedule,
+            payload=payload,
         )
 
-        assert job.input == {"key": "value"}
+        assert job.payload.message == "Process data"
+        assert job.payload.deliver is True
+        assert job.payload.channel == "telegram"

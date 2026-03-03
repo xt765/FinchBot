@@ -115,7 +115,7 @@ class ContextBuilder:
 
         for filename in self.bootstrap_files:
             file_path = bootstrap_dir / filename
-            
+
             if file_path.exists():
                 try:
                     content = file_path.read_text(encoding="utf-8")

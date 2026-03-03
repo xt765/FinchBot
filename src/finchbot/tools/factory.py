@@ -1,6 +1,14 @@
+"""工具工厂类.
+
+负责根据配置创建和组装工具列表。
+支持加载内置工具和 MCP 工具（通过 langchain-mcp-adapters）。
+MCP 工具支持超时控制和连接管理。
+"""
+
 from __future__ import annotations
 
 import os
+from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,6 +37,7 @@ from finchbot.tools import (
     WebSearchTool,
     WriteFileTool,
 )
+from finchbot.tools.mcp_manager import MCPConnectionManager
 
 if TYPE_CHECKING:
     from finchbot.config.schema import Config
@@ -39,6 +48,14 @@ class ToolFactory:
 
     负责根据配置创建和组装工具列表。
     支持加载内置工具和 MCP 工具（通过 langchain-mcp-adapters）。
+    MCP 工具支持超时控制和连接管理。
+
+    Attributes:
+        config: FinchBot 配置
+        workspace: 工作目录
+        session_id: 会话 ID
+        _mcp_manager: MCP 连接管理器
+        _stack: AsyncExitStack 用于资源管理
     """
 
     def __init__(self, config: Config, workspace: Path, session_id: str = "default") -> None:
@@ -52,7 +69,8 @@ class ToolFactory:
         self.config = config
         self.workspace = workspace
         self.session_id = session_id
-        self._mcp_client = None
+        self._mcp_manager: MCPConnectionManager | None = None
+        self._stack: AsyncExitStack | None = None
 
     def create_default_tools(self) -> list[BaseTool]:
         """创建默认工具集.
@@ -67,7 +85,6 @@ class ToolFactory:
 
         memory_manager = MemoryManager(self.workspace)
 
-        # 基础文件系统工具
         tools: list[BaseTool] = [
             ReadFileTool(allowed_dirs=allowed_read_dirs, workspace=str(self.workspace)),
             WriteFileTool(allowed_dirs=[self.workspace], workspace=str(self.workspace)),
@@ -75,7 +92,6 @@ class ToolFactory:
             ListDirTool(allowed_dirs=allowed_read_dirs, workspace=str(self.workspace)),
         ]
 
-        # 记忆工具
         tools.extend(
             [
                 RememberTool(workspace=str(self.workspace), memory_manager=memory_manager),
@@ -84,24 +100,19 @@ class ToolFactory:
             ]
         )
 
-        # 会话工具
         tools.append(SessionTitleTool(workspace=str(self.workspace), session_id=self.session_id))
 
-        # 执行工具
         exec_timeout = 60
         if hasattr(self.config, "tools") and hasattr(self.config.tools, "exec"):
             exec_timeout = self.config.tools.exec.timeout
         tools.append(ExecTool(timeout=exec_timeout, working_dir=str(self.workspace)))
 
-        # 网页提取工具
         tools.append(WebExtractTool())
 
-        # 网页搜索工具
         web_search_tool = self._create_web_search_tool()
         if web_search_tool:
             tools.append(web_search_tool)
 
-        # 配置工具
         tools.extend(
             [
                 ConfigureMCPTool(workspace=str(self.workspace)),
@@ -111,10 +122,8 @@ class ToolFactory:
             ]
         )
 
-        # 后台任务工具 (Three-tool pattern)
         tools.extend(BACKGROUND_TOOLS)
 
-        # 定时任务工具
         cron_service = CronService(self.workspace / "data")
         set_cron_service(cron_service)
         tools.extend(CRON_TOOLS)
@@ -129,7 +138,6 @@ class ToolFactory:
         """
         tools = self.create_default_tools()
 
-        # 加载 MCP 工具
         mcp_tools = await self._load_mcp_tools()
         tools.extend(mcp_tools)
 
@@ -138,7 +146,7 @@ class ToolFactory:
     async def _load_mcp_tools(self) -> list[BaseTool]:
         """加载 MCP 工具.
 
-        使用 langchain-mcp-adapters 官方库加载 MCP 服务器提供的工具。
+        使用 MCPConnectionManager 管理 MCP 连接生命周期。
 
         Returns:
             MCP 工具列表.
@@ -147,16 +155,13 @@ class ToolFactory:
             return []
 
         try:
-            from langchain_mcp_adapters.client import MultiServerMCPClient
+            self._stack = AsyncExitStack()
+            await self._stack.__aenter__()
 
-            server_config = self._build_mcp_server_config()
-            if not server_config:
-                return []
+            self._mcp_manager = MCPConnectionManager(self.config)
+            await self._stack.enter_async_context(self._mcp_manager)
 
-            self._mcp_client = MultiServerMCPClient(server_config)
-            tools = await self._mcp_client.get_tools()
-
-            logger.info(f"Loaded {len(tools)} MCP tools from {len(server_config)} servers")
+            tools = await self._mcp_manager.connect_all()
             return tools
 
         except ImportError:
@@ -172,49 +177,32 @@ class ToolFactory:
         """检查是否有 MCP 配置."""
         return bool(self.config.mcp.servers)
 
-    def _build_mcp_server_config(self) -> dict:
-        """构建 MCP 服务器配置.
-
-        将 FinchBot 的 MCPServerConfig 转换为 langchain-mcp-adapters 需要的格式。
-
-        Returns:
-            MCP 服务器配置字典.
-        """
-        config = {}
-
-        for name, server in self.config.mcp.servers.items():
-            if server.disabled:
-                continue
-
-            server_cfg = {}
-
-            # stdio 传输
-            if server.command:
-                server_cfg = {
-                    "command": server.command,
-                    "args": server.args or [],
-                    "transport": "stdio",
-                }
-                if server.env:
-                    server_cfg["env"] = server.env
-
-            # HTTP 传输
-            elif server.url:
-                server_cfg = {
-                    "url": server.url,
-                    "transport": "http",
-                }
-                if server.headers:
-                    server_cfg["headers"] = server.headers
-
-            if server_cfg:
-                config[name] = server_cfg
-
-        return config
-
     async def close(self) -> None:
         """清理 MCP 资源."""
-        self._mcp_client = None
+        if self._stack:
+            await self._stack.__aexit__(None, None, None)
+            self._stack = None
+            self._mcp_manager = None
+
+    def get_mcp_status(self) -> dict[str, dict]:
+        """获取 MCP 服务器状态.
+
+        Returns:
+            服务器状态映射
+        """
+        if self._mcp_manager:
+            return self._mcp_manager.get_status()
+        return {}
+
+    async def reconnect_mcp(self) -> list[BaseTool]:
+        """重连所有 MCP 服务器.
+
+        Returns:
+            所有工具列表
+        """
+        if self._mcp_manager:
+            return await self._mcp_manager.reconnect_all()
+        return []
 
     def _create_web_search_tool(self) -> WebSearchTool | None:
         """创建网页搜索工具.
@@ -228,7 +216,6 @@ class ToolFactory:
         tavily_key = self._get_tavily_key()
         brave_key = self.config.tools.web.search.brave_api_key
 
-        # 即使没有 API Key，也可以使用 DuckDuckGo，所以总是返回工具
         return WebSearchTool(
             tavily_api_key=tavily_key,
             brave_api_key=brave_key,
