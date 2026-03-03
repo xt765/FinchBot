@@ -63,7 +63,7 @@ flowchart TB
 
     subgraph Capabilities [能力层 - 三层扩展]
         direction LR
-        BuiltIn[内置工具<br/>24 个开箱即用]:::core
+        BuiltIn[内置工具<br/>19 个开箱即用]:::core
         MCP[MCP 扩展<br/>动态配置]:::core
         Skills[技能系统<br/>自主创建]:::core
     end
@@ -930,7 +930,7 @@ graph BT
     classDef level1 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
     classDef level2 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef level3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
-    classDef level4 fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
+    classDef level4 fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#f57f17;
 
     L1[响应层<br/>响应用户请求]:::level1
     L2[执行层<br/>自主执行任务]:::level2
@@ -956,7 +956,7 @@ flowchart TB
     classDef extend fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef callback fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#f57f17;
 
-    Agent[🤖 智能体<br/>自主决策中心]:::core
+    Agent[智能体<br/>自主决策中心]:::core
 
     subgraph Auto [自主执行能力]
         BG[后台任务<br/>SubagentManager<br/>独立 Agent 循环<br/>最多 15 次迭代]:::auto
@@ -964,7 +964,7 @@ flowchart TB
         Heartbeat[心跳服务<br/>自主监控与触发]:::auto
     end
 
-    subgraph Callback [回调机制 - 新增]
+    subgraph Callback [回调机制]
         OnNotify[on_notify<br/>后台任务结果通知]:::callback
         OnDeliver[on_deliver<br/>定时任务消息传递]:::callback
     end

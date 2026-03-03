@@ -104,6 +104,7 @@ flowchart TB
     classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
     classDef task fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
     classDef infra fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef service fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
 
     subgraph Input [输入层]
         direction LR
@@ -124,7 +125,7 @@ flowchart TB
 
     subgraph Capabilities [能力层 - 三层扩展]
         direction LR
-        BuiltIn[内置工具<br/>24 个开箱即用]:::core
+        BuiltIn[内置工具<br/>19 个开箱即用]:::core
         MCP[MCP 扩展<br/>动态配置]:::core
         Skills[技能系统<br/>自主创建]:::core
     end
@@ -134,6 +135,10 @@ flowchart TB
         BG[后台任务<br/>异步执行]:::task
         Cron[定时任务<br/>at/every/cron]:::task
         Heart[心跳监控<br/>自主唤醒]:::task
+    end
+
+    subgraph Service [服务层 - 统一管理]
+        SM[ServiceManager<br/>协调后台服务]:::service
     end
 
     subgraph Memory [记忆层 - 双层存储]
@@ -159,6 +164,9 @@ flowchart TB
     Agent --> Task
     Agent <--> Memory
     Agent --> LLM
+
+    Task --> Service
+    Service --> SM
 
     Context --> Memory
     Memory --> SQLite
@@ -237,38 +245,33 @@ flowchart LR
 
 | 层级 | 方式 | 自主性 | 说明 |
 |:---:|:---|:---:|:---|
-| 第一层 | 内置工具 | 开箱即用 | 24 个内置工具，无需配置即可使用 |
+| 第一层 | 内置工具 | 开箱即用 | 19 个内置工具，无需配置即可使用 |
 | 第二层 | MCP 配置 | Agent 自主配置 | 通过 `configure_mcp` 动态添加外部能力 |
 | 第三层 | 技能创建 | Agent 自主创建 | 通过 `skill-creator` 创建新技能 |
 
 #### 内置工具
 
-|        类别        | 工具              | 功能                        |
-| :----------------: | :---------------- | :-------------------------- |
-| **文件操作** | `read_file`     | 读取本地文件                |
-|                    | `write_file`    | 写入本地文件                |
-|                    | `edit_file`     | 编辑文件内容                |
-|                    | `list_dir`      | 列出目录内容                |
-| **网络能力** | `web_search`    | 联网搜索 (Tavily/Brave/DDG) |
-|                    | `web_extract`   | 网页内容提取                |
-| **记忆管理** | `remember`      | 主动存储记忆                |
-|                    | `recall`        | 检索记忆                    |
-|                    | `forget`        | 删除/归档记忆               |
-| **系统控制** | `exec`          | 安全执行 Shell 命令         |
-|                    | `session_title` | 管理会话标题                |
-| **配置管理** | `configure_mcp` | 动态配置 MCP 服务器（支持启用/禁用/添加/更新/删除/列出） |
-|                    | `refresh_capabilities` | 刷新能力描述文件   |
-|                    | `get_capabilities` | 获取当前能力描述        |
-|                    | `get_mcp_config_path` | 获取 MCP 配置路径    |
-| **后台任务** | `start_background_task` | 启动后台任务       |
-|                    | `check_task_status` | 检查任务状态         |
-|                    | `get_task_result` | 获取任务结果           |
-|                    | `cancel_task`   | 取消任务                    |
-| **定时任务** | `create_cron`   | 创建定时任务                |
-|                    | `list_crons`    | 列出所有定时任务            |
-|                    | `delete_cron`   | 删除定时任务                |
-|                    | `toggle_cron`   | 启用/禁用定时任务           |
-|                    | `run_cron_now`  | 立即执行定时任务            |
+| 类别 | 工具 | 功能 |
+| :--- | :--- | :--- |
+| **文件操作** | `read_file` | 读取本地文件 |
+| | `write_file` | 写入本地文件 |
+| | `edit_file` | 编辑文件内容 |
+| | `list_dir` | 列出目录内容 |
+| **网络能力** | `web_search` | 联网搜索 (Tavily/Brave/DDG) |
+| | `web_extract` | 网页内容提取 |
+| **记忆管理** | `remember` | 主动存储记忆 |
+| | `recall` | 检索记忆 |
+| | `forget` | 删除/归档记忆 |
+| **系统控制** | `exec` | 安全执行 Shell 命令 |
+| **配置管理** | `configure_mcp` | 动态配置 MCP 服务器 |
+| | `refresh_capabilities` | 刷新能力描述文件 |
+| **后台任务** | `start_background_task` | 启动后台任务 |
+| | `check_task_status` | 检查任务状态 |
+| | `get_task_result` | 获取任务结果 |
+| | `cancel_task` | 取消任务 |
+| **定时任务** | `create_cron` | 创建定时任务 |
+| | `list_crons` | 列出所有定时任务 |
+| | `delete_cron` | 删除定时任务 |
 
 ##### 网页搜索
 
@@ -430,13 +433,13 @@ sequenceDiagram
     participant A as 智能体
     participant SM as SubagentManager
     participant SA as 子智能体<br/>(独立循环)
-    participant JS as JobStore
+    participant JM as JobManager
 
     U->>A: 执行长任务
     A->>SM: start_background_task
-    SM->>JS: 创建任务 (pending)
+    SM->>JM: 创建任务 (pending)
     SM->>SA: 创建独立 Agent 循环
-    JS-->>A: 返回 job_id
+    JM-->>A: 返回 job_id
     A-->>U: 任务已启动 (ID: xxx)
     
     Note over U,A: 用户继续对话...
@@ -446,8 +449,8 @@ sequenceDiagram
     
     U->>A: 任务进度？
     A->>SM: check_task_status
-    SM->>JS: 查询状态
-    JS-->>SM: running (迭代 5/15)
+    SM->>JM: 查询状态
+    JM-->>SM: running (迭代 5/15)
     A-->>U: 仍在执行...
     
     loop 最多 15 次迭代
@@ -458,7 +461,7 @@ sequenceDiagram
     SA-->>SM: 任务完成
     SM->>SM: on_notify 回调
     SM->>A: 注入结果到会话
-    A-->>U: 🔔 后台任务完成通知
+    A-->>U: 后台任务完成通知
 ```
 
 #### 定时任务

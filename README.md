@@ -124,7 +124,7 @@ flowchart TB
 
     subgraph Capabilities [Capability Layer - Three-Tier Extension]
         direction LR
-        BuiltIn[Built-in Tools<br/>24 Ready-to-Use]:::core
+        BuiltIn[Built-in Tools<br/>19 Ready-to-Use]:::core
         MCP[MCP Extension<br/>Dynamic Config]:::core
         Skills[Skill System<br/>Self-Create]:::core
     end
@@ -236,38 +236,33 @@ flowchart LR
 
 | Layer | Method | Autonomy | Description |
 |:---:|:---|:---:|:---|
-| Layer 1 | Built-in Tools | Ready to use | 24 built-in tools, no configuration needed |
+| Layer 1 | Built-in Tools | Ready to use | 19 built-in tools, no configuration needed |
 | Layer 2 | MCP Config | Agent self-config | Dynamically add external capabilities via `configure_mcp` |
 | Layer 3 | Skill Creation | Agent self-create | Create new skills via `skill-creator` |
 
 #### Built-in Tools
 
-|      Category      | Tool              | Function                      |
-| :----------------: | :---------------- | :---------------------------- |
-| **File Ops** | `read_file`     | Read local files              |
-|                    | `write_file`    | Write local files             |
-|                    | `edit_file`     | Edit file content             |
-|                    | `list_dir`      | List directory contents       |
-| **Network** | `web_search`    | Web search (Tavily/Brave/DDG) |
-|                    | `web_extract`   | Web content extraction        |
-|  **Memory**  | `remember`      | Proactively store memories    |
-|                    | `recall`        | Retrieve memories             |
-|                    | `forget`        | Delete/archive memories       |
-|  **System**  | `exec`          | Secure shell execution        |
-|                    | `session_title` | Manage session titles         |
-|  **Configuration**  | `configure_mcp` | Dynamically configure MCP servers (enable/disable/add/update/remove/list) |
-|                    | `refresh_capabilities` | Refresh capabilities file |
-|                    | `get_capabilities` | Get current capabilities  |
-|                    | `get_mcp_config_path` | Get MCP config path   |
+| Category | Tool | Function |
+| :--- | :--- | :--- |
+| **File Ops** | `read_file` | Read local files |
+| | `write_file` | Write local files |
+| | `edit_file` | Edit file content |
+| | `list_dir` | List directory contents |
+| **Web** | `web_search` | Web search (Tavily/Brave/DDG) |
+| | `web_extract` | Extract web content |
+| **Memory** | `remember` | Store memory |
+| | `recall` | Retrieve memory |
+| | `forget` | Delete/archive memory |
+| **System** | `exec` | Execute shell commands safely |
+| **Config** | `configure_mcp` | Configure MCP servers dynamically |
+| | `refresh_capabilities` | Refresh capability description |
 | **Background** | `start_background_task` | Start background task |
-|                    | `check_task_status` | Check task status     |
-|                    | `get_task_result` | Get task result         |
-|                    | `cancel_task`   | Cancel task                  |
-| **Scheduled** | `create_cron`   | Create scheduled task        |
-|                    | `list_crons`    | List all scheduled tasks     |
-|                    | `delete_cron`   | Delete scheduled task        |
-|                    | `toggle_cron`   | Enable/disable scheduled task |
-|                    | `run_cron_now`  | Execute scheduled task now   |
+| | `check_task_status` | Check task status |
+| | `get_task_result` | Get task result |
+| | `cancel_task` | Cancel task |
+| **Schedule** | `create_cron` | Create scheduled task |
+| | `list_crons` | List all scheduled tasks |
+| | `delete_cron` | Delete scheduled task |
 
 ##### Web Search
 
