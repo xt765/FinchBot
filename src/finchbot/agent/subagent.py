@@ -80,8 +80,9 @@ class SubagentManager:
         self.config = config
         self.on_notify = on_notify
         self.max_iterations = max_iterations
-        self._running_tasks: dict[str, asyncio.Task[None]] = {}
+        self._running_tasks: dict[str, asyncio.Task[str]] = {}
         self._session_tasks: dict[str, set[str]] = {}
+        self._task_results: dict[str, str] = {}
 
     async def spawn(
         self,
@@ -124,7 +125,7 @@ class SubagentManager:
         task: str,
         label: str,
         session_key: str,
-    ) -> None:
+    ) -> str:
         """执行子代理任务.
 
         Args:
@@ -132,6 +133,9 @@ class SubagentManager:
             task: 任务描述
             label: 任务标签
             session_key: 会话标识
+
+        Returns:
+            执行结果
         """
         logger.info(f"Subagent [{task_id}] starting task: {label}")
 
@@ -142,8 +146,6 @@ class SubagentManager:
                 HumanMessage(content=task),
             ]
 
-            # 预先绑定工具，避免在 ainvoke 中传递工具列表导致序列化问题
-            # 使用 bind_tools 将工具绑定到模型，而不是在每次调用时传递
             bound_model = self.model.bind_tools(self.tools) if self.tools else self.model
 
             iteration = 0
@@ -181,17 +183,20 @@ class SubagentManager:
 
             logger.info(f"Subagent [{task_id}] completed successfully")
             await self._announce_result(task_id, label, task, final_result, session_key, "ok")
+            return final_result
 
         except asyncio.CancelledError:
             logger.info(f"Subagent [{task_id}] cancelled")
             await self._announce_result(
                 task_id, label, task, "Task cancelled", session_key, "cancelled"
             )
+            return "Task cancelled"
 
         except Exception as e:
             error_msg = f"Error: {str(e)}"
             logger.error(f"Subagent [{task_id}] failed: {e}")
             await self._announce_result(task_id, label, task, error_msg, session_key, "error")
+            return error_msg
 
     async def _execute_tool(self, tool_call: dict) -> str:
         """执行工具调用.
@@ -249,7 +254,12 @@ Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not men
 
         if self.on_notify:
             try:
-                await self.on_notify(session_key, label, announce_content)
+                import asyncio
+
+                if asyncio.iscoroutinefunction(self.on_notify):
+                    await self.on_notify(session_key, label, announce_content)
+                else:
+                    self.on_notify(session_key, label, announce_content)
             except Exception as e:
                 logger.error(f"Failed to notify subagent result: {e}")
 
@@ -385,3 +395,71 @@ Stay focused on the assigned task. Your final response will be reported back to 
             await asyncio.gather(*tasks, return_exceptions=True)
 
         return len(tasks)
+
+    async def spawn_and_wait(
+        self,
+        task: str,
+        label: str | None = None,
+        session_key: str = "cli:default",
+    ) -> str:
+        """启动子代理并返回任务 ID（不等待结果）.
+
+        Args:
+            task: 任务描述
+            label: 任务标签
+            session_key: 会话标识
+
+        Returns:
+            任务 ID
+        """
+        task_id = str(uuid.uuid4())[:8]
+        display_label = label or (task[:30] + "..." if len(task) > 30 else task)
+
+        bg_task = asyncio.create_task(self._run_subagent(task_id, task, display_label, session_key))
+        self._running_tasks[task_id] = bg_task
+        self._session_tasks.setdefault(session_key, set()).add(task_id)
+
+        def _cleanup(t: asyncio.Task) -> None:
+            self._running_tasks.pop(task_id, None)
+            if session_key and (ids := self._session_tasks.get(session_key)):
+                ids.discard(task_id)
+                if not ids:
+                    del self._session_tasks[session_key]
+
+            try:
+                result = t.result()
+                self._task_results[task_id] = result or "Task completed"
+            except Exception as e:
+                self._task_results[task_id] = f"Task failed: {e}"
+
+        bg_task.add_done_callback(_cleanup)
+
+        logger.info(f"Subagent [{task_id}] started: {display_label}")
+        return task_id
+
+    async def wait_for_result(self, task_id: str, timeout: float = 300) -> str | None:
+        """等待任务完成并返回结果.
+
+        Args:
+            task_id: 任务 ID
+            timeout: 超时时间（秒）
+
+        Returns:
+            任务结果，超时返回 None
+        """
+        if task_id not in self._running_tasks:
+            return self._task_results.get(task_id)
+
+        task = self._running_tasks.get(task_id)
+        if not task:
+            return self._task_results.get(task_id)
+
+        try:
+            await asyncio.wait_for(task, timeout=timeout)
+            return self._task_results.get(task_id)
+        except TimeoutError:
+            logger.warning(f"Task {task_id} timed out after {timeout}s")
+            return None
+        except Exception as e:
+            logger.error(f"Task {task_id} failed: {e}")
+            return self._task_results.get(task_id)

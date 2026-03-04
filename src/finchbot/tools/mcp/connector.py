@@ -151,7 +151,6 @@ class MCPConnector:
                 return []
 
             client = MultiServerMCPClient({name: server_config})
-            self._stack.push_async_exit(client)
             raw_tools = await client.get_tools()
 
             tools = []

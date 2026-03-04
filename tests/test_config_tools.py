@@ -32,7 +32,7 @@ class TestConfigureMCPTool:
 
     def test_add_server(self, temp_workspace: Path):
         """测试添加 MCP 服务器."""
-        result = config_module._add_or_update_server(
+        result, needs_reload = config_module._add_or_update_server(
             workspace=temp_workspace,
             server_name="test-server",
             command="npx",
@@ -42,6 +42,7 @@ class TestConfigureMCPTool:
         )
 
         assert "added successfully" in result
+        assert needs_reload is True
 
         mcp_path = temp_workspace / "config" / "mcp.json"
         assert mcp_path.exists()
@@ -61,7 +62,7 @@ class TestConfigureMCPTool:
             url=None,
         )
 
-        result = config_module._add_or_update_server(
+        result, needs_reload = config_module._add_or_update_server(
             workspace=temp_workspace,
             server_name="test-server",
             command="uvx",
@@ -71,6 +72,7 @@ class TestConfigureMCPTool:
         )
 
         assert "updated successfully" in result
+        assert needs_reload is True
 
         mcp_path = temp_workspace / "config" / "mcp.json"
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
@@ -87,9 +89,10 @@ class TestConfigureMCPTool:
             url=None,
         )
 
-        result = config_module._remove_server(temp_workspace, "test-server")
+        result, needs_reload = config_module._remove_server(temp_workspace, "test-server")
 
         assert "removed successfully" in result
+        assert needs_reload is True
 
         mcp_path = temp_workspace / "config" / "mcp.json"
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
@@ -132,9 +135,12 @@ class TestConfigureMCPTool:
 
         config_module._toggle_server(temp_workspace, "test-server", disabled=True)
 
-        result = config_module._toggle_server(temp_workspace, "test-server", disabled=False)
+        result, needs_reload = config_module._toggle_server(
+            temp_workspace, "test-server", disabled=False
+        )
 
         assert "enabled successfully" in result
+        assert needs_reload is True
 
         mcp_path = temp_workspace / "config" / "mcp.json"
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
@@ -151,9 +157,12 @@ class TestConfigureMCPTool:
             url=None,
         )
 
-        result = config_module._toggle_server(temp_workspace, "test-server", disabled=True)
+        result, needs_reload = config_module._toggle_server(
+            temp_workspace, "test-server", disabled=True
+        )
 
         assert "disabled successfully" in result
+        assert needs_reload is True
 
         mcp_path = temp_workspace / "config" / "mcp.json"
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
@@ -161,21 +170,28 @@ class TestConfigureMCPTool:
 
     def test_enable_nonexistent_server(self, temp_workspace: Path):
         """测试启用不存在的服务器."""
-        result = config_module._toggle_server(temp_workspace, "nonexistent", disabled=False)
+        result, needs_reload = config_module._toggle_server(
+            temp_workspace, "nonexistent", disabled=False
+        )
 
         assert "not found" in result
+        assert needs_reload is False
 
     def test_disable_nonexistent_server(self, temp_workspace: Path):
         """测试禁用不存在的服务器."""
-        result = config_module._toggle_server(temp_workspace, "nonexistent", disabled=True)
+        result, needs_reload = config_module._toggle_server(
+            temp_workspace, "nonexistent", disabled=True
+        )
 
         assert "not found" in result
+        assert needs_reload is False
 
     def test_remove_nonexistent_server(self, temp_workspace: Path):
         """测试删除不存在的服务器."""
-        result = config_module._remove_server(temp_workspace, "nonexistent")
+        result, needs_reload = config_module._remove_server(temp_workspace, "nonexistent")
 
         assert "not found" in result
+        assert needs_reload is False
 
     def test_toggle_preserves_other_config(self, temp_workspace: Path):
         """测试启用/禁用操作保留其他配置."""

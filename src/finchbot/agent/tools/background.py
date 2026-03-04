@@ -229,17 +229,25 @@ async def _execute_background_task(
 
     try:
         if subagent_manager:
-            result = await subagent_manager.spawn(
+            task_id = await subagent_manager.spawn_and_wait(
                 task=task_description,
                 label=label,
                 session_key=session_key,
             )
-            manager.update_status(job_id, "completed", result=result)
-            logger.info(f"Background task {job_id} completed")
-            return result
+            manager.associate_job(job_id, task_id)
+
+            result = await subagent_manager.wait_for_result(task_id, timeout=300)
+            if result:
+                manager.update_status(job_id, "completed", result=result)
+                logger.info(f"Background task {job_id} completed")
+                return result
+            else:
+                manager.update_status(job_id, "completed", result="Task started in background")
+                return f"Task {job_id} started in background. Use check_task_status to monitor."
         else:
-            await asyncio.sleep(2)
-            result = f"Task completed: {task_description[:100]}"
+            logger.warning(f"No SubagentManager available for task {job_id}")
+            await asyncio.sleep(1)
+            result = f"Task completed (simulated): {task_description[:100]}"
             manager.update_status(job_id, "completed", result=result)
             logger.info(f"Background task {job_id} completed (no subagent manager)")
             return result

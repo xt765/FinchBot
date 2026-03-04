@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 from collections.abc import Callable
-from contextlib import AsyncExitStack
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -38,7 +37,6 @@ class MCPHotUpdateManager:
         workspace: 工作区路径
         config: 配置对象
         registry: 工具注册表
-        _mcp_stack: MCP 资源管理
         _mcp_connector: MCP 连接器
         _config_hash: 配置文件哈希
         _on_update_callbacks: 更新完成回调列表
@@ -55,7 +53,6 @@ class MCPHotUpdateManager:
         self.workspace = workspace
         self.config = config
         self.registry = registry
-        self._mcp_stack: AsyncExitStack | None = None
         self._mcp_connector: Any = None
         self._config_hash: str = ""
         self._on_update_callbacks: list[Callable[[], None]] = []
@@ -141,12 +138,12 @@ class MCPHotUpdateManager:
                 self.registry.unregister(tool.name)
             logger.debug(f"移除 {len(old_tools)} 个旧 MCP 工具")
 
-            if self._mcp_stack:
+            if self._mcp_connector:
                 try:
-                    await self._mcp_stack.__aexit__(None, None, None)
+                    await self._mcp_connector.stop()
                 except Exception as e:
                     logger.warning(f"断开 MCP 连接时出错: {e}")
-                self._mcp_stack = None
+                self._mcp_connector = None
 
             new_tools = await self._connect_mcp_servers()
 
@@ -189,12 +186,8 @@ class MCPHotUpdateManager:
         self.config.mcp.servers = mcp_servers
 
         try:
-            self._mcp_stack = AsyncExitStack()
-            await self._mcp_stack.__aenter__()
-
             self._mcp_connector = MCPConnector(self.config)
-            await self._mcp_stack.enter_async_context(self._mcp_connector)
-
+            await self._mcp_connector.start()
             tools = await self._mcp_connector.connect_all()
             return tools
 
@@ -371,10 +364,9 @@ class MCPHotUpdateManager:
 
     async def cleanup(self) -> None:
         """清理资源."""
-        if self._mcp_stack:
+        if self._mcp_connector:
             try:
-                await self._mcp_stack.__aexit__(None, None, None)
+                await self._mcp_connector.stop()
             except Exception as e:
                 logger.warning(f"清理 MCP 资源时出错: {e}")
-            self._mcp_stack = None
             self._mcp_connector = None

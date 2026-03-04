@@ -674,7 +674,7 @@ def _run_chat_session(
         # 创建新的事件循环
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        
+
         loop.run_until_complete(
             _run_chat_session_async(session_id, model, workspace, first_message, render_markdown)
         )
@@ -690,7 +690,7 @@ def _run_chat_session(
                 pending = asyncio.all_tasks(loop)
                 for task in pending:
                     task.cancel()
-                
+
                 # 等待所有任务完成或取消
                 if pending:
                     loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
@@ -698,7 +698,7 @@ def _run_chat_session(
                 pass
             finally:
                 loop.close()
-        
+
         # 恢复原始信号处理器
         signal.signal(signal.SIGINT, original_handler)
 
@@ -791,7 +791,7 @@ async def _run_chat_session_async(
     console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
     console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
 
-    agent, checkpointer, tools, subagent_manager = await AgentFactory.create_for_cli(
+    agent, checkpointer, tools, subagent_manager, service_manager = await AgentFactory.create_for_cli(
         session_id=session_id,
         workspace=ws_path,
         model=chat_model,
@@ -850,37 +850,11 @@ async def _run_chat_session_async(
         except Exception as e:
             logger.error(f"Failed to notify result: {e}")
 
-    from finchbot.services.config import ServiceConfig
-    from finchbot.services.manager import ServiceManager
-    from finchbot.tools.core import ToolRegistry
+    if service_manager:
+        service_manager._on_cron_deliver = deliver_message
 
-    tool_registry = ToolRegistry.get_instance()
-    if not tool_registry:
-        tool_registry = ToolRegistry(ws_path, config_obj)
-        ToolRegistry.set_instance(tool_registry)
-
-    service_config = ServiceConfig(
-        cron_enabled=True,
-        heartbeat_enabled=False,
-    )
-
-    service_manager = ServiceManager(
-        workspace=ws_path,
-        config=config_obj,
-        registry=tool_registry,
-        model=chat_model,
-        service_config=service_config,
-    )
-    ServiceManager.set_instance(service_manager)
-
-    service_manager._on_cron_deliver = deliver_message
     if subagent_manager:
         subagent_manager.on_notify = notify_result
-        service_manager._services["subagent_manager"] = subagent_manager
-        logger.debug("SubagentManager integrated with ServiceManager")
-
-    await service_manager.start_all()
-    logger.debug(f"ServiceManager started for workspace: {ws_path}")
 
     web_enabled = any(t.name == "web_search" for t in tools)
     web_status = (
@@ -1098,7 +1072,7 @@ async def _run_chat_session_async(
 
     # 清理资源 - 确保在所有退出路径都执行
     logger.info("Cleaning up resources...")
-    
+
     # 停止所有后台服务
     try:
         await service_manager.stop_all()

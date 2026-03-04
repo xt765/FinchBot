@@ -70,6 +70,8 @@ class ServiceManager:
         self._services: dict[str, Any] = {}
         self._running = False
         self._on_tool_update_callbacks: list[Callable[[list], None]] = []
+        self._on_cron_deliver: Callable[[str, str, str], Any] | None = None
+        self._on_subagent_notify: Callable[[str, str, str], Any] | None = None
 
     @classmethod
     def get_instance(cls) -> ServiceManager | None:
@@ -312,6 +314,16 @@ class ServiceManager:
             message: 消息内容
         """
         logger.debug(f"投递消息: {channel}:{to}")
+        if self._on_cron_deliver:
+            try:
+                import asyncio
+
+                if asyncio.iscoroutinefunction(self._on_cron_deliver):
+                    await self._on_cron_deliver(channel, to, message)
+                else:
+                    self._on_cron_deliver(channel, to, message)
+            except Exception as e:
+                logger.error(f"投递消息失败: {e}")
 
     async def _on_heartbeat_execute(self, task: str) -> None:
         """心跳执行回调.
@@ -338,3 +350,13 @@ class ServiceManager:
             result: 执行结果
         """
         logger.debug(f"子代理通知: {label}")
+        if self._on_subagent_notify:
+            try:
+                import asyncio
+
+                if asyncio.iscoroutinefunction(self._on_subagent_notify):
+                    await self._on_subagent_notify(session_key, label, result)
+                else:
+                    self._on_subagent_notify(session_key, label, result)
+            except Exception as e:
+                logger.error(f"子代理通知失败: {e}")

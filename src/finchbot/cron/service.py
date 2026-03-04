@@ -224,9 +224,14 @@ class CronService:
         self._load_store()
         self._recompute_next_runs()
         self._save_store()
-        self._arm_timer()
-        job_count = len(self._store.jobs) if self._store else 0
-        logger.info(t("cron.service_started", count=job_count))
+
+        try:
+            self._arm_timer()
+            job_count = len(self._store.jobs) if self._store else 0
+            logger.info(t("cron.service_started", count=job_count))
+        except RuntimeError as e:
+            logger.warning(f"CronService: Failed to arm timer: {e}")
+            self._running = False
 
     async def stop(self) -> None:
         """停止服务."""
