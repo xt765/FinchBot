@@ -135,7 +135,7 @@ class AgentFactory:
             subagent_manager=subagent_manager,
         )
 
-        return agent, checkpointer, tools, subagent_manager, service_manager
+        return agent, checkpointer, all_tools, subagent_manager, service_manager
 
     @staticmethod
     async def _initialize_services(
