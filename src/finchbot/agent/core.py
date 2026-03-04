@@ -368,13 +368,14 @@ async def create_finch_agent(
                 is_dynamic_prompt_available,
             )
 
-            mcp_manager = MCPHotUpdateManager(workspace, config, registry)
-            MCPHotUpdateManager.set_instance(mcp_manager)
-
-            await mcp_manager.initialize()
+            mcp_manager = MCPHotUpdateManager.get_instance()
 
             if is_dynamic_prompt_available():
-                middleware_list = create_full_dynamic_middleware_stack(mcp_manager, registry)
+                middleware_list = create_full_dynamic_middleware_stack(
+                    mcp_manager=mcp_manager,
+                    registry=registry,
+                    initial_tools=tools,
+                )
                 system_prompt = ""
                 logger.info("动态系统提示词 middleware 已启用")
             else:
@@ -385,7 +386,11 @@ async def create_finch_agent(
                 system_prompt = await loop.run_in_executor(None, _build_prompt)
 
                 from finchbot.tools.middleware import create_mcp_hot_update_middleware
-                mcp_middleware = create_mcp_hot_update_middleware(mcp_manager, registry)
+                mcp_middleware = create_mcp_hot_update_middleware(
+                    mcp_manager,
+                    registry,
+                    initial_tools=tools,
+                )
                 if mcp_middleware:
                     middleware_list.append(mcp_middleware)
                 logger.info("MCP 热更新 middleware 已启用（静态系统提示词模式）")

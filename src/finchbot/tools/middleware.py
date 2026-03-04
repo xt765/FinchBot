@@ -229,22 +229,34 @@ class MCPHotUpdateMiddleware(AgentMiddleware):
     """MCP 热更新 middleware 实现.
 
     在每次模型调用前检查 MCP 配置是否变化，如果变化则自动执行热更新。
+    支持运行时动态添加/移除 MCP 工具。
     """
 
     def __init__(
         self,
         mcp_manager: MCPHotUpdateManager,
         registry: ToolRegistry,
+        initial_tools: list[BaseTool] | None = None,
     ) -> None:
         """初始化 middleware.
 
         Args:
             mcp_manager: MCPHotUpdateManager 实例
             registry: ToolRegistry 实例
+            initial_tools: 初始工具列表（用于动态验证）
         """
         super().__init__()
         self.mcp_manager = mcp_manager
         self.registry = registry
+        self._dynamic_tools: list[BaseTool] = list(initial_tools) if initial_tools else []
+
+    @property
+    def tools(self) -> list[BaseTool]:
+        """返回当前所有动态工具.
+
+        LangChain 会检查这个属性来验证工具是否有效。
+        """
+        return self._dynamic_tools
 
     def wrap_model_call(
         self,
@@ -256,11 +268,12 @@ class MCPHotUpdateMiddleware(AgentMiddleware):
 
         try:
             loop = asyncio.get_running_loop()
-            new_tools = loop.run_until_complete(self.mcp_manager.check_and_update())
+            new_tools = asyncio.ensure_future(self.mcp_manager.check_and_update())
         except RuntimeError:
             new_tools = None
 
         if new_tools is not None:
+            self._dynamic_tools = new_tools
             self._update_request_tools(request, new_tools)
 
         return handler(request)
@@ -274,6 +287,8 @@ class MCPHotUpdateMiddleware(AgentMiddleware):
         new_tools = await self.mcp_manager.check_and_update()
 
         if new_tools is not None:
+            self._dynamic_tools = new_tools
+            logger.info(f"动态工具列表已更新: {len(new_tools)} 个工具")
             self._update_request_tools(request, new_tools)
 
         return await handler(request)
@@ -337,6 +352,7 @@ def create_tool_filter_middleware(config: Any) -> Any:
 def create_mcp_hot_update_middleware(
     mcp_manager: MCPHotUpdateManager,
     registry: ToolRegistry,
+    initial_tools: list[BaseTool] | None = None,
 ) -> Any:
     """创建 MCP 热更新 Middleware.
 
@@ -346,6 +362,7 @@ def create_mcp_hot_update_middleware(
     Args:
         mcp_manager: MCPHotUpdateManager 实例
         registry: ToolRegistry 实例
+        initial_tools: 初始工具列表（用于动态验证）
 
     Returns:
         Middleware 对象
@@ -353,7 +370,11 @@ def create_mcp_hot_update_middleware(
     if not MIDDLEWARE_AVAILABLE:
         logger.warning("Middleware API 不可用，返回空 middleware")
         return None
-    return MCPHotUpdateMiddleware(mcp_manager, registry)
+    return MCPHotUpdateMiddleware(
+        mcp_manager=mcp_manager,
+        registry=registry,
+        initial_tools=initial_tools,
+    )
 
 
 def create_mcp_hot_update_middlewares(
@@ -447,6 +468,7 @@ def create_dynamic_system_prompt_middleware() -> Any:
 def create_full_dynamic_middleware_stack(
     mcp_manager: MCPHotUpdateManager | None = None,
     registry: ToolRegistry | None = None,
+    initial_tools: list[BaseTool] | None = None,
 ) -> list[Any]:
     """创建完整的动态 middleware 栈.
 
@@ -457,6 +479,7 @@ def create_full_dynamic_middleware_stack(
     Args:
         mcp_manager: MCPHotUpdateManager 实例（可选）
         registry: ToolRegistry 实例（可选）
+        initial_tools: 初始工具列表（用于动态验证）
 
     Returns:
         Middleware 列表
@@ -469,7 +492,11 @@ def create_full_dynamic_middleware_stack(
         logger.info("动态系统提示词 middleware 已启用")
 
     if mcp_manager and registry:
-        mcp_middleware = create_mcp_hot_update_middleware(mcp_manager, registry)
+        mcp_middleware = create_mcp_hot_update_middleware(
+            mcp_manager,
+            registry,
+            initial_tools=initial_tools,
+        )
         if mcp_middleware:
             middlewares.append(mcp_middleware)
 

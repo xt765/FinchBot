@@ -94,16 +94,24 @@ class AgentFactory:
 
         registry = ToolRegistry(workspace, config)
         ToolRegistry.set_instance(registry)
-        tools = await registry.initialize()
+        builtin_tools = await registry.initialize()
 
-        logger.info(f"Created {len(tools)} tools for session {session_id}")
+        from finchbot.tools.mcp.hot_update import MCPHotUpdateManager
 
-        _update_generated_docs(workspace, config, tools)
+        mcp_manager = MCPHotUpdateManager(workspace, config, registry)
+        MCPHotUpdateManager.set_instance(mcp_manager)
+        mcp_tools = await mcp_manager.initialize()
+
+        all_tools = list(builtin_tools) + list(mcp_tools)
+
+        logger.info(f"Created {len(builtin_tools)} builtin + {len(mcp_tools)} MCP tools for session {session_id}")
+
+        _update_generated_docs(workspace, config, all_tools)
 
         subagent_manager = SubagentManager(
             model=model,
             workspace=workspace,
-            tools=tools,
+            tools=all_tools,
             config=config,
         )
 
@@ -114,7 +122,7 @@ class AgentFactory:
         agent, checkpointer = await create_finch_agent(
             model=model,
             workspace=workspace,
-            tools=tools,
+            tools=all_tools,
             use_persistent=True,
             config=config,
         )
@@ -201,18 +209,26 @@ class AgentFactory:
 
         registry = ToolRegistry(workspace, config)
         ToolRegistry.set_instance(registry)
-        tools = await registry.initialize()
+        builtin_tools = await registry.initialize()
 
-        logger.info(f"Created {len(tools)} tools for LangBot")
+        from finchbot.tools.mcp.hot_update import MCPHotUpdateManager
 
-        _update_generated_docs(workspace, config, tools)
+        mcp_manager = MCPHotUpdateManager(workspace, config, registry)
+        MCPHotUpdateManager.set_instance(mcp_manager)
+        mcp_tools = await mcp_manager.initialize()
+
+        all_tools = list(builtin_tools) + list(mcp_tools)
+
+        logger.info(f"Created {len(builtin_tools)} builtin + {len(mcp_tools)} MCP tools for LangBot")
+
+        _update_generated_docs(workspace, config, all_tools)
 
         agent, checkpointer = await create_finch_agent(
             model=model,
             workspace=workspace,
-            tools=tools,
+            tools=all_tools,
             use_persistent=True,
             config=config,
         )
 
-        return agent, checkpointer, tools
+        return agent, checkpointer, all_tools

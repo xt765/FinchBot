@@ -476,7 +476,9 @@ system_md = """# FinchBot (雀翎)
 ### 自主扩展（MCP 配置）
 你可以自主配置 MCP 服务器来扩展自己的能力：
 - `configure_mcp`: 添加/修改/删除/启用/禁用 MCP 服务器
-- `refresh_capabilities`: 刷新能力描述文件
+- `get_mcp_status`: 获取 MCP 服务器连接状态和诊断信息
+- `get_mcp_tools`: 获取所有已加载的 MCP 工具列表及详细参数
+- `refresh_capabilities`: 刷新能力描述文件（CAPABILITIES.md）
 - `get_capabilities`: 获取当前能力描述
 - `get_mcp_config_path`: 获取 MCP 配置文件路径
 
