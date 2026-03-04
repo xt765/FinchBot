@@ -7,16 +7,21 @@ LangChain 1.0 Middleware API:
 - wrap_tool_call: 拦截工具调用
 - before_model: 模型调用前执行
 - after_model: 模型调用后执行
+- dynamic_prompt: 动态生成系统提示词
 """
 
 from __future__ import annotations
 
+import platform
 from collections.abc import Awaitable, Callable
+from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 MIDDLEWARE_AVAILABLE = False
+DYNAMIC_PROMPT_AVAILABLE = False
 
 try:
     from langchain.agents.middleware import (
@@ -38,9 +43,88 @@ except ImportError as e:
     wrap_model_call = None  # type: ignore
     wrap_tool_call = None  # type: ignore
 
+try:
+    from langchain.agents.middleware import dynamic_prompt
+
+    DYNAMIC_PROMPT_AVAILABLE = True
+except ImportError:
+    dynamic_prompt = None  # type: ignore
+
 if TYPE_CHECKING:
     from finchbot.tools.core import ToolRegistry
     from finchbot.tools.mcp.hot_update import MCPHotUpdateManager
+
+
+def _get_workspace_from_request(request: ModelRequest) -> Path:
+    """从请求中获取工作目录."""
+    if hasattr(request, 'runtime') and hasattr(request.runtime, 'context'):
+        context = request.runtime.context
+        if hasattr(context, 'workspace'):
+            return Path(context.workspace)
+
+    from finchbot.agent.core import get_default_workspace
+    return get_default_workspace()
+
+
+def _build_dynamic_system_prompt(request: ModelRequest) -> str:
+    """构建动态系统提示词.
+
+    包含所有需要动态更新的部分：
+    1. Bootstrap 文件
+    2. 技能系统
+    3. 当前时间
+    4. 工具文档（包含 MCP 工具）
+    5. 能力信息
+    """
+    from finchbot.agent.capabilities import build_capabilities_prompt
+    from finchbot.agent.context import ContextBuilder
+    from finchbot.config import load_config
+    from finchbot.config.loader import load_mcp_config
+    from finchbot.tools.core import ToolRegistry
+    from finchbot.tools.tools_generator import ToolsGenerator
+
+    parts = []
+
+    workspace = _get_workspace_from_request(request)
+
+    context_builder = ContextBuilder(workspace)
+    bootstrap_and_skills = context_builder.build_system_prompt(use_cache=False)
+    if bootstrap_and_skills:
+        parts.append(bootstrap_and_skills)
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M (%A)")
+    parts.append(f"## 当前时间\n{now}")
+
+    system_name = platform.system()
+    if system_name == "Windows":
+        platform_hint = "Windows (请使用 Windows/PowerShell 命令语法)"
+    elif system_name == "Darwin":
+        platform_hint = "macOS (请使用 Unix/BSD 命令语法)"
+    else:
+        platform_hint = f"{system_name} (请使用 Unix/Linux 命令语法)"
+
+    runtime = f"{platform_hint}, Python {platform.python_version()}"
+    parts.append(f"## 运行环境\n{runtime}")
+    parts.append(f"## 工作目录\n{workspace}")
+
+    registry = ToolRegistry.get_instance()
+    all_tools = registry.get_tools() if registry else []
+
+    tools_generator = ToolsGenerator(workspace, all_tools)
+    tools_content = tools_generator.generate_tools_content()
+    if tools_content:
+        parts.append(tools_content)
+
+    config = load_config()
+    mcp_servers = load_mcp_config(workspace)
+    if mcp_servers:
+        config.mcp.servers = mcp_servers
+
+    capabilities_prompt = build_capabilities_prompt(config, all_tools)
+    if capabilities_prompt:
+        parts.append(capabilities_prompt)
+
+    return "\n\n".join(parts)
 
 
 class DynamicToolMiddleware(AgentMiddleware):
@@ -328,3 +412,65 @@ def is_middleware_available() -> bool:
         是否可用
     """
     return MIDDLEWARE_AVAILABLE
+
+
+def is_dynamic_prompt_available() -> bool:
+    """检查 dynamic_prompt API 是否可用.
+
+    Returns:
+        是否可用
+    """
+    return DYNAMIC_PROMPT_AVAILABLE
+
+
+def create_dynamic_system_prompt_middleware() -> Any:
+    """创建动态系统提示词 middleware.
+
+    使用 LangChain 1.0 的 @dynamic_prompt 装饰器，
+    每次模型调用时动态生成系统提示词。
+
+    Returns:
+        Middleware 对象，如果 API 不可用返回 None
+    """
+    if not DYNAMIC_PROMPT_AVAILABLE or dynamic_prompt is None:
+        logger.warning("dynamic_prompt API 不可用，返回空 middleware")
+        return None
+
+    @dynamic_prompt
+    def dynamic_system_prompt(request: ModelRequest) -> str:
+        """每次模型调用时动态生成系统提示词."""
+        return _build_dynamic_system_prompt(request)
+
+    return dynamic_system_prompt
+
+
+def create_full_dynamic_middleware_stack(
+    mcp_manager: MCPHotUpdateManager | None = None,
+    registry: ToolRegistry | None = None,
+) -> list[Any]:
+    """创建完整的动态 middleware 栈.
+
+    包含：
+    1. 动态系统提示词 middleware
+    2. MCP 热更新 middleware
+
+    Args:
+        mcp_manager: MCPHotUpdateManager 实例（可选）
+        registry: ToolRegistry 实例（可选）
+
+    Returns:
+        Middleware 列表
+    """
+    middlewares = []
+
+    dynamic_prompt_middleware = create_dynamic_system_prompt_middleware()
+    if dynamic_prompt_middleware:
+        middlewares.append(dynamic_prompt_middleware)
+        logger.info("动态系统提示词 middleware 已启用")
+
+    if mcp_manager and registry:
+        mcp_middleware = create_mcp_hot_update_middleware(mcp_manager, registry)
+        if mcp_middleware:
+            middlewares.append(mcp_middleware)
+
+    return middlewares

@@ -225,7 +225,8 @@ class MCPHotUpdateManager:
         try:
             from finchbot.agent.capabilities import write_capabilities_md
 
-            write_capabilities_md(self.workspace, self.config)
+            tools = self.registry.get_tools()
+            write_capabilities_md(self.workspace, self.config, tools)
             logger.debug("CAPABILITIES.md 已更新")
         except Exception as e:
             logger.warning(f"更新 CAPABILITIES.md 失败: {e}")

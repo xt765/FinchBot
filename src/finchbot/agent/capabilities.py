@@ -44,22 +44,116 @@ class CapabilitiesBuilder:
         """
         parts = []
 
-        # 1. MCP 服务器状态（不含工具列表）
         mcp_section = self._build_mcp_server_status()
         if mcp_section:
             parts.append(mcp_section)
 
-        # 2. Channel 状态
+        mcp_tools_section = self._build_mcp_tools_section()
+        if mcp_tools_section:
+            parts.append(mcp_tools_section)
+
         channel_section = self._build_channel_section()
         if channel_section:
             parts.append(channel_section)
 
-        # 3. 扩展指南
         extension_guide = self._build_extension_guide()
         if extension_guide:
             parts.append(extension_guide)
 
         return "\n\n---\n\n".join(parts)
+
+    def _build_mcp_tools_section(self) -> str:
+        """构建 MCP 工具列表.
+
+        Returns:
+            MCP 工具列表字符串.
+        """
+        mcp_tools = [t for t in self.tools if self._is_mcp_tool(t)]
+
+        if not mcp_tools:
+            return ""
+
+        lines = ["## MCP 工具\n"]
+        lines.append(f"已加载 {len(mcp_tools)} 个 MCP 工具：\n")
+
+        by_server: dict[str, list[BaseTool]] = {}
+        for tool in mcp_tools:
+            server_name = getattr(tool, "_mcp_server_name", "unknown")
+            if server_name not in by_server:
+                by_server[server_name] = []
+            by_server[server_name].append(tool)
+
+        for server_name, server_tools in by_server.items():
+            lines.append(f"### {server_name}\n")
+            for tool in server_tools:
+                desc = tool.description[:100] + "..." if len(tool.description) > 100 else tool.description
+                lines.append(f"- **{tool.name}**: {desc}")
+
+                params = self._get_tool_params(tool)
+                if params:
+                    param_strs = []
+                    for name, info in params.items():
+                        required = " (必填)" if info.get("required") else ""
+                        param_strs.append(f"`{name}`{required}")
+                    lines.append(f"  参数: {', '.join(param_strs)}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def _is_mcp_tool(self, tool: BaseTool) -> bool:
+        """判断工具是否是 MCP 工具.
+
+        Args:
+            tool: 工具实例
+
+        Returns:
+            是否是 MCP 工具
+        """
+        tool_name = tool.name.lower()
+        tool_module = type(tool).__module__.lower()
+
+        if tool_name.startswith("mcp_"):
+            return True
+
+        if hasattr(tool, "_mcp_server_name"):
+            return True
+
+        return "mcp" in tool_module or "langchain_mcp" in tool_module
+
+    def _get_tool_params(self, tool: BaseTool) -> dict:
+        """获取工具参数.
+
+        Args:
+            tool: 工具实例
+
+        Returns:
+            参数字典
+        """
+        params = {}
+
+        if hasattr(tool, "parameters") and tool.parameters:
+            props = tool.parameters.get("properties", {})
+            required = tool.parameters.get("required", [])
+            for name, info in props.items():
+                params[name] = {
+                    "description": info.get("description", ""),
+                    "required": name in required,
+                }
+
+        if not params and hasattr(tool, "args_schema"):
+            try:
+                schema = tool.args_schema.schema()
+                props = schema.get("properties", {})
+                required = schema.get("required", [])
+                for name, info in props.items():
+                    params[name] = {
+                        "description": info.get("description", ""),
+                        "required": name in required,
+                    }
+            except Exception:
+                pass
+
+        return params
 
     def _build_mcp_server_status(self) -> str:
         """构建 MCP 服务器状态（不含工具列表）.

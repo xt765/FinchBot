@@ -351,39 +351,58 @@ async def create_finch_agent(
 
         config = load_config()
 
-    def _build_prompt():
-        return build_system_prompt(workspace, True, tools, config)
-
-    loop = asyncio.get_running_loop()
-    system_prompt = await loop.run_in_executor(None, _build_prompt)
-
     middleware_list = []
+
+    from finchbot.tools.core import ToolRegistry
+
+    registry = ToolRegistry.get_instance()
+    if not registry:
+        registry = ToolRegistry(workspace, config)
+        ToolRegistry.set_instance(registry)
 
     if enable_mcp_hot_update:
         try:
-            from finchbot.tools.core import ToolRegistry
             from finchbot.tools.mcp.hot_update import MCPHotUpdateManager
-            from finchbot.tools.middleware import create_mcp_hot_update_middleware
-
-            registry = ToolRegistry.get_instance()
-            if not registry:
-                registry = ToolRegistry(workspace, config)
-                ToolRegistry.set_instance(registry)
+            from finchbot.tools.middleware import (
+                create_full_dynamic_middleware_stack,
+                is_dynamic_prompt_available,
+            )
 
             mcp_manager = MCPHotUpdateManager(workspace, config, registry)
             MCPHotUpdateManager.set_instance(mcp_manager)
 
             await mcp_manager.initialize()
 
-            mcp_middleware = create_mcp_hot_update_middleware(mcp_manager, registry)
-            if isinstance(mcp_middleware, list):
-                middleware_list.extend(mcp_middleware)
+            if is_dynamic_prompt_available():
+                middleware_list = create_full_dynamic_middleware_stack(mcp_manager, registry)
+                system_prompt = ""
+                logger.info("动态系统提示词 middleware 已启用")
             else:
-                middleware_list.append(mcp_middleware)
+                def _build_prompt():
+                    return build_system_prompt(workspace, True, tools, config)
 
-            logger.info("MCP 热更新 middleware 已启用")
+                loop = asyncio.get_running_loop()
+                system_prompt = await loop.run_in_executor(None, _build_prompt)
+
+                from finchbot.tools.middleware import create_mcp_hot_update_middleware
+                mcp_middleware = create_mcp_hot_update_middleware(mcp_manager, registry)
+                if mcp_middleware:
+                    middleware_list.append(mcp_middleware)
+                logger.info("MCP 热更新 middleware 已启用（静态系统提示词模式）")
+
         except Exception as e:
             logger.warning(f"启用 MCP 热更新 middleware 失败: {e}")
+            def _build_prompt():
+                return build_system_prompt(workspace, True, tools, config)
+
+            loop = asyncio.get_running_loop()
+            system_prompt = await loop.run_in_executor(None, _build_prompt)
+    else:
+        def _build_prompt():
+            return build_system_prompt(workspace, True, tools, config)
+
+        loop = asyncio.get_running_loop()
+        system_prompt = await loop.run_in_executor(None, _build_prompt)
 
     agent = create_agent(
         model=model,

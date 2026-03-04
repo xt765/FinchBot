@@ -566,7 +566,9 @@ async def _stream_ai_response(
                         if isinstance(data, tuple) and len(data) == 2:
                             msg_chunk, metadata = data
                             node_name = (
-                                metadata.get("langgraph_node", "") if isinstance(metadata, dict) else ""
+                                metadata.get("langgraph_node", "")
+                                if isinstance(metadata, dict)
+                                else ""
                             )
                             if node_name == "model" or node_name == "agent":
                                 token = getattr(msg_chunk, "content", "") or ""
@@ -611,7 +613,10 @@ async def _stream_ai_response(
                                             args_hint = ""
                                             if tool_args:
                                                 first_arg = next(iter(tool_args.values()), "")
-                                                if isinstance(first_arg, str) and len(first_arg) < 30:
+                                                if (
+                                                    isinstance(first_arg, str)
+                                                    and len(first_arg) < 30
+                                                ):
                                                     args_hint = f'("{first_arg}")'
                                             _show_progress_hint(f"{tool_name}{args_hint}")
                                 elif hasattr(msg, "name") and msg.name:
@@ -791,7 +796,13 @@ async def _run_chat_session_async(
     console.print(f"[dim]{t('cli.chat.model').format(use_model)}[/dim]")
     console.print(f"[dim]{t('cli.chat.workspace').format(ws_path)}[/dim]")
 
-    agent, checkpointer, tools, subagent_manager, service_manager = await AgentFactory.create_for_cli(
+    (
+        agent,
+        checkpointer,
+        tools,
+        subagent_manager,
+        service_manager,
+    ) = await AgentFactory.create_for_cli(
         session_id=session_id,
         workspace=ws_path,
         model=chat_model,
