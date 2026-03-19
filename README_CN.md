@@ -41,7 +41,9 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square&logo=open-source-initiative" alt="License">
 </p>
 
+
 **FinchBot (雀翎)** 是一个赋予智能体真正自主性的 AI Agent 框架，基于 **LangChain v1.2** 和 **LangGraph v1.0** 构建。全异步架构设计，让智能体具备自主决策、自主扩展、自主进化的能力：
+
 
 1. **能力自扩展** — Agent 遇到能力边界时，可使用内置工具配置 MCP、创建技能
 2. **任务自调度** — Agent 可自主设定后台任务、定时执行，不阻塞对话
@@ -58,7 +60,7 @@
 | "学会做某事" | "等开发者添加功能" | 通过 skill-creator 自主创建技能 |
 | "帮我监控 24 小时" | "我只能在你问的时候响应" | 创建定时任务，自主监控 |
 | "处理这个大文件" | 阻塞对话，用户等待 | 后台执行，用户继续 |
-| "记住我的偏好" | "下次对话就忘了" | 持久记忆，Agentic RAG + 加权 RRF 混合检索 |
+| "记住我的偏好" | "下次对话就忘了" | 持久化记忆，Agentic RAG + 加权 RRF 混合检索 |
 | "调整你的行为" | "提示词是固定的" | 动态修改提示词，热加载 |
 
 ---
