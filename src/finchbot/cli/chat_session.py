@@ -419,6 +419,9 @@ def _get_llm_config(model: str, config_obj: Any) -> tuple[str | None, str | None
         "azure": ["azure"],
         "ollama": ["ollama", "localhost"],
         "deepseek": ["deepseek"],
+        "dashscope": ["qwen", "tongyi", "dashscope", "qwq"],
+        "moonshot": ["kimi", "moonshot"],
+        "groq": ["groq", "llama", "mixtral"],
     }
 
     provider = "openai"
@@ -463,6 +466,11 @@ def _get_provider_config(provider: str, config_obj: Any) -> tuple[str | None, st
         provider_config: ProviderConfig | None = getattr(
             config_obj.providers, config_provider, None
         )
+        # 如果预设 provider 中没有找到，尝试从 custom 中查找
+        if not provider_config or not provider_config.api_key:
+            if hasattr(config_obj.providers, "custom") and provider in config_obj.providers.custom:
+                provider_config = config_obj.providers.custom[provider]
+
         if provider_config and provider_config.api_key:
             api_key = provider_config.api_key
             api_base = provider_config.api_base
