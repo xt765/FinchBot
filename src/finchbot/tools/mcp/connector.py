@@ -60,6 +60,7 @@ class MCPConnector:
         self._running = False
         self._reconnect_interval_s = 30
         self._health_check_interval_s = 60
+        self._connect_locks: dict[str, asyncio.Lock] = {}
 
     async def __aenter__(self) -> MCPConnector:
         """异步上下文管理器入口."""
@@ -69,6 +70,12 @@ class MCPConnector:
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """异步上下文管理器退出."""
         await self.stop()
+
+    async def _get_connect_lock(self, name: str) -> asyncio.Lock:
+        """获取服务器的连接锁."""
+        if name not in self._connect_locks:
+            self._connect_locks[name] = asyncio.Lock()
+        return self._connect_locks[name]
 
     async def start(self) -> None:
         """启动连接器."""
@@ -143,34 +150,41 @@ class MCPConnector:
         Returns:
             该服务器的工具列表
         """
-        try:
-            from langchain_mcp_adapters.client import MultiServerMCPClient
+        lock = await self._get_connect_lock(name)
+        # 尝试获取锁，如果已被占用则等待
+        async with lock:
+            # 双重检查：如果已经连接，直接返回
+            if state.connected:
+                logger.debug(f"服务器 '{name}' 已连接，跳过")
+                return state.tools
+            try:
+                from langchain_mcp_adapters.client import MultiServerMCPClient
 
-            server_config = self._build_server_config(name, state.config)
-            if not server_config:
+                server_config = self._build_server_config(name, state.config)
+                if not server_config:
+                    return []
+
+                client = MultiServerMCPClient({name: server_config})
+                raw_tools = await client.get_tools()
+
+                tools = []
+                for tool in raw_tools:
+                    wrapped = MCPToolWithTimeout(tool, name, state.config.tool_timeout)
+                    tools.append(wrapped)
+
+                state.tools = tools
+                state.connected = True
+                state.last_heartbeat_ms = int(time.time() * 1000)
+                state.last_error = None
+
+                logger.info(f"MCP 服务器 '{name}' 已连接，{len(tools)} 个工具")
+                return tools
+
+            except Exception as e:
+                state.connected = False
+                state.last_error = str(e)
+                logger.error(f"连接 MCP 服务器 '{name}' 失败: {e}")
                 return []
-
-            client = MultiServerMCPClient({name: server_config})
-            raw_tools = await client.get_tools()
-
-            tools = []
-            for tool in raw_tools:
-                wrapped = MCPToolWithTimeout(tool, name, state.config.tool_timeout)
-                tools.append(wrapped)
-
-            state.tools = tools
-            state.connected = True
-            state.last_heartbeat_ms = int(time.time() * 1000)
-            state.last_error = None
-
-            logger.info(f"MCP 服务器 '{name}' 已连接，{len(tools)} 个工具")
-            return tools
-
-        except Exception as e:
-            state.connected = False
-            state.last_error = str(e)
-            logger.error(f"连接 MCP 服务器 '{name}' 失败: {e}")
-            return []
 
     def _build_server_config(self, name: str, config: MCPServerConfig) -> dict | None:
         """构建服务器配置.
