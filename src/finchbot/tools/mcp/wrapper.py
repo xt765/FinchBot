@@ -27,7 +27,6 @@ class MCPToolWithTimeout(BaseTool):
     _timeout: int
     _server_name: str
     _mcp_server_name: str
-    _args_schema: Any
     _parameters: dict | None
 
     def __init__(self, tool: BaseTool, server_name: str, timeout: int = 30) -> None:
@@ -38,33 +37,25 @@ class MCPToolWithTimeout(BaseTool):
             server_name: MCP 服务器名称
             timeout: 超时时间（秒）
         """
+        raw_args_schema = getattr(tool, "args_schema", None)
+        raw_parameters = getattr(tool, "parameters", None)
+        if raw_parameters is None and isinstance(raw_args_schema, dict):
+            raw_parameters = raw_args_schema
+
         super().__init__(
             name=tool.name,
             description=tool.description,
+            args_schema=raw_args_schema,
         )
         self._wrapped_tool = tool
         self._timeout = timeout
         self._server_name = server_name
         self._mcp_server_name = server_name
-
-        if hasattr(tool, "args_schema") and tool.args_schema:
-            self._args_schema = tool.args_schema
-        if hasattr(tool, "parameters"):
-            self._parameters = tool.parameters
-
-    @property
-    def args_schema(self) -> Any:
-        """参数 schema."""
-        if hasattr(self, "_args_schema"):
-            return self._args_schema
-        return getattr(self._wrapped_tool, "args_schema", None)
+        self._parameters = raw_parameters
 
     @property
     def parameters(self) -> dict | None:
-        """参数定义."""
-        if hasattr(self, "_parameters"):
-            return self._parameters
-        return getattr(self._wrapped_tool, "parameters", None)
+        return self._parameters
 
     def _run(self, *args: Any, **kwargs: Any) -> str:
         """同步执行（不支持，返回提示）."""
