@@ -122,6 +122,8 @@ For 'add' and 'update' actions, provide:
 - args: List of arguments (optional)
 - env: Environment variables dict (optional)
 - url: URL for HTTP-based MCP servers (optional)
+- headers: HTTP headers dict for authentication etc. (optional)
+
 
 For 'remove', 'enable', 'disable' actions, provide:
 - server_name: Name of the server
@@ -140,6 +142,8 @@ async def configure_mcp(
     command_args: Annotated[list[str] | None, Field(description="命令参数")] = None,
     env: Annotated[dict[str, str] | None, Field(description="环境变量")] = None,
     url: Annotated[str | None, Field(description="HTTP MCP 服务器的 URL")] = None,
+    headers: Annotated[dict[str, str] | str | None, Field(description="HTTP 请求头（用于认证等），可以是字典或JSON字符串")] = None,
+
 ) -> str:
     """配置 MCP 服务器.
 
@@ -152,6 +156,7 @@ async def configure_mcp(
         command_args: 参数列表
         env: 环境变量
         url: URL
+        headers: HTTP 请求头
 
     Returns:
         操作结果
@@ -164,12 +169,28 @@ async def configure_mcp(
     if not server_name:
         return "Error: server_name is required for this action"
 
+    # 处理 headers 参数类型转换
+    converted_headers = None
+    if headers is not None:
+        if isinstance(headers, str):
+            try:
+                import json
+                converted_headers = json.loads(headers)
+                if not isinstance(converted_headers, dict):
+                    return f"Error: headers must be a dictionary or JSON object string, got {type(converted_headers).__name__}"
+            except json.JSONDecodeError as e:
+                return f"Error: Invalid JSON format for headers: {e}"
+        elif isinstance(headers, dict):
+            converted_headers = headers
+        else:
+            return f"Error: headers must be a dictionary or JSON string, got {type(headers).__name__}"
+
     result: str
     needs_reload = False
 
     if action in ("add", "update"):
         result, needs_reload = _add_or_update_server(
-            workspace, server_name, command, command_args, env, url
+            workspace, server_name, command, command_args, env, url, converted_headers
         )
     elif action == "remove":
         result, needs_reload = _remove_server(workspace, server_name)
@@ -209,6 +230,9 @@ def _list_servers(workspace: Path) -> str:
             lines.append(f"    {url_info}")
         if config.args:
             lines.append(f"    args: {' '.join(config.args)}")
+        if config.headers:
+            header_keys = ", ".join(config.headers.keys())
+            lines.append(f"    headers: {header_keys}")
 
     return "\n".join(lines)
 
@@ -220,6 +244,7 @@ def _add_or_update_server(
     command_args: list[str] | None,
     env: dict[str, str] | None,
     url: str | None,
+    headers: dict[str, str] | None,
 ) -> tuple[str, bool]:
     """添加或更新 MCP 服务器.
 
@@ -230,6 +255,7 @@ def _add_or_update_server(
         command_args: 参数列表
         env: 环境变量
         url: URL
+        headers: HTTP 请求头
 
     Returns:
         (结果消息, 是否需要热更新) 元组
@@ -243,6 +269,7 @@ def _add_or_update_server(
             args=command_args if command_args is not None else existing.args,
             env={**(existing.env or {}), **(env or {})} if env or existing.env else None,
             url=url or existing.url,
+            headers=headers if headers is not None else existing.headers,
             disabled=existing.disabled,
         )
         servers[server_name] = new_config
@@ -260,6 +287,8 @@ def _add_or_update_server(
             config_kwargs["env"] = env
         if url:
             config_kwargs["url"] = url
+        if headers:
+            config_kwargs["headers"] = headers
 
         servers[server_name] = MCPServerConfig(**config_kwargs)
         action_text = "added"
@@ -314,6 +343,7 @@ def _toggle_server(workspace: Path, server_name: str, disabled: bool) -> tuple[s
         args=existing.args,
         env=existing.env,
         url=existing.url,
+        headers=existing.headers,
         disabled=disabled,
     )
     save_mcp_config(servers, workspace)
@@ -438,6 +468,9 @@ async def get_mcp_status() -> str:
             lines.append(f"- Command: `{cmd_str}`")
         if config.url:
             lines.append(f"- URL: {config.url}")
+        if config.headers:
+            header_keys = ", ".join(config.headers.keys())
+            lines.append(f"- Headers: {header_keys}")
         lines.append("")
 
     from finchbot.tools.mcp.hot_update import MCPHotUpdateManager
@@ -487,6 +520,11 @@ async def get_mcp_config_path_tool() -> str:
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-example"],
                     "env": {"API_KEY": "your-api-key"},
+                },
+                "server-name2": {
+                    "url": "https://server-example/mcp",
+                    "env": {"API_KEY": "your-api-key"},
+                    "headers": {"Authorization": "Bearer your-token"},
                 }
             }
         },
