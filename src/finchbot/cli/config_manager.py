@@ -137,6 +137,7 @@ class ConfigManager:
                 elif key == readchar.key.ENTER:
                     self._edit_config_item(config_items[selected_idx])
                     self.config = load_config()
+                    self._load_workspace_mcp()
                     config_items = self._get_config_items()
                 elif key.lower() == "r":
                     if self._confirm_reset():
@@ -204,12 +205,12 @@ class ConfigManager:
                     }
                 )
 
-        for server_name in self.config.mcp.servers:
+        for server_name, server_config in self.config.mcp.servers.items():
             items.append(
                 {
                     "key": f"mcp.{server_name}",
                     "name": f"  └─ MCP: {server_name}",
-                    "value": t("cli.config.channel_enabled"),
+                    "value": t("cli.config.channel_enabled") if not server_config.disabled else t("cli.config.channel_disabled"),
                     "editable": True,
                 }
             )
@@ -579,8 +580,6 @@ class ConfigManager:
                     }
                 )
 
-            items.append({"name": t("config.manager.back"), "value": "back"})
-
             title = f"\n[bold cyan]{t('cli.config.mcp_title')}[/bold cyan]\n"
             help_text = (
                 f"\n[dim cyan]↑↓[/dim cyan] [dim]{t('config.manager.navigate')}[/dim]  "
@@ -590,13 +589,15 @@ class ConfigManager:
 
             result = _keyboard_select(items, title, help_text)
 
-            if result is None or result == "back":
+            if result is None:
                 break
             elif result == "add":
                 self._add_mcp_server()
+                self._save_mcp_config()
             elif result.startswith("edit."):
                 server_name = result.replace("edit.", "")
                 self._edit_mcp_server(server_name)
+                self._save_mcp_config()
 
     def _add_mcp_server(self) -> None:
         """添加 MCP Server."""
@@ -613,18 +614,18 @@ class ConfigManager:
         )
 
         result = _keyboard_select(items, title, help_text)
-
         if result is None:
             return
 
         try:
-            server_name = questionary.text(
-                t("cli.config.mcp_server_name"),
-            ).unsafe_ask()
-            if not server_name:
-                return
 
             if result == "custom":
+                server_name = questionary.text(
+                    t("cli.config.mcp_server_name"),
+                ).unsafe_ask()
+                if not server_name:
+                    return
+
                 command = questionary.text(
                     t("cli.config.mcp_command"),
                 ).unsafe_ask()
@@ -632,11 +633,49 @@ class ConfigManager:
                     t("cli.config.mcp_args"),
                 ).unsafe_ask()
                 args = [a.strip() for a in args_str.split(",")] if args_str else []
+                # Ask for HTTP headers if URL is provided
+                url = None
+                headers = None
+                use_url = questionary.confirm(
+                    t("cli.config.mcp_use_http"),
+                    default=False,
+                ).unsafe_ask()
 
-                self.config.mcp.servers[server_name] = MCPServerConfig(
-                    command=command,
-                    args=args,
-                )
+                if use_url:
+                    url = questionary.text(
+                        t("cli.config.mcp_url"),
+                    ).unsafe_ask()
+
+                    use_headers = questionary.confirm(
+                        t("cli.config.mcp_add_headers"),
+                        default=False,
+                    ).unsafe_ask()
+
+                    if use_headers:
+                        headers = {}
+                        console.print(f"[dim]{t('cli.config.mcp_headers_hint')}[/dim]")
+                        while True:
+                            header_key = questionary.text(
+                                "Header name (or empty to finish):",
+                            ).unsafe_ask()
+                            if not header_key:
+                                break
+                            header_value = questionary.text(
+                                f"Value for {header_key}:",
+                            ).unsafe_ask()
+                            headers[header_key] = header_value
+
+                config_kwargs = {
+                    "command": command,
+                    "args": args,
+                }
+                if url:
+                    config_kwargs["url"] = url
+                if headers:
+                    config_kwargs["headers"] = headers
+
+                self.config.mcp.servers[server_name] = MCPServerConfig(**config_kwargs)
+                console.print(f"[green]✓ MCP server '{server_name}' {t('cli.config.updated')}[/green]")
             else:
                 template = MCP_SERVER_TEMPLATES[result]
                 args = template["args"].copy()
@@ -665,13 +704,13 @@ class ConfigManager:
                         ).unsafe_ask()
                         env[env_var] = value
 
-                self.config.mcp.servers[server_name] = MCPServerConfig(
+                self.config.mcp.servers[result] = MCPServerConfig(
                     command=template["command"],
                     args=args,
                     env=env,
                 )
 
-            console.print(f"[green]✓ MCP server '{server_name}' {t('cli.config.updated')}[/green]")
+                console.print(f"[green]✓ MCP server '{result}' {t('cli.config.updated')}[/green]")
         except KeyboardInterrupt:
             console.print(f"\n[dim]{t('sessions.actions.cancelled')}[/dim]")
 

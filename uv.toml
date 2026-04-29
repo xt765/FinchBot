@@ -1,4 +1,4 @@
 # UV Configuration
 # 缓存放在 D 盘
 
-cache-dir = "D:\\.cache\\uv"
+cache-dir = "/Users/xjian/b_work/gitee_ky/FinchBot/uv"
