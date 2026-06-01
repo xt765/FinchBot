@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 from langchain_core.tools import BaseTool
 from loguru import logger
 
-from finchbot.tools.decorator import ToolMeta, get_tool_registry
+from finchbot.tools.decorator import ToolMeta
 
 if TYPE_CHECKING:
     from finchbot.config.schema import Config
@@ -69,7 +69,8 @@ class ToolRegistry:
         Returns:
             工具列表
         """
-        registry = get_tool_registry()
+        from finchbot.tools.discovery import ToolDiscovery
+        registry = ToolDiscovery().discover_all()
 
         for name, (tool_or_class, meta) in registry.items():
             try:
