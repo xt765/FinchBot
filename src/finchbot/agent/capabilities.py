@@ -133,7 +133,7 @@ class CapabilitiesBuilder:
         lines.append("### 自定义技能\n")
         lines.append("在 `~/.finchbot/workspace/skills/` 目录下创建 Python 文件，定义自定义工具。")
         lines.append("工具会自动被发现并注册。\n")
-        lines.append("#### 技qq能文件结构\n")
+        lines.append("#### 技能文件结构\n")
         lines.append("```")
         lines.append("skills/")
         lines.append("└── my-custom-skill/  # Agent 自动创建或用户自定义")
