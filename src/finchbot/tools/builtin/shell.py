@@ -21,6 +21,7 @@ from finchbot.tools.decorator import ToolCategory, tool
 # 默认禁止的命令模式
 DEFAULT_DENY_PATTERNS = [
     r"\brm\s+-[rf]{1,2}\b",
+    r"\brm\s+--(?:recursive|force)\b",
     r"\bdel\s+/[fq]\b",
     r"\brmdir\s+/s\b",
     r"\bformat\s+[a-zA-Z]:",
@@ -28,9 +29,10 @@ DEFAULT_DENY_PATTERNS = [
     r"\bmkfs\b",
     r"\bdiskpart\b",
     r"\bdd\s+if=",
-    r">\s*/dev/sd",
+    r">\s*/dev/[a-z0-9]+",
     r"\b(shutdown|reboot|poweroff)\b",
     r":\(\)\s*\{.*\};\s*:",
+    r"\b(?:curl|wget)\b.+\|\s*(?:sh|bash)\b",
 ]
 
 # 全局配置
