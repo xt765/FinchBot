@@ -1,4 +1,4 @@
 # UV Configuration
-# 缓存放在 D 盘
+# Keep uv's cache inside the repository so the config works across platforms.
 
-cache-dir = "/Users/xjian/b_work/gitee_ky/FinchBot/uv"
+cache-dir = ".uv-cache"
