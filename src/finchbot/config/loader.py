@@ -126,6 +126,13 @@ def _load_mcp_from_env() -> dict[str, MCPServerConfig]:
                 servers[server_name].args = [value]
         elif field == "URL":
             servers[server_name].url = value
+        elif field == "HEADERS":
+            try:
+                headers = json.loads(value)
+                if isinstance(headers, dict):
+                    servers[server_name].headers = {str(k): str(v) for k, v in headers.items()}
+            except json.JSONDecodeError:
+                pass
         elif field == "DISABLED":
             servers[server_name].disabled = value.lower() == "true"
         elif field == "ENV" and len(parts) >= 3:
@@ -202,6 +209,8 @@ def load_mcp_config(workspace: Path | None = None) -> dict[str, MCPServerConfig]
                 servers[name].args = config.args
             if config.url:
                 servers[name].url = config.url
+            if config.headers:
+                servers[name].headers = config.headers
         else:
             servers[name] = config
 

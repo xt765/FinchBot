@@ -18,6 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from langchain_core.tools import BaseTool
 from loguru import logger
 
 MIDDLEWARE_AVAILABLE = False
@@ -268,12 +269,26 @@ class MCPHotUpdateMiddleware(AgentMiddleware):
 
         try:
             loop = asyncio.get_running_loop()
-            new_tools = asyncio.ensure_future(self.mcp_manager.check_and_update())
+            task = loop.create_task(self.mcp_manager.check_and_update())
+
+            def _update_when_done(done_task: asyncio.Task) -> None:
+                try:
+                    updated_tools = done_task.result()
+                except Exception as e:
+                    logger.warning(f"MCP 热更新任务失败: {e}")
+                    return
+
+                if updated_tools is not None:
+                    self._dynamic_tools = list(updated_tools)
+                    logger.info(f"动态工具列表已更新: {len(updated_tools)} 个工具")
+
+            task.add_done_callback(_update_when_done)
+            return handler(request)
         except RuntimeError:
-            new_tools = None
+            new_tools = asyncio.run(self.mcp_manager.check_and_update())
 
         if new_tools is not None:
-            self._dynamic_tools = new_tools
+            self._dynamic_tools = list(new_tools)
             self._update_request_tools(request, new_tools)
 
         return handler(request)
@@ -430,10 +445,22 @@ def create_mcp_hot_update_middlewares(
         import asyncio
 
         try:
-            asyncio.get_running_loop()
-            new_tools = asyncio.ensure_future(mcp_manager.check_and_update())
+            loop = asyncio.get_running_loop()
+
+            def _log_update_result(done_task: asyncio.Task) -> None:
+                try:
+                    updated_tools = done_task.result()
+                except Exception as e:
+                    logger.warning(f"MCP 热更新任务失败: {e}")
+                    return
+
+                if updated_tools is not None:
+                    logger.info(f"MCP 热更新完成: {len(updated_tools)} 个工具")
+
+            loop.create_task(mcp_manager.check_and_update()).add_done_callback(_log_update_result)
+            return handler(request)
         except RuntimeError:
-            new_tools = None
+            new_tools = asyncio.run(mcp_manager.check_and_update())
 
         if new_tools is not None:
             existing_names = {t.name for t in request.tools}

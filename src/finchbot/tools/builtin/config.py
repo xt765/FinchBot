@@ -244,7 +244,7 @@ def _add_or_update_server(
     command_args: list[str] | None,
     env: dict[str, str] | None,
     url: str | None,
-    headers: dict[str, str] | None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[str, bool]:
     """添加或更新 MCP 服务器.
 
@@ -558,7 +558,6 @@ async def get_mcp_tools() -> str:
     """
     from finchbot.tools.core import ToolRegistry
 
-    workspace = _get_workspace()
     registry = ToolRegistry.get_instance()
 
     if not registry:
@@ -573,21 +572,25 @@ async def get_mcp_tools() -> str:
     lines.append(f"Total: {len(mcp_tools)} tools\n")
 
     by_server: dict[str, list] = {}
-    for tool in mcp_tools:
-        server = getattr(tool, "_mcp_server_name", "unknown")
+    for mcp_tool in mcp_tools:
+        server = getattr(mcp_tool, "_mcp_server_name", "unknown")
         if server not in by_server:
             by_server[server] = []
-        by_server[server].append(tool)
+        by_server[server].append(mcp_tool)
 
     for server_name, server_tools in sorted(by_server.items()):
         lines.append(f"### {server_name} ({len(server_tools)} tools)\n")
 
-        for tool in server_tools:
-            desc = tool.description[:150] + "..." if len(tool.description) > 150 else tool.description
-            lines.append(f"#### {tool.name}\n")
+        for server_tool in server_tools:
+            desc = (
+                server_tool.description[:150] + "..."
+                if len(server_tool.description) > 150
+                else server_tool.description
+            )
+            lines.append(f"#### {server_tool.name}\n")
             lines.append(f"{desc}\n")
 
-            params = _get_tool_params(tool)
+            params = _get_tool_params(server_tool)
             if params:
                 lines.append("**Parameters:**\n")
                 for name, info in params.items():
