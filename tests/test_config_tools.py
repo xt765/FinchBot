@@ -51,6 +51,28 @@ class TestConfigureMCPTool:
         assert "test-server" in data["servers"]
         assert data["servers"]["test-server"]["command"] == "npx"
 
+    def test_add_http_server_with_headers(self, temp_workspace: Path):
+        """测试添加带 headers 的 HTTP MCP 服务器."""
+        result, needs_reload = config_module._add_or_update_server(
+            workspace=temp_workspace,
+            server_name="http-server",
+            command=None,
+            command_args=None,
+            env=None,
+            url="https://example.com/mcp",
+            headers={"Authorization": "Bearer token"},
+        )
+
+        assert "added successfully" in result
+        assert needs_reload is True
+
+        mcp_path = temp_workspace / "config" / "mcp.json"
+        data = json.loads(mcp_path.read_text(encoding="utf-8"))
+        server = data["servers"]["http-server"]
+
+        assert server["url"] == "https://example.com/mcp"
+        assert server["headers"]["Authorization"] == "Bearer token"
+
     def test_update_server(self, temp_workspace: Path):
         """测试更新 MCP 服务器."""
         config_module._add_or_update_server(
@@ -77,6 +99,37 @@ class TestConfigureMCPTool:
         mcp_path = temp_workspace / "config" / "mcp.json"
         data = json.loads(mcp_path.read_text(encoding="utf-8"))
         assert data["servers"]["test-server"]["command"] == "uvx"
+
+    def test_update_server_preserves_headers_by_default(self, temp_workspace: Path):
+        """测试更新 MCP 服务器时默认保留已有 headers."""
+        config_module._add_or_update_server(
+            workspace=temp_workspace,
+            server_name="http-server",
+            command=None,
+            command_args=None,
+            env=None,
+            url="https://example.com/mcp",
+            headers={"Authorization": "Bearer token"},
+        )
+
+        result, needs_reload = config_module._add_or_update_server(
+            workspace=temp_workspace,
+            server_name="http-server",
+            command=None,
+            command_args=None,
+            env={"MODE": "test"},
+            url=None,
+        )
+
+        assert "updated successfully" in result
+        assert needs_reload is True
+
+        mcp_path = temp_workspace / "config" / "mcp.json"
+        data = json.loads(mcp_path.read_text(encoding="utf-8"))
+        server = data["servers"]["http-server"]
+
+        assert server["headers"]["Authorization"] == "Bearer token"
+        assert server["env"]["MODE"] == "test"
 
     def test_remove_server(self, temp_workspace: Path):
         """测试删除 MCP 服务器."""

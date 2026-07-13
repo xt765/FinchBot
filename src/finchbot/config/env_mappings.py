@@ -94,10 +94,17 @@ def get_all_mcp_env_vars() -> dict[str, Any]:
                 servers[server_name]["args"] = [value]
         elif field == "url":
             servers[server_name]["url"] = value
+        elif field == "headers":
+            try:
+                headers = json.loads(value)
+                if isinstance(headers, dict):
+                    servers[server_name]["headers"] = {str(k): str(v) for k, v in headers.items()}
+            except json.JSONDecodeError:
+                pass
         elif field == "disabled":
             servers[server_name]["disabled"] = value.lower() == "true"
-        elif field.startswith("env__"):
-            env_key = field[5:]
+        elif field == "env" and len(parts) >= 3:
+            env_key = parts[2]
             if "env" not in servers[server_name]:
                 servers[server_name]["env"] = {}
             servers[server_name]["env"][env_key] = value
