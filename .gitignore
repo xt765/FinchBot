@@ -75,6 +75,7 @@ coverage.xml
 
 # uv
 uv.lock
+.uv-cache/
 
 # 本地开发工具脚本
 scripts/

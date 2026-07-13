@@ -191,6 +191,23 @@ def channel_serve(
 
     启动 HTTP 服务接收 LangBot 的消息事件。
     """
+    _serve_webhook(host, port)
+
+
+@app.command("webhook")
+def webhook_serve(
+    host: str = typer.Option("0.0.0.0", "--host", "-h", help=t("cli.channel.host_help")),
+    port: int = typer.Option(8000, "--port", "-p", help=t("cli.channel.port_help")),
+) -> None:
+    """启动 Webhook 服务器.
+
+    文档中公开的快捷命令，等价于 `finchbot channel serve`。
+    """
+    _serve_webhook(host, port)
+
+
+def _serve_webhook(host: str, port: int) -> None:
+    """启动 LangBot Webhook 服务."""
     from finchbot.channels.webhook_server import run_webhook_server
     from finchbot.config import load_config
 
