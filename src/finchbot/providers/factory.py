@@ -63,6 +63,7 @@ def _detect_provider(model_lower: str) -> str:
         "gemini": ["gemini"],
         "moonshot": ["moonshot", "kimi"],
         "dashscope": ["qwen", "tongyi", "dashscope", "qwq"],
+        "hunyuan": ["hunyuan", "tencent", "混元"],
     }
 
     for provider_name, keywords in provider_keywords.items():
@@ -137,7 +138,7 @@ def _create_model(
             **kwargs,
         )
 
-    if provider in ("deepseek", "groq", "moonshot", "openrouter", "dashscope"):
+    if provider in ("deepseek", "groq", "moonshot", "openrouter", "dashscope", "hunyuan"):
         from langchain_openai import ChatOpenAI
 
         return ChatOpenAI(

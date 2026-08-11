@@ -1123,6 +1123,8 @@ async def my_tool(param: str) -> str:
 
 在 `providers/factory.py` 中添加新的 Provider 类。
 
+腾讯混元已开箱即用（`hunyuan-turbos-latest`、`hunyuan-lite` 等）。其他模型可配置为自定义提供商（`finchbot config` → **添加自定义提供商**，或编辑配置文件中的 `providers.custom`），提供商按名称自动匹配：若自定义提供商名为 `hunyuan`，则所有包含 `hunyuan` 的模型名都会自动使用其 API Key 与 Base URL，无需改代码。
+
 ### 多平台支持
 
 使用 [LangBot](https://github.com/langbot-app/LangBot) 实现多平台消息支持，详见 [LangBot 文档](https://docs.langbot.app)。

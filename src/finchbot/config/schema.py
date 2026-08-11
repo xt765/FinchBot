@@ -76,6 +76,7 @@ class ProvidersConfig(BaseModel):
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
     moonshot: ProviderConfig = Field(default_factory=ProviderConfig)
     dashscope: ProviderConfig = Field(default_factory=ProviderConfig)
+    hunyuan: ProviderConfig = Field(default_factory=ProviderConfig)
     custom: dict[str, ProviderConfig] = Field(default_factory=dict)
 
 
@@ -225,6 +226,7 @@ class Config(BaseSettings):
             "gemini",
             "moonshot",
             "dashscope",
+            "hunyuan",
         ]
 
         for name in preset_providers:

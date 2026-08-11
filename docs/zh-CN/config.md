@@ -42,7 +42,7 @@ FinchBot 使用灵活的分层配置系统，支持**配置文件**和**环境�
 
 ### `providers` 配置
 
-支持的提供商：`openai`、`anthropic`、`gemini`、`deepseek`、`moonshot`、`dashscope`、`groq`、`openrouter`、`custom`。
+支持的提供商：`openai`、`anthropic`、`gemini`、`deepseek`、`moonshot`、`dashscope`、`groq`、`openrouter`、`hunyuan`、`custom`。
 
 每个提供商包含以下字段：
 
@@ -66,6 +66,7 @@ FinchBot 使用灵活的分层配置系统，支持**配置文件**和**环境�
 | `dashscope` | 阿里云通义 | `DASHSCOPE_*` | qwen-turbo, qwen-max |
 | `groq` | Groq | `GROQ_*` | llama-4-scout, llama-4-maverick |
 | `openrouter` | OpenRouter | `OPENROUTER_*` | （多种模型） |
+| `hunyuan` | 腾讯混元 HunYuan | `HUNYUAN_*` | hunyuan-turbos-latest, hunyuan-turbo-latest, hunyuan-lite |
 | `custom` | 自定义提供商 | 无 | - |
 
 ### `tools` 配置
@@ -98,6 +99,7 @@ FinchBot 使用灵活的分层配置系统，支持**配置文件**和**环境�
 | Moonshot | `MOONSHOT_API_KEY` | `MOONSHOT_API_BASE` |
 | DashScope | `DASHSCOPE_API_KEY` | `DASHSCOPE_API_BASE` |
 | OpenRouter | `OPENROUTER_API_KEY` | `OPENROUTER_API_BASE` |
+| HunYuan | `HUNYUAN_API_KEY` | `HUNYUAN_API_BASE` |
 
 ### 搜索工具
 
