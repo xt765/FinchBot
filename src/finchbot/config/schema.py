@@ -114,17 +114,42 @@ class ExecToolConfig(BaseModel):
     timeout: int = 60
 
 
+class SettlementConfig(BaseModel):
+    """Agent 结算上报配置 (Proof of Work / Settlement).
+
+    对应 issue #2: 支持将 agent 完成工作的 JSON Proof of Work 上报到外部结算层
+    (如 Wheat Community Nexus) 的 webhook endpoint。
+
+    Attributes:
+        webhook_url: 结算层 webhook URL。为空时工具不生效。
+        api_key: 可选 API Key，用于 HMAC-SHA256 签名防篡改。
+        enabled: 是否启用。
+        timeout_seconds: HTTP 请求超时秒数。
+        max_summary_chars: summary 最大长度。
+        max_evidence_chars: evidence 最大长度。
+    """
+
+    webhook_url: str = ""
+    api_key: str = ""
+    enabled: bool = True
+    timeout_seconds: int = 10
+    max_summary_chars: int = 2000
+    max_evidence_chars: int = 5000
+
+
 class ToolsConfig(BaseModel):
     """工具配置.
 
     Attributes:
         web: 网页工具配置。
         exec: 执行工具配置。
+        settlement: 结算上报工具配置。
         restrict_to_workspace: 是否限制在工作目录内。
     """
 
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
     exec: ExecToolConfig = Field(default_factory=ExecToolConfig)
+    settlement: SettlementConfig = Field(default_factory=SettlementConfig)
     restrict_to_workspace: bool = False
 
 

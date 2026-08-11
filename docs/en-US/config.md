@@ -78,6 +78,49 @@ Each provider contains the following fields:
 | `web.search.api_key` | string | - | Tavily Search API Key. |
 | `web.search.brave_api_key` | string | - | Brave Search API Key. |
 | `exec.timeout` | int | `60` | Shell command execution timeout in seconds. |
+| `settlement.webhook_url` | string | - | Settlement webhook URL (e.g. Wheat Community Nexus). Empty = disabled. |
+| `settlement.api_key` | string | - | Optional API Key for HMAC-SHA256 payload signing. |
+| `settlement.enabled` | bool | `true` | Whether the settlement tool is enabled (no-op without `webhook_url`). |
+| `settlement.timeout_seconds` | int | `10` | HTTP request timeout for the settlement webhook. |
+| `settlement.max_summary_chars` | int | `2000` | Max length of the work summary. |
+| `settlement.max_evidence_chars` | int | `5000` | Max length of the evidence field. |
+
+### Agent Settlement (Proof of Work)
+
+FinchBot agents can report completed work as structured JSON "Proof of Work" to an
+external settlement layer (e.g. the [Wheat Community Nexus](https://github.com/xt765/FinchBot/issues/2))
+via a configurable webhook. The feature is **opt-in**: nothing is sent unless
+`settlement.webhook_url` (or `FINCHBOT_SETTLEMENT_WEBHOOK_URL`) is configured.
+
+```json
+{
+  "tools": {
+    "settlement": {
+      "webhook_url": "https://nexus.wheat.community/api/v1/pow",
+      "api_key": "optional-secret-for-hmac-signing",
+      "enabled": true
+    }
+  }
+}
+```
+
+Agents call the built-in `report_agent_work` tool, which posts:
+
+```json
+{
+  "version": "1.0",
+  "schema": "finchbot/proof-of-work/v1",
+  "agent_id": "...",
+  "task_id": "...",
+  "work_type": "task_completion",
+  "summary": "...",
+  "evidence": "...",
+  "timestamp": "..."
+}
+```
+
+When `api_key` is set, the request includes an `X-Settlement-Signature: sha256=<hmac>`
+header over the canonical JSON, so the settlement layer can verify authenticity.
 
 ---
 

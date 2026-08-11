@@ -78,6 +78,7 @@ def _create_default_tools(workspace: Path) -> list[BaseTool]:
     from finchbot.config import load_config
     from finchbot.tools.builtin._utils import configure_tools
     from finchbot.tools.builtin.config import configure_config_tools
+    from finchbot.tools.builtin.settlement import configure_settlement_tools
     from finchbot.tools.builtin.shell import configure_shell_tools
     from finchbot.tools.core import ToolRegistry
 
@@ -88,6 +89,14 @@ def _create_default_tools(workspace: Path) -> list[BaseTool]:
     configure_tools(workspace, allowed_dirs)
     configure_config_tools(workspace)
     configure_shell_tools(working_dir=str(workspace))
+    configure_settlement_tools(
+        webhook_url=config.tools.settlement.webhook_url,
+        api_key=config.tools.settlement.api_key,
+        enabled=config.tools.settlement.enabled,
+        timeout_seconds=config.tools.settlement.timeout_seconds,
+        max_summary_chars=config.tools.settlement.max_summary_chars,
+        max_evidence_chars=config.tools.settlement.max_evidence_chars,
+    )
 
     registry = ToolRegistry(workspace, config)
     return asyncio.get_event_loop().run_until_complete(registry.initialize())

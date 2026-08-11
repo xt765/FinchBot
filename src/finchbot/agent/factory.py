@@ -22,6 +22,7 @@ from finchbot.tools.builtin._utils import configure_tools
 from finchbot.tools.builtin.config import configure_config_tools
 from finchbot.tools.builtin.memory import set_memory_manager
 from finchbot.tools.builtin.session import configure_session_tools
+from finchbot.tools.builtin.settlement import configure_settlement_tools
 from finchbot.tools.builtin.shell import configure_shell_tools
 from finchbot.tools.core import ToolRegistry
 
@@ -86,6 +87,14 @@ class AgentFactory:
         configure_config_tools(workspace)
         configure_session_tools(workspace, session_id)
         configure_shell_tools(working_dir=str(workspace))
+        configure_settlement_tools(
+            webhook_url=config.tools.settlement.webhook_url,
+            api_key=config.tools.settlement.api_key,
+            enabled=config.tools.settlement.enabled,
+            timeout_seconds=config.tools.settlement.timeout_seconds,
+            max_summary_chars=config.tools.settlement.max_summary_chars,
+            max_evidence_chars=config.tools.settlement.max_evidence_chars,
+        )
 
         from finchbot.memory import MemoryManager
 
