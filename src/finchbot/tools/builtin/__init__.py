@@ -34,6 +34,12 @@ from finchbot.tools.builtin.schedule import (
     toggle_cron,
 )
 from finchbot.tools.builtin.session import configure_session_tools, session_title
+from finchbot.tools.builtin.settlement import (
+    build_proof_of_work_payload,
+    configure_settlement_tools,
+    report_agent_work,
+    sign_payload,
+)
 from finchbot.tools.builtin.shell import configure_shell_tools, exec_command
 from finchbot.tools.builtin.web import configure_web_tools, web_extract, web_search
 
@@ -56,6 +62,11 @@ __all__ = [
     "web_search",
     "web_extract",
     "configure_web_tools",
+    # 结算上报工具 (issue #2)
+    "report_agent_work",
+    "configure_settlement_tools",
+    "build_proof_of_work_payload",
+    "sign_payload",
     # Shell 工具
     "exec_command",
     "configure_shell_tools",

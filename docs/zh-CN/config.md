@@ -77,6 +77,49 @@ FinchBot 使用灵活的分层配置系统，支持**配置文件**和**环境�
 | `web.search.api_key` | string | - | Tavily 搜索 API Key。 |
 | `web.search.brave_api_key` | string | - | Brave 搜索 API Key。 |
 | `exec.timeout` | int | `60` | Shell 命令执行超时时间（秒）。 |
+| `settlement.webhook_url` | string | - | 结算层 webhook URL（如 Wheat Community Nexus）。空 = 不启用。 |
+| `settlement.api_key` | string | - | 可选 API Key，用于 HMAC-SHA256 签名。 |
+| `settlement.enabled` | bool | `true` | 结算工具是否启用（无 webhook_url 时自动无效）。 |
+| `settlement.timeout_seconds` | int | `10` | 结算 webhook 的 HTTP 超时秒数。 |
+| `settlement.max_summary_chars` | int | `2000` | 任务摘要最大长度。 |
+| `settlement.max_evidence_chars` | int | `5000` | 证据字段最大长度。 |
+
+### Agent 结算上报 (Proof of Work)
+
+FinchBot agent 可将完成的工作以结构化 JSON「Proof of Work」上报到外部结算层
+（如 [Wheat Community Nexus](https://github.com/xt765/FinchBot/issues/2)）的 webhook。
+该功能**默认不启用**：只有配置了 `settlement.webhook_url`（或环境变量
+`FINCHBOT_SETTLEMENT_WEBHOOK_URL`）后才会发送。
+
+```json
+{
+  "tools": {
+    "settlement": {
+      "webhook_url": "https://nexus.wheat.community/api/v1/pow",
+      "api_key": "可选-HMAC-签名密钥",
+      "enabled": true
+    }
+  }
+}
+```
+
+Agent 调用内置工具 `report_agent_work` 上报，内容示例：
+
+```json
+{
+  "version": "1.0",
+  "schema": "finchbot/proof-of-work/v1",
+  "agent_id": "...",
+  "task_id": "...",
+  "work_type": "task_completion",
+  "summary": "...",
+  "evidence": "...",
+  "timestamp": "..."
+}
+```
+
+配置 `api_key` 后，请求会携带 `X-Settlement-Signature: sha256=<hmac>` 签名头
+（对规范 JSON 计算 HMAC-SHA256），结算层可据此验证真实性、防篡改。
 
 ---
 
