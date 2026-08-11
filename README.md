@@ -1119,7 +1119,11 @@ Create a `SKILL.md` file in `~/.finchbot/workspace/skills/{skill-name}/`, or let
 
 ### Adding LLM Providers
 
-Add a new Provider class in `providers/factory.py`.
+Tencent HunYuan is supported out of the box (`hunyuan-turbos-latest`, `hunyuan-lite`, ...).
+
+For any other model, configure it as a custom provider (`finchbot config` → **Add custom provider**, or edit the config file's `providers.custom`). The provider is matched automatically by name: if your custom provider is named `hunyuan`, every model containing `hunyuan` will use its API key and base URL — no code changes needed.
+
+For a fully new integration, add a Provider class in `providers/factory.py`.
 
 ### Multi-Platform Support
 

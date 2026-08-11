@@ -64,6 +64,11 @@ PRESET_PROVIDERS: dict[str, dict[str, Any]] = {
         "default_base": "https://openrouter.ai/api/v1",
         "models": [],
     },
+    "hunyuan": {
+        "name": "Tencent HunYuan / 腾讯混元",
+        "default_base": "https://api.hunyuan.cloud.tencent.com/v1",
+        "models": ["hunyuan-turbos-latest", "hunyuan-turbo-latest", "hunyuan-lite"],
+    },
 }
 
 PROVIDER_KEYWORDS: dict[str, list[str]] = {
@@ -75,6 +80,7 @@ PROVIDER_KEYWORDS: dict[str, list[str]] = {
     "gemini": ["gemini"],
     "moonshot": ["moonshot", "kimi"],
     "dashscope": ["qwen", "tongyi", "dashscope", "qwq"],
+    "hunyuan": ["hunyuan", "tencent", "混元"],
 }
 
 PROVIDER_PRIORITY: list[tuple[str, str, list[str]]] = [
@@ -85,6 +91,7 @@ PROVIDER_PRIORITY: list[tuple[str, str, list[str]]] = [
     ("moonshot", "kimi-k2.5", ["MOONSHOT_API_KEY"]),
     ("dashscope", "qwen-turbo", ["DASHSCOPE_API_KEY", "ALIBABA_API_KEY"]),
     ("gemini", "gemini-2.5-flash", ["GOOGLE_API_KEY", "GEMINI_API_KEY"]),
+    ("hunyuan", "hunyuan-turbos-latest", ["HUNYUAN_API_KEY"]),
 ]
 
 
@@ -134,11 +141,28 @@ def _get_llm_config(model: str, config_obj: Config) -> tuple[str | None, str | N
     """
     model_lower = model.lower()
 
-    provider = "openai"
+    # 1) 自定义 provider 名称匹配：用户显式配置的 provider 优先于预设关键字。
+    #    若配置了名为 <name> 的 custom provider，且模型名包含 <name>，则使用该 provider。
+    custom_provider = None
+    if config_obj is not None:
+        for name in config_obj.providers.custom:
+            if _is_valid_custom_provider_name(name) and name.lower() in model_lower:
+                custom_provider = name
+                break
+
+    if custom_provider:
+        api_key, api_base = _get_provider_config(custom_provider, config_obj)
+        if api_key:
+            return api_key, api_base, None
+
+    # 2) 预设关键字匹配
+    provider = None
     for name, keywords in PROVIDER_KEYWORDS.items():
         if any(kw in model_lower for kw in keywords):
             provider = name
             break
+
+    provider = provider or "openai"
 
     api_key, api_base = _get_provider_config(provider, config_obj)
 
@@ -147,6 +171,17 @@ def _get_llm_config(model: str, config_obj: Config) -> tuple[str | None, str | N
         api_key, api_base, detected_provider, detected_model = _auto_detect_provider()
 
     return api_key, api_base, detected_model
+
+
+def _is_valid_custom_provider_name(name: str) -> bool:
+    """判断自定义 provider 名称是否适合作为模型名匹配关键字.
+
+    过滤掉过短或过于泛化的名称（如 "ai"、"v1"），避免误匹配。
+    """
+    name_lower = name.strip().lower()
+    if len(name_lower) < 3:
+        return False
+    return all(ch.isalnum() or ch in "_-." for ch in name_lower)
 
 
 def _auto_detect_provider() -> tuple[str | None, str | None, str | None, str | None]:

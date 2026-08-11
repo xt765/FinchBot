@@ -42,7 +42,7 @@ The user configuration file is located at `~/.finchbot/config.json` by default.
 
 ### `providers` Configuration
 
-Supported providers: `openai`, `anthropic`, `gemini`, `deepseek`, `moonshot`, `dashscope`, `groq`, `openrouter`, `custom`.
+Supported providers: `openai`, `anthropic`, `gemini`, `deepseek`, `moonshot`, `dashscope`, `groq`, `openrouter`, `hunyuan`, `custom`.
 
 Each provider contains the following fields:
 
@@ -66,6 +66,7 @@ Each provider contains the following fields:
 | `dashscope` | Alibaba Cloud Tongyi | `DASHSCOPE_*` | qwen-turbo, qwen-max |
 | `groq` | Groq | `GROQ_*` | llama-4-scout, llama-4-maverick |
 | `openrouter` | OpenRouter | `OPENROUTER_*` | (various models) |
+| `hunyuan` | Tencent HunYuan | `HUNYUAN_*` | hunyuan-turbos-latest, hunyuan-turbo-latest, hunyuan-lite |
 | `custom` | Custom Providers | None | - |
 
 ### `tools` Configuration
@@ -98,6 +99,7 @@ Nested configuration uses double underscores `__` for separation (Pydantic Setti
 | Moonshot | `MOONSHOT_API_KEY` | `MOONSHOT_API_BASE` |
 | DashScope | `DASHSCOPE_API_KEY` | `DASHSCOPE_API_BASE` |
 | OpenRouter | `OPENROUTER_API_KEY` | `OPENROUTER_API_BASE` |
+| HunYuan | `HUNYUAN_API_KEY` | `HUNYUAN_API_BASE` |
 
 ### Search Tools
 

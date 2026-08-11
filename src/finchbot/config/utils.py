@@ -42,6 +42,7 @@ def get_api_key(
         "openrouter": ["OPENROUTER_API_KEY"],
         "tavily": ["TAVILY_API_KEY"],
         "dashscope": ["DASHSCOPE_API_KEY", "ALIBABA_API_KEY"],
+        "hunyuan": ["HUNYUAN_API_KEY"],
     }
 
     var_names = env_vars or provider_env_vars.get(provider.lower(), [])
@@ -81,6 +82,7 @@ def get_api_base(
         "moonshot": ["MOONSHOT_API_BASE", "MOONSHOT_BASE_URL"],
         "openrouter": ["OPENROUTER_API_BASE", "OPENROUTER_BASE_URL"],
         "dashscope": ["DASHSCOPE_API_BASE", "DASHSCOPE_BASE_URL"],
+        "hunyuan": ["HUNYUAN_API_BASE", "HUNYUAN_BASE_URL"],
     }
 
     var_names = env_vars or provider_env_vars.get(provider.lower(), [])
@@ -95,6 +97,7 @@ def get_api_base(
         "openrouter": "https://openrouter.ai/api/v1",
         "groq": "https://api.groq.com/openai/v1",
         "dashscope": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "hunyuan": "https://api.hunyuan.cloud.tencent.com/v1",
     }
 
     return provider_defaults.get(provider.lower())

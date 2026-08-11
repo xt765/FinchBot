@@ -42,6 +42,7 @@ def _auto_detect_default_model() -> str | None:
         ("moonshot", "kimi-k2.5"),
         ("dashscope", "qwen-turbo"),
         ("gemini", "gemini-2.5-flash"),
+        ("hunyuan", "hunyuan-turbos-latest"),
     ]
 
     for provider, model in provider_models:
@@ -73,6 +74,7 @@ def _load_providers_from_env() -> dict[str, ProviderConfig]:
             ["DASHSCOPE_API_KEY", "ALIBABA_API_KEY"],
             ["DASHSCOPE_API_BASE", "DASHSCOPE_BASE_URL"],
         ),
+        ("hunyuan", ["HUNYUAN_API_KEY"], ["HUNYUAN_API_BASE", "HUNYUAN_BASE_URL"]),
     ]
 
     for provider, key_vars, base_vars in provider_configs:

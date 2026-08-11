@@ -426,19 +426,10 @@ def agent() -> CompiledStateGraph:
     Returns:
         编译好的 LangGraph 图。
     """
+    from finchbot.providers import create_chat_model
 
-    from langchain_openai import ChatOpenAI
-    from pydantic import SecretStr
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    api_base = os.getenv("OPENAI_API_BASE")
     model_name = os.getenv("MODEL_NAME", "gpt-5")
-
-    model = ChatOpenAI(
-        model=model_name,
-        api_key=SecretStr(api_key) if api_key else None,
-        base_url=api_base,
-    )
+    model = create_chat_model(model=model_name)
 
     workspace = get_default_workspace()
     checkpointer = get_memory_checkpointer()

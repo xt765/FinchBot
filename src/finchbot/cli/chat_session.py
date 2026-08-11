@@ -412,6 +412,23 @@ def _get_llm_config(model: str, config_obj: Any) -> tuple[str | None, str | None
 
     model_lower = model.lower()
 
+    # 1) 自定义 provider 名称匹配：用户显式配置的 provider 优先于预设关键字。
+    #    若配置了名为 <name> 的 custom provider，且模型名包含 <name>，则使用该 provider。
+    custom_provider = None
+    for name in config_obj.providers.custom:
+        name_lower = name.strip().lower()
+        if len(name_lower) < 3:
+            continue
+        if name_lower in model_lower:
+            custom_provider = name
+            break
+
+    if custom_provider:
+        api_key, api_base = _get_provider_config(custom_provider, config_obj)
+        if api_key:
+            return api_key, api_base, None
+
+    # 2) 预设关键字匹配
     provider_keywords = {
         "openai": ["gpt", "openai"],
         "anthropic": ["claude", "anthropic"],
@@ -422,13 +439,16 @@ def _get_llm_config(model: str, config_obj: Any) -> tuple[str | None, str | None
         "dashscope": ["qwen", "tongyi", "dashscope", "qwq"],
         "moonshot": ["kimi", "moonshot"],
         "groq": ["groq", "llama", "mixtral"],
+        "hunyuan": ["hunyuan", "tencent", "混元"],
     }
 
-    provider = "openai"
+    provider = None
     for name, keywords in provider_keywords.items():
         if any(kw in model_lower for kw in keywords):
             provider = name
             break
+
+    provider = provider or "openai"
 
     api_key, api_base = _get_provider_config(provider, config_obj)
 

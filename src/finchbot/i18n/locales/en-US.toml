@@ -689,6 +689,7 @@ dashscope = "DashScope / Alibaba Qwen"
 groq = "Groq"
 moonshot = "Moonshot / Kimi"
 openrouter = "OpenRouter"
+hunyuan = "Tencent HunYuan / 腾讯混元"
 custom = "Custom"
 
 # ========================================
