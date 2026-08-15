@@ -160,6 +160,7 @@ flowchart TB
         OpenAI[OpenAI<br/>GPT-4o]:::infra
         Anthropic[Anthropic<br/>Claude]:::infra
         DeepSeek[DeepSeek<br/>国产]:::infra
+        OrcaRouter[OrcaRouter<br/>LLM 网关]:::infra
     end
 
     CLI --> Agent
