@@ -64,6 +64,11 @@ PRESET_PROVIDERS: dict[str, dict[str, Any]] = {
         "default_base": "https://openrouter.ai/api/v1",
         "models": [],
     },
+    "orcarouter": {
+        "name": "OrcaRouter",
+        "default_base": "https://api.orcarouter.ai/v1",
+        "models": [],
+    },
     "hunyuan": {
         "name": "Tencent HunYuan / 腾讯混元",
         "default_base": "https://api.hunyuan.cloud.tencent.com/v1",
@@ -75,6 +80,7 @@ PROVIDER_KEYWORDS: dict[str, list[str]] = {
     "openai": ["gpt", "o1", "o3", "o4"],
     "anthropic": ["claude"],
     "openrouter": ["openrouter"],
+    "orcarouter": ["orcarouter"],
     "deepseek": ["deepseek"],
     "groq": ["groq", "llama", "mixtral"],
     "gemini": ["gemini"],

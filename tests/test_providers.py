@@ -149,3 +149,41 @@ def test_custom_provider_name_validation() -> None:
     assert _is_valid_custom_provider_name("hunyuan")
     assert _is_valid_custom_provider_name("my-provider")
     assert _is_valid_custom_provider_name("deepseek-custom")
+
+
+def test_orcarouter_model_detected_as_orcarouter_provider() -> None:
+    """OrcaRouter model names should map to the `orcarouter` provider."""
+    assert _detect_provider("orcarouter/auto") == "orcarouter"
+    assert _detect_provider("orcarouter/deepseek-chat") == "orcarouter"
+
+
+def test_orcarouter_preset_provider_metadata() -> None:
+    """OrcaRouter should be a built-in preset with its default base URL."""
+    assert "orcarouter" in PRESET_PROVIDERS
+    assert PRESET_PROVIDERS["orcarouter"]["default_base"] == "https://api.orcarouter.ai/v1"
+
+
+def test_get_api_base_orcarouter_default() -> None:
+    """`get_api_base` should fall back to the OrcaRouter default base."""
+    assert get_api_base("orcarouter") == "https://api.orcarouter.ai/v1"
+
+
+def test_load_providers_from_env_includes_orcarouter(monkeypatch) -> None:
+    """ORCAROUTER_API_KEY env should be loaded as a configured provider."""
+    _clear_api_key_env(monkeypatch)
+    monkeypatch.setenv("ORCAROUTER_API_KEY", "sk-orca-env")
+
+    from finchbot.config.loader import _load_providers_from_env
+
+    providers = _load_providers_from_env()
+
+    assert providers["orcarouter"].api_key == "sk-orca-env"
+    assert providers["orcarouter"].api_base == "https://api.orcarouter.ai/v1"
+
+
+def test_providers_config_has_orcarouter_field() -> None:
+    """`providers.orcarouter` should exist in the config schema."""
+    config = Config()
+    assert config.providers.orcarouter.api_key == ""
+    config.providers.orcarouter = ProviderConfig(api_key="sk-orca")
+    assert "orcarouter" in config.get_configured_providers()

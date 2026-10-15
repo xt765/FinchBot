@@ -40,6 +40,7 @@ def get_api_key(
         "groq": ["GROQ_API_KEY"],
         "moonshot": ["MOONSHOT_API_KEY"],
         "openrouter": ["OPENROUTER_API_KEY"],
+        "orcarouter": ["ORCAROUTER_API_KEY"],
         "tavily": ["TAVILY_API_KEY"],
         "dashscope": ["DASHSCOPE_API_KEY", "ALIBABA_API_KEY"],
         "hunyuan": ["HUNYUAN_API_KEY"],
@@ -81,6 +82,7 @@ def get_api_base(
         "groq": ["GROQ_API_BASE", "GROQ_BASE_URL"],
         "moonshot": ["MOONSHOT_API_BASE", "MOONSHOT_BASE_URL"],
         "openrouter": ["OPENROUTER_API_BASE", "OPENROUTER_BASE_URL"],
+        "orcarouter": ["ORCAROUTER_API_BASE", "ORCAROUTER_BASE_URL"],
         "dashscope": ["DASHSCOPE_API_BASE", "DASHSCOPE_BASE_URL"],
         "hunyuan": ["HUNYUAN_API_BASE", "HUNYUAN_BASE_URL"],
     }
@@ -95,6 +97,7 @@ def get_api_base(
         "deepseek": "https://api.deepseek.com/v1",
         "moonshot": "https://api.moonshot.cn/v1",
         "openrouter": "https://openrouter.ai/api/v1",
+        "orcarouter": "https://api.orcarouter.ai/v1",
         "groq": "https://api.groq.com/openai/v1",
         "dashscope": "https://dashscope.aliyuncs.com/compatible-mode/v1",
         "hunyuan": "https://api.hunyuan.cloud.tencent.com/v1",

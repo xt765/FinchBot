@@ -69,6 +69,7 @@ def _load_providers_from_env() -> dict[str, ProviderConfig]:
         ("groq", ["GROQ_API_KEY"], ["GROQ_API_BASE", "GROQ_BASE_URL"]),
         ("moonshot", ["MOONSHOT_API_KEY"], ["MOONSHOT_API_BASE", "MOONSHOT_BASE_URL"]),
         ("openrouter", ["OPENROUTER_API_KEY"], ["OPENROUTER_API_BASE", "OPENROUTER_BASE_URL"]),
+        ("orcarouter", ["ORCAROUTER_API_KEY"], ["ORCAROUTER_API_BASE", "ORCAROUTER_BASE_URL"]),
         (
             "dashscope",
             ["DASHSCOPE_API_KEY", "ALIBABA_API_KEY"],

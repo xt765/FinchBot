@@ -71,6 +71,7 @@ class ProvidersConfig(BaseModel):
     openai: ProviderConfig = Field(default_factory=ProviderConfig)
     anthropic: ProviderConfig = Field(default_factory=ProviderConfig)
     openrouter: ProviderConfig = Field(default_factory=ProviderConfig)
+    orcarouter: ProviderConfig = Field(default_factory=ProviderConfig)
     deepseek: ProviderConfig = Field(default_factory=ProviderConfig)
     groq: ProviderConfig = Field(default_factory=ProviderConfig)
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
@@ -246,6 +247,7 @@ class Config(BaseSettings):
             "openai",
             "anthropic",
             "openrouter",
+            "orcarouter",
             "deepseek",
             "groq",
             "gemini",

@@ -58,6 +58,7 @@ def _detect_provider(model_lower: str) -> str:
         "openai": ["gpt", "o1", "o3", "o4"],
         "anthropic": ["claude"],
         "openrouter": ["openrouter"],
+        "orcarouter": ["orcarouter"],
         "deepseek": ["deepseek"],
         "groq": ["groq", "llama", "mixtral"],
         "gemini": ["gemini"],
@@ -138,7 +139,15 @@ def _create_model(
             **kwargs,
         )
 
-    if provider in ("deepseek", "groq", "moonshot", "openrouter", "dashscope", "hunyuan"):
+    if provider in (
+        "deepseek",
+        "groq",
+        "moonshot",
+        "openrouter",
+        "orcarouter",
+        "dashscope",
+        "hunyuan",
+    ):
         from langchain_openai import ChatOpenAI
 
         return ChatOpenAI(
